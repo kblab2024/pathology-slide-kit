@@ -39,12 +39,23 @@
 2. **Name**：`pathology-slides`。
 3. **Network access**：**Trusted**（可以連 GitHub、PyPI、Ubuntu 套件庫等常用網站）。
 4. **Environment variables**：留空。兩個 repo 在同一個 session 時工具會自己找到對方。不要在這裡放密碼，使用這個環境的人都看得到。
-5. **Setup script**：到 GitHub 開 `pathology-slide-kit/setup/cloud-setup.sh` → 按 **Raw** → 全選複製 → 整段貼進這個欄位。它會用 apt 裝中文字型（Noto CJK）、Tesseract（OCR）、LibreOffice（沒有 PowerPoint 時轉 PDF），再裝 Python 套件。
+5. **Setup script**：貼下面這段短的啟動腳本（2026-09-25 實際建立的 `pathology-slides` 環境就是這段）。它從公開 kit 抓最新的 `setup/cloud-setup.sh` 執行：用 apt 裝中文字型（Noto CJK）、Tesseract（OCR）、LibreOffice（沒有 PowerPoint 時轉 PDF），再裝 Python 套件。`raw.githubusercontent.com` 在 Trusted 名單內；不管成敗都 `exit 0`，session 一定開得起來。
+
+   ```bash
+   #!/bin/bash
+   # 病理投影片工具包 pathology-slide-kit：抓公開 repo 最新的 setup/cloud-setup.sh 執行
+   export SLIDEKIT_NO_CLONE=1
+   curl -fsSL https://raw.githubusercontent.com/kblab2024/pathology-slide-kit/main/setup/cloud-setup.sh -o /tmp/slidekit-setup.sh      && bash /tmp/slidekit-setup.sh      || echo "[slidekit-setup] 警告：下載或執行失敗，session 照常啟動"
+   exit 0
+   ```
+
+   `SLIDEKIT_NO_CLONE=1` 是故意的：Setup script 的結果會被快取約 7 天，若在這裡 clone kit，之後 7 天的 session 都會拿到舊版 kit。kit 一律在開 session 時從 repository selector 加進來（見第 4 節）。也可以改成把 `cloud-setup.sh` 整份貼進來，效果相同，只是 kit 更新時要重貼。
 6. 按 **Create environment**。
 
 補充：
 
-- Setup script 在第一次開 session 時執行（官方要求 5 分鐘內跑完），結果會存成快取，約 7 天內的新 session 直接用快取、不再重跑；改了 Setup script 或網路設定會重建快取。kit 裡的 `cloud-setup.sh` 更新後，要重新貼一次。
+- Setup script 以 root 身分在第一次開 session 時執行（官方要求 5 分鐘內跑完；非 0 結束碼會讓 session 開不起來），結果存成檔案系統快照，約 7 天內的新 session 直接用快照、不再重跑；改了 Setup script 或網路設定會重建快照。用上面的啟動腳本時，kit 的 `cloud-setup.sh` 更新會在下次重建快照時自動生效（最慢約 7 天）；要立刻生效，就在環境設定裡隨便改一下 Setup script 的註解再存檔。
+- 環境本身不綁 repo：每次開 session 都要在 repository selector 同時加 `pathology-slide-materials` 與 `pathology-slide-kit`（兩個都選 `main`）。多 repo 的 session 從兩個 clone 的上一層開始，工具會自動找到同層的素材庫。
 - 蒐集階段要連 PubMed／NCBI 查文獻、從 Wikimedia Commons、CDC PHIL、PMC 下載開放授權圖，或從考選部下載新一年的考題時，這些網站不在 Trusted 名單。可以把 Network access 改成 **Custom**，勾 **Also include default list of common package managers**，在 Allowed domains 加：
 
   ```text

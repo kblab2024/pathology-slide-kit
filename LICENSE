@@ -2,12 +2,6 @@ MIT License
 
 Copyright (c) 2026 kblab2024
 
-This license covers the software in this repository: scripts/, workflows/,
-templates/ and setup/. Documentation and the style guide (README.md,
-CLAUDE.md, AGENTS.md, docs/, style/ and examples/) are licensed separately
-under CC BY-NC 4.0; see LICENSE-docs.md. Exam questions in question_banks/
-are not subject to copyright (Taiwan Copyright Act, Art. 9(1)(5)).
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights

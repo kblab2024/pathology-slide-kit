@@ -1,0 +1,10 @@
+# pathology-slide-kit Python dependencies (Python >= 3.10; tested on Windows with 3.11)
+# Install: python -m pip install -r requirements.txt
+# (Keep this file ASCII-only: pip on Windows decodes it with the locale code page, e.g. cp950.)
+python-pptx>=0.6.21     # build/read PPTX: gen_pptx, check_deck, dump_pptx, extract_deck_images
+PyMuPDF>=1.23.0         # PDF to images, crops, contact sheets: render_pdf_pages, robbins_crop, export_pdf
+Pillow>=10.0            # text-width measurement, image size and cropping
+PyYAML>=6.0             # course.yaml, style/rules.yaml
+lxml>=4.9               # PPTX XML parsing: dump_pptx
+# Optional, only for fetch_moex_dent_exam.py (downloads dental board exam papers):
+# requests>=2.28

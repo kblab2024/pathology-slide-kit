@@ -1,0 +1,1347 @@
+# 機器可讀的風格規則。人讀版在 style/guide/（入口 00_README.md，檢查清單 50_檢查/）。
+# v1（2026-09-25）：由 style/guide 23 檔的 MUST／NEVER／AVOID 規則裡「有 regex 或計數檢查」的條目重新產生。
+#
+# 兩個清單：
+#   rules:         scripts/style_check.py 與 scripts/check_written.py 直接讀這份（兩支程式只讀 ["rules"]）。
+#                  kind：phrase＝字面比對、regex＝Python re、count＝全套字面計數上限（count 的 pattern 是字面字串，不是 regex）。
+#                  scope：slide＝標題＋條列＋表格；title＝只看標題；notes＝講稿＋講義補充；all＝slide＋notes。
+#                  國考題張（type: quiz）兩支程式都跳過，所以這裡的規則不必再寫國考排除條件。
+#   other_checks:  需要張的位置、字級、顏色、XML、素材池原始檔或全套比例才能判斷的檢查；style_check 不讀。
+#                  engine 欄寫由誰執行（check_deck.py 第 N 項＝已實作；未實作＝建議加進 check_deck.py 或另寫腳本）。
+#                  scope 用位置詞：deck、slide1、slide2、first3、last3、section_end、divider、quiz、title_all、run、xml、pool、credit、notes_body。
+#                  kind：regex、count_regex（regex 命中次數的全套上限；rules 的 count 只收字面字串，所以放這裡）、metric（pattern 欄是判準的文字描述）。
+#
+# 欄位：id、level（RED＝不得交付／WARN＝提醒）、scope、kind、pattern、max（count 用）、message、example_bad、example_ok、evidence；
+#       新增欄：guide_id（指南規則 ID）、guide（所在檔）、v0（true＝2026-09-24 v0 的舊條目）、guide_check_level（指南機械檢查欄寫的等級，與 level 不同時才寫）、
+#       level_note（level 不照「規則等級」對應的理由）、engine（other_checks 用）。
+#
+# 等級對應：規則等級 MUST／NEVER → RED；SHOULD／AVOID → WARN。
+#   例外 1：MUST／NEVER 規則的機械檢查欄明寫「regex 只當提示、→ WARN」者（TERM-03、TERM-18、TTL-17 等）用 WARN，寫在 level_note。
+#   例外 2：AVOID 規則的機械檢查欄寫 FAIL 者（SYM-06、DIV-06、TCM-18 等）仍照規則等級給 WARN，另記 guide_check_level: FAIL；
+#           對「從零新寫」的 deck，這些 WARN 交付前要逐條改掉（見 style/guide/50_檢查/52_交付前檢查清單.md）。
+#
+# id 規則：
+#   v0 的 18 條保留原 id 與原內容（只加 v0、guide_id 兩欄）。v0 有 15 個 id 與指南同號不同義（例：v0 的 BAN-07＝戲劇化第二人稱，
+#   指南 BAN-07＝口號類比）；指南各檔以「v0:BAN-07」稱呼 v0 條目。
+#   新條目用指南 ID；指南 ID 已被 v0 佔用時加「g」（BAN-07g＝指南 BAN-07）。同一條指南規則拆成幾個檢查時，
+#   WARN 級的加「w」（BAN-34w），只查投影片的 RED 級加「s」（BAN-35s）；這些條目都有 guide_id 欄。
+#   同一個 id 可以同時出現在 rules 與 other_checks（同一條規則的文字面與位置面檢查）；同一清單內 id 唯一。
+#   v0 條目與新條目的命中會重疊（例：「打這裡」同時報 BAN-05 RED 與 BAN-05g WARN），v0 保留是為了不放寬既有 RED。
+#
+# v0 → 指南 canonical id（依 20_文字/23_禁用語與LLM語.md S13、20_文字/21_標題句式.md）：
+#   SYM-01→SYM-01｜SYM-02→SYM-04｜TERM-01→TERM-02｜TERM-02→TERM-04｜BAN-01、BAN-02→BAN-03｜BAN-03→BAN-03、BAN-19｜BAN-04→BAN-03、BAN-19
+#   BAN-05→BAN-05｜BAN-06→BAN-14、BAN-25｜BAN-07→BAN-14、BAN-03｜BAN-08→BAN-07、BAN-22｜BAN-09→BAN-03、BAN-19｜BAN-10→BAN-35
+#   BAN-11→IMG-02｜TTL-01→TTL-09（上限見 26 TONE-09）｜TTL-02→TTL-38｜TTL-03→SYM-10
+#
+# 重新產生：改了 style/guide 的機械檢查欄後，照 style/guide/00_README.md「版本與更新規則」改這份，
+#   再跑 python -c "import yaml;yaml.safe_load(open('style/rules.yaml',encoding='utf-8'))" 與 scripts/style_check.py --course <課程>。
+version: 1
+generated: 2026-09-25
+rules:
+  # ======== v0（2026-09-24）舊條目：id 與內容照舊，只加 v0、guide_id ========
+  # ---- 禁用符號 ----
+  - {id: SYM-01, level: RED, scope: all, kind: phrase, pattern: "——", message: "全形雙破折號：教師所有投影片 0 次", evidence: "39 套語料 0 命中", v0: true, guide_id: SYM-01}
+  - {id: SYM-02, level: WARN, scope: slide, kind: count, pattern: "=>", max: 10, message: "「=>」全套超過 10 次（他自己每套 1–8 次）", evidence: "prior_findings B", v0: true, guide_id: SYM-04}
+  # ---- 術語 ----
+  - {id: TERM-01, level: RED, scope: all, kind: phrase, pattern: "異型增生", message: "dysplasia 一律寫「分化不良(dysplasia)」", evidence: "ENT 改稿 8 處全改", v0: true, guide_id: TERM-02}
+  - {id: TERM-02, level: RED, scope: slide, kind: regex, pattern: "\\bp(53|16|40|63)\\b", message: "免疫染色標記大寫 P53／P16／P40／P63", evidence: "ENT 改稿", v0: true, guide_id: TERM-04}
+  # ---- LLM 語與我被刪的寫法 ----
+  - {id: BAN-01, level: RED, scope: all, kind: regex, pattern: "根本(上|就)|說穿了|換句話說|換言之|本質上", message: "LLM 式轉折／強調", evidence: "教師四套 0 命中", v0: true, guide_id: BAN-03}
+  - {id: BAN-02, level: RED, scope: all, kind: regex, pattern: "其一|其二", message: "其一其二套路", evidence: "教師 0 命中", v0: true, guide_id: BAN-03}
+  - {id: BAN-03, level: RED, scope: all, kind: regex, pattern: "值得注意的是|不難發現|讓我們|總而言之|綜上所述|簡而言之|至關重要|深入探討|揭開.{0,6}面紗|雙面刃|堪稱|旨在", message: "典型 LLM 片語", v0: true, guide_id: BAN-03}
+  - {id: BAN-04, level: RED, scope: slide, kind: regex, pattern: "扮演.{0,8}角色|關鍵在於|不僅.{0,20}更", message: "典型 LLM 句型", v0: true, guide_id: BAN-19}
+  - {id: BAN-05, level: RED, scope: slide, kind: regex, pattern: "打這裡|打的是|可以回頭", message: "他在 B2 刪掉的我的口語動詞", example_bad: "氣喘打的是支氣管壁的平滑肌，而且阻塞是可以回頭的", example_ok: "氣喘病灶主要在支氣管壁的平滑肌，為可逆的阻塞", evidence: "edits/lung_B2二", v0: true, guide_id: BAN-05}
+  - {id: BAN-06, level: RED, scope: notes, kind: regex, pattern: "翻頁|停[一二三四五六七八九十0-9]+秒|這張投影片|下一張投影片", message: "舞台指示", v0: true, guide_id: BAN-14}
+  - {id: BAN-07, level: RED, scope: all, kind: regex, pattern: "你已經知道|我還欠你們|你剛剛|一句話帶走", message: "戲劇化第二人稱", v0: true, guide_id: BAN-14}
+  - {id: BAN-08, level: RED, scope: slide, kind: regex, pattern: "磚|工廠|工寮|輸送帶|縱火犯|未爆彈", message: "貫穿全套的裝置式類比", v0: true, guide_id: BAN-07}
+  - {id: BAN-09, level: WARN, scope: slide, kind: regex, pattern: "意味著|此外|進而|從而|事實上|可以說", message: "偏書面／LLM 腔的連接詞，能刪就刪", v0: true, guide_id: BAN-19}
+  - {id: BAN-10, level: RED, scope: slide, kind: regex, pattern: "\\*\\*|【|<!--", message: "Markdown／註解殘留", v0: true, guide_id: BAN-35}
+  - {id: BAN-11, level: RED, scope: slide, kind: regex, pattern: "圖片待補|▦", message: "佔位字殘留", v0: true, guide_id: IMG-02}
+  # ---- 標題 ----
+  - {id: TTL-01, level: WARN, scope: title, kind: regex, pattern: "^(不過|然而|但是)，", message: "標題開頭用轉折連接詞（他在 B2 刪了「不過，」）", v0: true, guide_id: TTL-09}
+  - {id: TTL-02, level: WARN, scope: title, kind: regex, pattern: "：[^：]*(從哪裡來|怎麼樣|為什麼|誰會)[^：]*$", message: "標題帶問句尾巴（他在 B2 砍掉）", example_bad: "肺栓塞(pulmonary embolism)：栓子從哪裡來", example_ok: "肺栓塞(pulmonary embolism)", v0: true, guide_id: TTL-38}
+  - {id: TTL-03, level: WARN, scope: title, kind: regex, pattern: "。$", message: "標題不以句號結尾", v0: true, guide_id: SYM-10}
+
+  # ======== v1 新條目（指南 ID；依指南檔排序）========
+  # ---- 25_符號與標點 ----
+  - id: SYM-01w
+    guide_id: SYM-01
+    guide: 20_文字/25_符號與標點.md
+    level: WARN
+    level_note: 'SYM-01 是 NEVER；雙破折的 RED 由 v0 SYM-01 執行，本條是機械檢查欄的 WARN 級（單一「—」不在出處行行首）'
+    scope: all
+    kind: regex
+    pattern: '[^\n—]—(?!—)'
+    message: '單一「—」只准出現在古籍或名言出處行的行首（— 《書名》…）；其他位置改「 – 」、「=>」或改寫成句'
+    example_bad: '急性發炎—嗜中性球浸潤'
+    example_ok: '— 《金匱要略》張機 (150AD-219AD)'
+    evidence: '全形雙破折號 0/25 套；單一「—」1/19 套、5 處、只用在出處行'
+  - id: SYM-04
+    guide: 20_文字/25_符號與標點.md
+    level: RED
+    scope: slide
+    kind: regex
+    pattern: '⇒|(?<![<!])->|➔|⟹'
+    message: '因果與推論箭頭只用 ASCII「=>」，不用 ⇒、->、全形箭頭（每張、每套的數量上限見 other_checks SYM-04）'
+    example_bad: 'IgE 交聯 -> 肥大細胞去顆粒'
+    example_ok: '走食物的路 => 耐磨 => 鱗狀上皮 (squamous epithelium)'
+    evidence: '⇒／-> 0/25 套；「=>」12/19 套'
+  - id: SYM-05
+    guide: 20_文字/25_符號與標點.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '(?m)^\s*[■★▦]'
+    message: 'gen_pptx／ENT／lung 模板只用模板的「• 」，不手打 ■★▦ 當條列符號（他自製版型的新 deck 另查 •‧■◆►✓●★①，見 other_checks SYM-05）'
+    example_bad: '■ 第一型過敏反應'
+    example_ok: '• 漿黏液腺(seromucinous gland)的特性類似氣管'
+    evidence: '手打字元 0/14 套（大堂＋實驗）；他改稿新增張照模板打「• 」43 個'
+  - id: SYM-06
+    guide: 20_文字/25_符號與標點.md
+    level: WARN
+    guide_check_level: FAIL
+    scope: slide
+    kind: regex
+    pattern: '[０-９Ａ-Ｚａ-ｚ＝＜＞＼＋]'
+    message: '新寫文字不用全形數字、全形英文字母與全形運算符（＝＜＞＼＋）；全形％見 SYM-08'
+    example_bad: '腺癌＝長在終末細支氣管以遠、有腺體分化或會產生黏液的浸潤癌'
+    example_ok: '腺癌 = 有腺體分化或會產生黏液的浸潤癌'
+    evidence: '13 個誤植字元／108,470 字（19 套非國考段）；0 處刻意使用；免疫稿 1 處全形「＼」'
+  - id: SYM-07
+    guide: 20_文字/25_符號與標點.md
+    level: WARN
+    scope: slide
+    kind: count
+    pattern: '；'
+    max: 3
+    message: '條列與標題裡的全形分號每套 ≤3：要分就分兩行或只留主句（表格格內可以用「；」分隔 2–3 個短特徵，本計數含表格，超過時先看是不是表格）'
+    example_bad: '• 氣道狹窄 => 阻塞性肺病(氣流受阻)；肺泡中隔增厚 => 限制性肺病(肺容積減少)'
+    example_ok: '• 支持組織被破壞 => 支氣管顯著擴張'
+    evidence: '他自製大堂 12 套散文分號共 5 個、3 段（2 段是古籍原文）；我的毛胚 81 個'
+  - id: SYM-08
+    guide: 20_文字/25_符號與標點.md
+    level: RED
+    scope: slide
+    kind: regex
+    pattern: '\d\s+%|％'
+    message: '百分比寫成半形「數字%」且緊貼，不寫「70 %」或全形「％」'
+    example_bad: '五年存活 95 %'
+    example_ok: '• 五年存活 95% / 70%(大細胞神經內分泌癌 30%、小細胞癌 5%)'
+    evidence: '0 例外／25 套；免疫稿 0 處'
+  - id: SYM-22
+    guide: 20_文字/25_符號與標點.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '[!！~～]'
+    message: '大堂課不用驚嘆號，也不用「~」當範圍符號；數值範圍寫半形「-」（1-2 cm）'
+    example_bad: '這題一定會考！'
+    example_ok: '預後遠優於 UIP'
+    evidence: '大堂＋實驗 0/14 套；國考複習 1/5 套（貼入段）；免疫稿 0'
+  - id: SYM-38
+    guide: 20_文字/25_符號與標點.md
+    level: RED
+    scope: all
+    kind: regex
+    pattern: '[̀-ͯ]'
+    message: '出現分離的組合附加符號（例：Sjo¨gren）：來源文字要先做 Unicode NFC 正規化'
+    example_bad: "Sjögren syndrome"
+    example_ok: 'Sjögren syndrome'
+    evidence: '免疫稿兩輪審查各 1 條；牙醫師題庫 3 題同樣編碼；他的語料 0 個反證'
+  # ---- 21_標題句式 ----
+  - id: TTL-16
+    guide: 20_文字/21_標題句式.md
+    level: WARN
+    scope: title
+    kind: regex
+    pattern: '侵襲前期|組織像|換一套|認自己'
+    message: '標題不用口語或不精確的詞代換課本術語（侵襲前期→癌前病變、組織像→組織學）'
+    example_bad: '侵襲前期的口腔病灶'
+    example_ok: '癌前病變(premalignant lesion)'
+    evidence: '改稿標題層術語修正 8 處；免疫稿審查 2 張'
+  - id: TTL-26
+    guide: 20_文字/21_標題句式.md
+    level: WARN
+    scope: title
+    kind: regex
+    pattern: '。\s*\S'
+    message: '一個標題只放一個句子（問句＋答句除外）；標題句尾句號的比例見 SYM-10'
+    example_bad: '口腔癌很常見。檳榔是主要原因'
+    example_ok: '造成直接反應(direct allorecognition)的到底是移植物的MHC？還是移植物的抗原？'
+    evidence: '他自製 16 套多句（非問答）標題 1/1,201'
+  - id: TTL-38
+    guide: 20_文字/21_標題句式.md
+    level: WARN
+    guide_check_level: 'WARN（冒號後 ≥2 個疑問詞或頓號串 ≥2 個問句 FAIL）'
+    scope: title
+    kind: regex
+    pattern: '[：:][^：:]*?(誰|哪裡|從哪|怎麼樣|為什麼|什麼叫做|嗎|呢)'
+    message: '大堂課標題不用「術語：預告問句」；改純術語，或把答案寫進標題（問號後已有答句、冒號後有括號答案可放行）'
+    example_bad: '肺栓塞(pulmonary embolism)：栓子從哪裡來'
+    example_ok: '肺栓塞(pulmonary embolism)'
+    evidence: '改稿 4/4 刪問句或改答句；他自製一個標題含 ≥2 個子問題 0/1,201'
+  - id: TTL-40
+    guide: 20_文字/21_標題句式.md
+    level: WARN
+    scope: title
+    kind: regex
+    pattern: '要及時|先預防|應該要|以來最低|以來最高|全球第|排名第'
+    message: '標題不寫對學生的臨床處置指令，也不寫新聞式趨勢排名（本體在 BAN-13）'
+    example_bad: '台灣HIV新增感染者降到2004年以來最低'
+    example_ok: '台灣的人類免疫缺乏病毒(HIV)感染者'
+    evidence: '他的標題臨床命令 0/1,518、趨勢排名 0/1,518；免疫稿審查 3 張'
+  # ---- 24_術語與中英對照 ----
+  - id: TERM-02g
+    guide_id: TERM-02
+    guide: 20_文字/24_術語與中英對照.md
+    level: RED
+    scope: all
+    kind: regex
+    pattern: '異型增生|異生|分化異常|不典型增生'
+    message: 'dysplasia 一律寫「分化不良(dysplasia)」（dysplastic nevus 與 MDS 照他的「化生不良痣」「骨髓化生不良症候群」）'
+    example_bad: '異型增生(dysplasia)是核與細胞多形、分裂像增多與成熟喪失'
+    example_ok: '口腔的分化不良(dysplasia) (核大 核黑 核不規則)'
+    evidence: '改稿替換 8/8；教師文字 35 段「分化不良」vs 0 段變體'
+  - id: TERM-03
+    guide: 20_文字/24_術語與中英對照.md
+    level: WARN
+    level_note: 'TERM-03 是 MUST，機械檢查欄明寫 regex → WARN（講 H&E 原理的張例外）'
+    scope: slide
+    kind: regex
+    pattern: '人類白血球抗原|主要組織相容|過碘酸|吉姆薩|姬姆薩|分化群\s?\d|免疫球蛋白\s?[EGMAD](?![a-z])'
+    message: '染色名、CD、Ig 類別、HLA／MHC 只寫英文，不翻中文（課程若有 glossary 明令另計，見 24 TERM-34）'
+    example_bad: '主要組織相容性複合體(MHC)'
+    example_ok: 'CD20可以染B細胞，可以看到淋巴濾泡的結構'
+    evidence: '他自製 19 套＋B2 英文裸用 >100 段；中譯 0 段'
+  - id: TERM-08
+    guide: 20_文字/24_術語與中英對照.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '\((?:[A-Z][a-z]+\s){1,}[A-Z][a-z]+(?:[ ,;][A-Z]{2,7})?\)'
+    message: '括號內多字英文不用 Title Case；生成時預設全小寫（人名、專有名詞、縮寫照原樣）'
+    example_bad: '院內感染肺炎(Hospital Acquired Pneumonia)'
+    example_ok: '院內感染肺炎(hospital-acquired pneumonia HAP)'
+    evidence: '他手打 8 套 Title Case 3%；B2 親手寫 1%'
+  - id: TERM-09
+    guide: 20_文字/24_術語與中英對照.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '（[A-Za-z][^（）]*）'
+    message: '新寫文字的英文對照用半形括號「中文(English)」，不用全形（）'
+    example_bad: '內翻型（Inverted papilloma）'
+    example_ok: '內翻型(Inverted papilloma)'
+    evidence: 'B2 親手寫全形 3/217；自製 19 套 33/1206'
+  - id: TERM-17
+    guide: 20_文字/24_術語與中英對照.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '(?m)^[•\s]*[A-Z][A-Za-z\-]+(?: [A-Za-z\-]+)+\s*(\([^)]*\))?\s*[:：]?\s*[一-鿿]'
+    message: '大堂課內容張不用英文術語當句子主體、中文補在括號；中文句在前，英文放括號（染色名如 Congo red 誤報時放行）'
+    example_bad: 'Type I hypersensitivity (立即型過敏)是IgE媒介'
+    example_ok: '第一型過敏反應(type I hypersensitivity)是IgE媒介'
+    evidence: 'B2 親手寫 0/345；大堂課自製 0–4 段／套'
+  - id: TERM-18
+    guide: 20_文字/24_術語與中英對照.md
+    level: WARN
+    level_note: 'TERM-18 是 MUST；新寫文字的錯字 regex 在機械檢查欄是 WARN（回灌他的檔時反而不得改，見指南）'
+    scope: slide
+    kind: regex
+    pattern: 'cilitated|histocyte|Payer|Anaphylatic|白班|紅班|噬酸|噬中性|growth hormone receptor'
+    message: '新寫文字出現他的已知錯字：新寫一律用正確寫法；沿用他的句子時列進待教師裁決清單'
+    example_bad: "Payer's patch"
+    example_ok: "Peyer's patch"
+    evidence: 'S13 錯字清單 15 條，逐字核對'
+  - id: TERM-26
+    guide: 20_文字/24_術語與中英對照.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '分化不良\s?[\(（](?i:poorly)'
+    message: 'poorly differentiated 寫「低分化」；「分化不良」專指 dysplasia'
+    example_bad: '分化不良(poorly differentiated)'
+    example_ok: '低分化(poorly differentiated)'
+    evidence: '他手打與 B2 親手寫 0 處誤用'
+  - id: TERM-32
+    guide: 20_文字/24_術語與中英對照.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '[\(（](Ross & Pawlina|Junqueira|StatPearls|Kumar)[^()（）]*[\)）]'
+    message: '條列句尾不掛非 Robbins 教科書的出處括號'
+    example_bad: '• 是細支氣管上皮的祖細胞，分泌 CC16(CCSP)，胞質含代謝外來物的酵素系統(Ross & Pawlina)'
+    example_ok: '• 是細支氣管上皮的祖細胞(progenitor cell)，分泌 CC16(CCSP)，胞質含代謝外來物的酵素系統'
+    evidence: '改稿 5/5 被移除'
+  # ---- 23_禁用語與LLM語 ----
+  - id: BAN-03g
+    guide_id: BAN-03
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: RED
+    scope: all
+    kind: regex
+    pattern: '值得注意|不難發現|讓我們|總而言之|綜上所述|簡而言之|換句話說|換言之|也就是說|事實上|可以說(?!是)|說穿了|根本|本質|關鍵在於|深入探討|揭開.{0,8}面紗|雙面刃|堪稱|旨在|意味著|全方位|此外|進而|值得一提|有趣的是|需要注意|一言以蔽之|整體而言|換個角度|因而|表明|揭示|體現|確保|其一|其二|一句話(帶走|[：:])|重點在後面'
+    message: 'LLM 論述套語（指南 BAN-03 完整詞表；投影片與講稿都不用）'
+    example_bad: '關鍵在於，同一張切片上早期病灶跟晚期病灶會同時看到'
+    example_ok: '不過，功能上其實頭頸部功能相對簡單'
+    evidence: '37 詞 × 他自製正文 0/1251、改稿正文 0/317、免疫成品 0/184'
+  - id: BAN-05g
+    guide_id: BAN-05
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '打這裡|打的是|打在|可以回頭|回不去|認自己|認得|碰上'
+    message: '病灶位置寫「病灶主要在…」「…發生位置」，可逆寫「為可逆的…」，免疫寫「辨識」'
+    example_bad: '• 永久就是撐開後回不去(與氣喘可逆的支氣管收縮不同)'
+    example_ok: '氣喘病灶主要在支氣管壁的平滑肌，為可逆的阻塞'
+    evidence: '他自製 0/1251；改稿「可以回頭／回不去」3/3 改刪；免疫審查口語動詞 4 處'
+  - id: BAN-07g
+    guide_id: BAN-07
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '長在裡面的皮膚|毛囊同源|換一套|代價常是'
+    message: '不做貫穿全套的口號類比與金句；類比只在一段 build 裡用，第一張寫明「把 X 想成 Y」'
+    example_bad: '唾液腺是這張長在裡面的皮膚的汗腺'
+    example_ok: '唾液腺是上皮的附屬器，和汗腺同源'
+    evidence: '改稿 5/5 口號型刪改'
+  - id: BAN-08g
+    guide_id: BAN-08
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '課本寫|本文只|\(Ross ?& ?Pawlina\)'
+    message: '不寫「課本寫…」「本文只…」這類教科書後設語與二級教科書夾註'
+    example_bad: '• 第三類課本寫原因未明'
+    example_ok: '• 其他或不明原因'
+    evidence: '改稿後設語 2/2、(Ross & Pawlina) 3/3 刪；他自製「課本」0/1251'
+  - id: BAN-09g
+    guide_id: BAN-09
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '(?m)還算無害|一定要認|所以一定要|決定.{0,10}(長在哪|是哪一型|在哪裡)|由.{2,12}決定$|代價常是|幾乎專屬|病程猛爆|典型例子$|並不特異|終點是|就是它$|也是.{0,6}答案|換一套|甚至自己'
+    message: '事實句不掛戲劇化包裝或評價尾巴，改成平鋪的事實句（本條 regex 只是提示，最後由人判斷）'
+    example_bad: '名字叫非特異性，預後卻遠優於 UIP，所以一定要認出來'
+    example_ok: '預後遠優於 UIP'
+    evidence: '改稿 ≥12 行同向刪、0 行反向；他自製 0/1251；免疫審查 4 條套用'
+  - id: BAN-12
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '(詳見|全貌見|形態見|詳細內容在)\s*(Robbins\s*)?第\s*[0-9一二三四五六七八九十]+\s*章'
+    message: '不做「詳見第 N 章」為主體的條列或張；需要時用括號「(見第 N 章)」一句帶過（括號每套 ≤3 見 other_checks）'
+    example_bad: '• 鼻型結外 NK/T 細胞淋巴瘤，詳見第 13 章'
+    example_ok: '粟粒性結核（見第 8 章）'
+    evidence: '改稿「詳見」型 4/4 刪；括號與格內 6/6 留'
+  - id: BAN-13
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '記住|千萬|務必|別忘|想像一下|一定要認|應使用|都應|要及時|先預防|以來最(低|高)|創新(低|高)'
+    message: '內容張不對讀者下命令、加壓，不寫臨床祈使句與新聞式排名（課程說明張、國考複習、實驗操作說明可用）'
+    example_bad: '口乾的病人都應使用局部氟化物(topical fluoride)'
+    example_ok: '絕大多數肺栓塞的成因是下肢血管的深部靜脈栓塞'
+    evidence: '他自製內容張 0/1251；免疫審查 4 條全套用'
+  - id: BAN-14
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: RED
+    scope: slide
+    kind: regex
+    pattern: '翻頁|停三秒|這張投影片|這一張|上一張|下一張|看這裡|你已經知道|我還欠'
+    message: '投影片正文不寫舞台指示、指向投影片本身的後設句與戲劇化第二人稱（圖位指引「(右圖)」可以）'
+    example_bad: '這張投影片的重點是肥大細胞'
+    example_ok: '脂肪肝(右圖)，微觀可以看到細胞內有白色的脂肪空泡'
+    evidence: '他自製 0/1251、改稿 0/317；免疫成品 0/184'
+  - id: BAN-14w
+    guide_id: BAN-14
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: title
+    kind: regex
+    pattern: '^(這|這些|這幾)[一二三四五六七八九十兩幾]?(種|個|類|張)'
+    message: '標題用「這三種」這類代稱指向張上條列；改成名詞化標題（人工判斷）'
+    example_bad: '這三種病都容易長淋巴瘤'
+    example_ok: '容易長淋巴瘤(lymphoma)的三種病'
+    evidence: '免疫審查 round1 voice-32，已改'
+  - id: BAN-22
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: RED
+    scope: all
+    kind: regex
+    pattern: '蛀牙|口水|瘜肉|腺樣囊狀癌|多層扁平|耐磨磚|輸送帶'
+    message: '禁用變體：齲齒、唾液、鼻息肉、腺樣囊性癌、複層鱗狀上皮、偽複層纖毛柱狀上皮'
+    example_bad: '口水分泌減少造成蛀牙'
+    example_ok: '反覆鼻炎使黏膜突出形成發炎性鼻息肉(inflammatory nasal polyp)'
+    evidence: '左側詞 他自製 0/1251、改稿 0/317、免疫成品 0/184'
+  - id: BAN-34
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: RED
+    scope: slide
+    kind: regex
+    pattern: '加油|放心|不用怕|辛苦了|哈哈|[\U0001F300-\U0001FAFF]'
+    message: '投影片正文不打氣、不喊話、不用表情符號（★■▶ 這類框架圖符號不在此列）'
+    example_bad: '這段很難，加油'
+    example_ok: '暫時排不到超音波，你是值班醫師，請問你抽什麼血？'
+    evidence: '他投影片 0/1250；免疫成品 0/184'
+  - id: BAN-34w
+    guide_id: BAN-34
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '你們|各位|同學|大家'
+    message: '「你們／各位／同學／大家」留在備註；投影片的人稱只用在臨床情境題'
+    example_bad: '各位同學要看懂這張圖'
+    example_ok: '國考重要性：低'
+    evidence: '他投影片 0/1250'
+  - id: BAN-35
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: RED
+    scope: all
+    kind: regex
+    pattern: '\*\*|【|】|<!--|-->|\[\[(藍|紅|橘|青|灰):|待教師|教師(決定|裁決|確認|舊張)|round\s*\d|審查後|pool\.md|script\.md|slug|imm-s\d'
+    message: '管線痕跡：Markdown、HTML 註解、行內標記、給教師的備忘、審查術語、檔名與 slug（投影片與備註都不得有）'
+    example_bad: '教師舊張原句寫 paracortex/medulla，待教師決定'
+    example_ok: 'CD3在所有T細胞都一樣，所以可以用來染T細胞'
+    evidence: '他投影片 0/1250 與唯一備註 0；免疫審查 2 處（已刪）；免疫成品 0/184'
+  - id: BAN-35s
+    guide_id: BAN-35
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: RED
+    scope: slide
+    kind: regex
+    pattern: '〔講義補充〕'
+    message: '投影片上殘留舊管線的〔講義補充〕標籤（投影片上的 📖 由 BAN-34 報 RED）'
+    example_bad: '〔講義補充〕'
+    example_ok: '講義補充的書目放在備註'
+    evidence: '他投影片 0/1250'
+  - id: BAN-35w
+    guide_id: BAN-35
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: notes
+    kind: regex
+    pattern: '〔講義補充〕|📖'
+    message: '備註裡舊管線的〔講義補充〕與 📖 標記'
+    example_bad: '- 📖 頭頸部(head and neck)：分口腔、上呼吸道、耳、頸與唾液腺五區'
+    example_ok: '- 本章作者為 Mark W. Lingen 與 Nicole A. Cipriani'
+    evidence: '我的毛胚備註〔講義補充〕416/417、📖 76/417；他交付檔殘留〔講義補充〕頭頸部 106/106；免疫成品 0/184'
+  # ---- 15_圖片與配對、16_出處與引用格式 ----
+  - id: IMG-02
+    guide: 10_版面/15_圖片與配對.md
+    level: RED
+    scope: slide
+    kind: regex
+    pattern: '待補|佔位|▦|需授權|截圖（|placeholder'
+    message: '不輸出佔位字、佔位框或留給圖的空白區；缺圖時拿掉圖區改全寬純文字張，想要的圖寫進待補圖清單'
+    example_bad: '圖片待補'
+    example_ok: '頭頸部上皮分佈簡圖'
+    evidence: '改稿 28 張／30 個佔位方塊，他處理 23 張；他自製 0/31 檔；免疫 deck 0 個'
+  - id: IMG-23
+    guide: 10_版面/15_圖片與配對.md
+    level: WARN
+    scope: title
+    kind: regex
+    pattern: '^Table\s*\d'
+    message: '標題以 Robbins 表號起首：補中文標題，表號放括號（同 21 TTL-17、37 CUT-06）'
+    example_bad: 'Table 6.2 第一型過敏'
+    example_ok: '第一型的例子 (Robbins Table 6.2)'
+    evidence: '他以 Table 號起首的標題 0 張（見 15 IMG-23）'
+  - id: CITE-12
+    guide: 10_版面/16_出處與引用格式.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '(補充來源[：:].*|\((?!https?)[^)]*)(StatPearls|Radiopaedia|Ross ?& ?Pawlina|WHO \d+(th|版)|WHO 20\d\d)'
+    message: '不把 StatPearls、Radiopaedia、組織學課本、WHO 版次這類佐證型來源寫成出處；要標就標原始論文、古籍或在地官方數據'
+    example_bad: '口咽癌多與 HPV 有關(StatPearls 2024)'
+    example_ok: '• 口咽(扁桃腺、舌根與咽部)癌在美國高達 70%(Curr Oncol Rep. 2025 Dec 27(12):1395-1400) 帶致癌型人類乳突病毒(HPV)'
+    evidence: '他刪 ≥9 條佐證型來源'
+  - id: CITE-13
+    guide: 10_版面/16_出處與引用格式.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '(?m)\(Robbins\s*p{1,2}\.\s*\d+[^)]*\)\s*$'
+    message: '條列句尾不掛「(Robbins p.613)」；Robbins 頁碼用「(Robbins 45頁)」「Robbins pp. 109」放標題括號或 divider 副標'
+    example_bad: '• 腺樣囊性癌常沿神經侵犯(Robbins p.613)'
+    example_ok: '符合下視丘體溫中樞被調高的症狀 (Robbins第三章 第91頁)'
+    evidence: '弱：B2 刪 1 加 0；他自製句尾 p. 式 0 條'
+  - id: CITE-17
+    guide: 10_版面/16_出處與引用格式.md
+    level: RED
+    scope: title
+    kind: regex
+    pattern: '^(參考資料|參考文獻|References?|Reference list|Bibliography)\s*$'
+    message: '不做參考資料／References 收尾張；出處留在該張的圖下、標題或句內'
+    example_bad: '參考文獻'
+    example_ok: 'Robbins沒有篇幅講的事情'
+    evidence: '他本人 0/31 檔；同事甲 2/2 檔有'
+  - id: CITE-30
+    guide: 10_版面/16_出處與引用格式.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '《[^》]+》，\d{3,4}頁，20\d\d年|，衛生福利部網站，'
+    message: '不沿用 2025 舊版簡介的「《來源》，頁，年」統一來源行與電子書位置碼'
+    example_bad: '《黃帝內經》，4549頁，2024年'
+    example_ok: '— 《金匱要略》張機 (150AD-219AD)'
+    evidence: '1 檔舊式；2026 同內容檔已改'
+  # ---- 31_開場與結尾（收尾、學習目標、大綱、講次）----
+  - id: OPEN-02
+    guide: 30_結構/31_開場與結尾.md
+    level: RED
+    scope: slide
+    kind: regex
+    pattern: '(?m)^\s*(總結|小結(?!節)|回顧|重點整理|Q&A|謝謝(聆聽|大家)?|Take[- ]?home|Summary)\b'
+    message: '結構標籤詞不當標題、眉標或段首；不做收尾張，投影片停在最後一個內容張（末 3 張的檢查見 other_checks OPEN-02）'
+    example_bad: '總結：過敏反應的四型'
+    example_ok: '慢性排斥：粥狀動脈硬化'
+    evidence: '24/24 份無收尾張；改稿 1/3 份親手刪 2 張收尾'
+  - id: OPEN-03
+    guide: 30_結構/31_開場與結尾.md
+    level: RED
+    scope: slide
+    kind: regex
+    pattern: '(?i)學習目標|教學目標|課程目標|本節重點|本章重點|本堂重點|objectives?|learning goals?'
+    message: '不做學習目標／Objectives／本章重點張'
+    example_bad: '學習目標'
+    example_ok: '為什麼要學病理學？(功利目的)'
+    evidence: '0/24（他自製 15、國考複習 6、改稿 3）'
+  - id: OPEN-21
+    guide: 30_結構/31_開場與結尾.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '(?i)第[一二三四]講|Part\s*\d|Lecture\s*\d'
+    message: '封面與副標不寫「第二講：」「Part 2」；系列號用 (一)(二) 併入主標'
+    example_bad: '第二講：自體免疫'
+    example_ok: '病理學：免疫疾病'
+    evidence: '系列課 8/8＋1 處親手改'
+  - id: OPEN-22
+    guide: 30_結構/31_開場與結尾.md
+    level: WARN
+    scope: title
+    kind: regex
+    pattern: '^(內容|大綱|課程大綱|內容大綱|課程內容|Outline|Agenda|Contents?)$'
+    message: '不做條列章節名的大綱／目錄張；要給路線用問題清單'
+    example_bad: '大綱'
+    example_ok: '免疫疾病的五大類(Robbins 第6章)'
+    evidence: '他自製 1/15（2025 舊版）；2026 自製 0'
+  # ---- 32_段落節奏 ----
+  - id: RHY-29
+    guide: 30_結構/32_段落節奏與同標題連張.md
+    level: RED
+    scope: title
+    kind: regex
+    pattern: '^(?!病理學)(?!.*(專技|醫學[（(]二[)）])).*[（(](續|cont\.?|continued|[0-9]|[一二三四五])[)）]\s*$'
+    level_note: '指南 regex 另加兩個排除：以「病理學」開頭的封面課名（發炎(二)）與國考標題（專技、醫學（二））'
+    message: '同標題連張逐字相同，不加「(續)」「(2)」「（二）」'
+    example_bad: '移植排斥(續)'
+    example_ok: '淋巴濾泡的結構'
+    evidence: '他自製 0 處；同事甲 6 處'
+  # ---- 35_中醫與古籍 ----
+  - id: TCM-10
+    guide: 30_結構/35_中醫與古籍.md
+    level: RED
+    scope: slide
+    kind: regex
+    pattern: '古人(已|早)|與現代.{0,6}(一致|吻合)|分法一致|不謀而合|沒有對應|不作(為)?診斷|僅作參考|以\s?Robbins\s?為準|只作內文說明|古人的智慧|早在.{0,4}千年|荒謬|硬凹'
+    message: '投影片不寫籠統的一致宣告、免責句、讚美套語、嚴厲否定'
+    example_bad: '古人早已知道這個現象，與現代醫學一致'
+    example_ok: '走食物的路需要耐磨，因此組織學上是鱗狀上皮 (squamous epithelium)'
+    evidence: '他全語料正文 0 句；改稿 1 改 2 刪'
+  - id: TCM-18
+    guide: 30_結構/35_中醫與古籍.md
+    level: WARN
+    guide_check_level: FAIL
+    scope: notes
+    kind: regex
+    pattern: '以\s?Robbins\s?為準|只作內文說明|不作為?診斷依據'
+    message: '講稿與講義補充也不寫「以 Robbins 為準」這類免責句（投影片上的同類句由 TCM-10 報 RED）'
+    example_bad: '中醫醫理只作內文說明，病理判讀仍以 Robbins 為準'
+    example_ok: '《靈樞．憂恚無言》的條文是這一段推導的前提'
+    evidence: '改稿眉標 5/5 刪；他正文免責 0'
+  - id: TCM-26
+    guide: 30_結構/35_中醫與古籍.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '古人|古籍|中醫(?!臨床)'
+    message: '正文不用「古人／古籍／中醫」當主詞或標籤，改寫朝代、書名、篇名或方證名'
+    example_bad: '古人認為肺合皮毛'
+    example_ok: '《靈樞．憂恚無言》'
+    evidence: '他全語料正文 古人 0、古籍 0；我的毛胚 3 處都被改或刪'
+  - id: TCM-31
+    guide: 30_結構/35_中醫與古籍.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '現代對應|對應是'
+    message: '古籍張不寫「現代對應是」這類後設標籤；直接用現代名詞開頭'
+    example_bad: '• 現代對應是通氣(ventilation)'
+    example_ok: '• 通氣(ventilation)'
+    evidence: '改稿 1/1；他全語料正文「現代對應」0'
+  # ---- 36_備註 ----
+  - id: NOTE-03
+    guide: 30_結構/36_備註.md
+    level: RED
+    scope: notes
+    kind: regex
+    pattern: '投影片\s*\d+｜|第\s*\d+\s*張|[上下前後]一張'
+    message: '備註不寫會因插刪張而失真的張序指涉（投影片 N｜、第 N 張、上一張／下一張）'
+    example_bad: '投影片 11｜兒童初次 HSV 感染可表現為齒齦口腔炎(gingivostomatitis)'
+    example_ok: 'Robbins pp.172–174。CD3在所有T細胞都一樣'
+    evidence: '改稿三套 274/315 則張號錯；他自製 0/78'
+  - id: NOTE-11
+    guide: 30_結構/36_備註.md
+    level: WARN
+    guide_check_level: FAIL
+    scope: notes
+    kind: regex
+    pattern: 'Kindle 版本|Kumar, Vinay|\[\d+\]|（英語：'
+    message: '不替他在備註貼來源原文（Robbins 原文、Wikipedia、網頁）；長度與拉丁字母比例的檢查見 other_checks NOTE-11'
+    example_bad: 'Kumar, Vinay; Abbas, Abul K.. Robbins & Cotran Pathologic Basis of Disease (Kindle 版本)'
+    example_ok: 'Robbins Fig. 6.34 是 HIV 的生活史'
+    evidence: '他的貼文 18/78 則，全在舊檔；2026 新貼 0'
+  - id: NOTE-14
+    guide: 30_結構/36_備註.md
+    level: RED
+    scope: notes
+    kind: regex
+    pattern: '—{2}|其一|其二|請記牢|記住這句|你已經知道|我還欠'
+    message: '備註同樣禁 LLM 裝置語'
+    example_bad: '這句話請記牢'
+    example_ok: '這個最有名的是刺青色素，會在巨噬細胞裡面堆積'
+    evidence: '他的備註 0/78；我的 lung 毛胚「記牢」8、「請記」3'
+  - id: NOTE-25
+    guide: 30_結構/36_備註.md
+    level: WARN
+    scope: notes
+    kind: phrase
+    pattern: '=>'
+    message: '備註是口述，因果用「所以、導致、就會」，不寫「=>」'
+    example_bad: 'IgE 交聯 => 肥大細胞去顆粒'
+    example_ok: 'IgE 交聯之後，肥大細胞就會去顆粒'
+    evidence: '他的備註 0/78；我的 lung 毛胚 27/310'
+  # ---- 37_刪張與留張、38_課別差異 ----
+  - id: CUT-21
+    guide: 30_結構/37_刪張與留張.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '廢名|分類已改|WHO 20\d\d|命名法持續'
+    message: '不寫 WHO 版次更迭、廢名宣告、分類改名史；舊名放括號「(舊稱 X)」或寫「又稱 X」'
+    example_bad: 'WHO 2022 分類已改名'
+    example_ok: '又稱 Warthin 瘤'
+    evidence: '命名史條列 4/4 被刪'
+  - id: AUD-30
+    guide: 30_結構/38_課別差異.md
+    level: WARN
+    level_note: '指南 regex 的「後中」改成「後中(?!性)」，避免誤打「之後中性球」'
+    scope: slide
+    kind: regex
+    pattern: '醫學系|中醫系|牙醫系|中乙|後中(?!性)|中醫甲|牙醫三|同學們?|各位'
+    message: '內容張不點名班別；班別只在簡介的課程說明張出現（簡介張命中時人工放行）'
+    example_bad: '中醫系的同學對這段不陌生'
+    example_ok: '國考重要性：低'
+    evidence: '他 35/35 份內容張 0 次'
+  # ---- 22_條列與句型 ----
+  - id: BUL-14
+    guide: 20_文字/22_條列與句型.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '(全球|全世界|全國).{0,6}第[一二三四五六七八九十\d]+|每年[^，。]{0,15}例|比值\s?\d+\s?[:：]\s?\d+'
+    message: '大堂課內容張不放排名、年發生例數、比值區間這類與判讀無關的流行病學數字'
+    example_bad: '口腔癌是全球第六常見的癌症'
+    example_ok: '檳榔、菸、酒合併的口腔癌風險大於常人一百倍'
+    evidence: '他自製與改後 B2 0 命中；免疫審查 2 處'
+  - id: BUL-25
+    guide: 20_文字/22_條列與句型.md
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: '(?m)^(?![^\n]*[一-鿿])(?![^\n]*(?:\(\d{4}\)|\d{4};|doi|http|et al|Robbins|Fig))[^\n]{41,}$'
+    message: '不自己撰寫英文敘述條列；純英文只留給短圖說標籤、貼上的原句與參考文獻'
+    example_bad: 'Innate immunity has no memory and recognizes conserved molecular patterns'
+    example_ok: '先天免疫：約一百種受體，偵測約一千種抗原'
+    evidence: '同事甲 288/518 段純英文 vs 他 125/3,023（多為文獻、原句、標籤）'
+  # ---- 41_他的原句庫 ----
+  - id: QUOTE-36
+    guide: 40_範例/41_他的原句庫.md
+    level: RED
+    level_note: '指南 regex 的「為免」改成「為免(?!疫)」，避免誤打「為免疫…」'
+    scope: all
+    kind: regex
+    pattern: '慎行的和|重練|為免(?!疫)|組織安|考很係|並人的一詩|ㄋㄜ'
+    message: '不仿寫他備註裡的聽打同音錯字與語助詞'
+    example_bad: '重練'
+    example_ok: '為免疫反應的一種'
+    evidence: '聽打錯字 6 句／2 家族（發炎一、血液動力一）'
+
+other_checks:
+  # ======== 需要位置、字級、顏色、XML 或原始檔的檢查（style_check 不讀）========
+  # ---- 11_畫幅與版面配置 ----
+  - id: LAY-03
+    guide: 10_版面/11_畫幅與版面配置.md
+    level: RED
+    scope: credit
+    kind: regex
+    pattern: '^\s*\d{1,3}(\s*/\s*\d{1,3})?\s*$'
+    message: '不放靜態頁碼文字方塊（TEXT_BOX 且 y > 0.8·H）；要頁碼只用版面的 SLIDE_NUMBER 欄位，否則整套不放'
+    engine: 'check_deck.py 第 6 項（疑似靜態頁碼）'
+    evidence: '他自己的四套 0 個頁碼；我的 98 個靜態數字插刪後全跳號（DIV-31、EDIT-25 為別名）'
+  - id: LAY-21
+    guide: 10_版面/11_畫幅與版面配置.md
+    level: WARN
+    scope: run
+    kind: metric
+    pattern: '名稱含 Rounded／圓角 的 AUTO_SHAPE 數＝0；無字、不與圖重疊的矩形 ≤1'
+    message: '不用裝飾性形狀（圓角卡片、底框、每條一框）；每張最多一個無字、不壓圖的矩形（type: diagram 豁免）'
+    engine: 未實作
+  # ---- 12_字級 ----
+  - id: SIZE-29
+    guide: 10_版面/12_字級.md
+    level: RED
+    scope: run
+    kind: metric
+    pattern: '出處段 run ≥ sizes.credit；其餘 run ≥ sizes.min；內文 < sizes.body_warn → WARN'
+    message: '課程有字級明令時照 course.yaml sizes（課程 C：標題 36、內文 28、學生要讀的字 ≥20、出處 14；使用者（教師）2026-09 明令，只管該課）'
+    engine: 'check_deck.py 第 3 項'
+    evidence: 'immune/brief.md 教師已裁決表'
+  - id: SIZE-12
+    guide: 10_版面/12_字級.md
+    level: RED
+    scope: run
+    kind: metric
+    pattern: '同段 CJK run 字級集合 ≠ ≥3 字母英文 run 字級集合（出處與期刊卷期頁除外）'
+    message: '「中文(English)」括號內的英文與中文同字級，不縮小英文'
+    engine: 未實作
+  - id: SIZE-27
+    guide: 10_版面/12_字級.md
+    level: RED
+    scope: run
+    kind: metric
+    pattern: '同段含 CJK 的 run 字級種類 > 1（autofit 產物與句內期刊卷期頁除外）'
+    message: '同一句不用字級大小做強調；要強調改顏色或加粗'
+    engine: 未實作
+  - id: SIZE-03
+    guide: 10_版面/12_字級.md
+    level: WARN
+    scope: run
+    kind: metric
+    pattern: '新 deck：title／body 且中文占 ≥50% 的段落 sz < 20 → FAIL；中文內文 <24pt 字元占比 >15%（4:3）或 >25%（16:9）→ WARN'
+    message: '從零做的 4:3 大堂課，自寫中文條列與標題不低於 20pt，20–23pt 不當整套基準'
+    engine: '部分：check_deck.py 第 3 項（課程 C 以 RED 執行 ≥20）'
+  - id: SIZE-20
+    guide: 10_版面/12_字級.md
+    level: WARN
+    scope: run
+    kind: regex
+    pattern: '^(12\.4|15\.5|20\.2|24\.3|35\.9|53\.8|32\.4|47\.8|71\.7|86\.1)$'
+    message: '4:3 deck 出現 16:9 縮放來的非整數字級：貼張後重設字級'
+    engine: 未實作
+  - id: SIZE-21
+    guide: 10_版面/12_字級.md
+    level: WARN
+    scope: run
+    kind: metric
+    pattern: '段落無 CJK、nchars ≥40、sz < 20、不含 http／www'
+    message: '新 deck 不整段貼英文 figure legend；圖說寫中文短句'
+    engine: 未實作
+  # ---- 13_密度與字數 ----
+  - id: DEN-02
+    guide: 10_版面/13_密度與字數.md
+    level: RED
+    scope: deck
+    kind: metric
+    pattern: '有效內文字級 ≥30 的張（國考題除外）：內容字元 ≤150（出處列先剝除，見 DEN-23）'
+    max: 150
+    message: '內文 30pt 以上的張，單張內容字元不超過 150'
+    engine: '未實作（check_deck.py 的 char_red 160 比本條鬆，不能代替）'
+  - id: DEN-10
+    guide: 10_版面/13_密度與字數.md
+    level: RED
+    scope: deck
+    kind: metric
+    pattern: '有效內文字級 ≥30 且條列 ≥6 → FAIL；4:3、≥30pt 且條列 ≥5 → WARN'
+    max: 5
+    message: '內文 30pt 以上的張不放 6 條以上條列'
+    engine: '部分：check_written.py（條列 >5 RED、>3 WARN）'
+  - id: DEN-27
+    guide: 10_版面/13_密度與字數.md
+    level: RED
+    scope: deck
+    kind: metric
+    pattern: '_layout.json 估算溢出 >15% → RED；其餘溢出 → WARN'
+    message: '用 gen_pptx 版型時照版型容量寫，寫不下就換版型或拆張，不靠併條、縮字或產生器截斷（綠燈不等於放得下，見 DEN-28、LAY-35）'
+    engine: 'check_deck.py 第 8 項'
+  - id: DEN-19
+    guide: 10_版面/13_密度與字數.md
+    level: WARN
+    scope: deck
+    kind: metric
+    pattern: '自寫條列 >90 字元（國考題幹、引文、古籍除外）；60–90 字元的條每份 >15'
+    max: 15
+    message: '自寫條列不超過 90 字元'
+    engine: 未實作
+  - id: DEN-20
+    guide: 10_版面/13_密度與字數.md
+    level: WARN
+    scope: deck
+    kind: metric
+    pattern: '條列 ≥5 且（最小條列字級 <24 或內容 >150）'
+    message: '不做 5 條以上、子層縮小或超過 150 字元的多層說明張；拆成同標題連張'
+    engine: 未實作
+  # ---- 14_色彩與強調 ----
+  - id: COL-05
+    guide: 10_版面/14_色彩與強調.md
+    level: RED
+    scope: quiz
+    kind: metric
+    pattern: '1 列 3 欄表、第 1 欄 ^[A-Da-d]\s*$、末欄 1[01]\d-[12]：第 1 欄 run 全部 b==True 且非彩色；第 2 欄有彩色 run → WARN'
+    message: '甲式國考表的正解字母設粗體、不上色；第 2、3 欄不粗體（EXAM-04 為同一檢查）'
+    engine: 未實作
+    evidence: '甲式 52/52 表首欄粗體（推翻 CLAUDE.md「正解字母不粗體」）'
+  - id: COL-08
+    guide: 10_版面/14_色彩與強調.md
+    level: RED
+    scope: credit
+    kind: regex
+    pattern: '圖片來源|圖源|資料來源|https?://|et al|Copyright|licensee|doi|\d{4}\s*[;:]\s*\d+\s*\('
+    message: '出處、網址、期刊引文不用強調色（run 顯示色 HSL S≥0.35 且非超連結藍 005EA2 → FAIL）'
+    engine: 未實作
+  - id: COL-28
+    guide: 10_版面/14_色彩與強調.md
+    level: RED
+    scope: run
+    kind: metric
+    pattern: 'pool 段落無 [[色:]] 標記而成品 run 顯示色 S≥0.35（標題模板色、divider 白字、表頭白字除外）'
+    message: '程式生成時版型文字預設中性色；強調色只能來自逐字標記'
+    engine: 未實作
+  - id: COL-14
+    guide: 10_版面/14_色彩與強調.md
+    level: WARN
+    scope: deck
+    kind: metric
+    pattern: '彩色 run 依色相分家族，出現張數 ≥3 的家族 ≤3'
+    max: 3
+    message: '一套的彩色控制在 3 個色相家族以內'
+    engine: 未實作
+  - id: COL-18
+    guide: 10_版面/14_色彩與強調.md
+    level: WARN
+    scope: run
+    kind: metric
+    pattern: '白底張非表格 run 顯示色 HSL L > 0.66 且 ≠ FFFFFF'
+    message: '白底上的文字不用淡色；要淡一點用中性灰'
+    engine: 未實作
+  - id: COL-20
+    guide: 10_版面/14_色彩與強調.md
+    level: WARN
+    scope: run
+    kind: regex
+    pattern: '^\s*[•■▪–→]\s*$'
+    message: 'bullet 符號本身不上色（run 顯示色 S≥0.35 → WARN）'
+    engine: 未實作
+  - id: COL-11
+    guide: 10_版面/14_色彩與強調.md
+    level: WARN
+    scope: run
+    kind: metric
+    pattern: '白底張非表格 run 顯示色 FFFFFF 且無 lumMod'
+    message: '白字只放在深色底或色塊上'
+    engine: 未實作
+  # ---- 15_圖片與配對 ----
+  - id: IMG-02
+    guide: 10_版面/15_圖片與配對.md
+    level: RED
+    scope: xml
+    kind: regex
+    pattern: '待補|佔位|▦|需授權|截圖（|placeholder'
+    message: '被圖蓋住的方塊與出處行也不得有佔位字；pool 寫了 img_wanted 的張不得輸出空白圖框'
+    engine: 'check_deck.py 第 6 項（目前只查「圖片待補」「▦」，要擴成本 regex）'
+  - id: IMG-41
+    guide: 10_版面/15_圖片與配對.md
+    level: RED
+    scope: pool
+    kind: regex
+    pattern: 'IMG:.*標籤：'
+    message: 'type 不是 pair 的張，IMG 行的「標籤：」不會畫出來；學生要看的圖說寫進條列'
+    engine: 未實作
+  - id: IMG-42
+    guide: 10_版面/15_圖片與配對.md
+    level: WARN
+    scope: pool
+    kind: regex
+    pattern: '<!-- type: stats -->'
+    message: '不做原生統計圖與儀表板式數字卡；數字寫進句子（另查 python-pptx shape.has_chart）'
+    engine: 未實作
+    evidence: '39 份語料 CHART 0 個；免疫審查數字卡 3 次改成句子'
+  - id: IMG-18
+    guide: 10_版面/15_圖片與配對.md
+    level: WARN
+    scope: xml
+    kind: metric
+    pattern: '估計文字實際高度與照片的交集 > 0.2'
+    message: '長句不疊在切片或臨床照上；照片上只放染色名、結構名這類短標籤'
+    engine: 未實作
+  - id: IMG-24
+    guide: 10_版面/15_圖片與配對.md
+    level: WARN
+    scope: run
+    kind: metric
+    pattern: '文字方塊 lang≈en、長度 >80、maxsz <12'
+    message: '不整段貼 10pt 英文原圖說'
+    engine: 未實作
+  # ---- 16_出處與引用格式 ----
+  - id: CITE-11
+    guide: 10_版面/16_出處與引用格式.md
+    level: WARN
+    scope: credit
+    kind: regex
+    pattern: '^補充來源[：:]'
+    message: '新 deck 不在左下角放「補充來源：」列（gen_pptx 的 src 欄輸出「資料來源：」屬同一問題，待教師裁決 E2）'
+    engine: 未實作
+    evidence: '他自製 31 檔 0 條；改稿時從不親手加'
+  - id: CITE-16
+    guide: 10_版面/16_出處與引用格式.md
+    level: WARN
+    scope: credit
+    kind: regex
+    pattern: '^(圖：|補充來源：)?(圖：)?[一-鿿]{2,3}(老師|醫師)?\s?(20\d\d\s?)?原?(講義|原稿)\s?S\d+'
+    message: '借同事講義的圖不逐張標「圖：某老師原講義 Sxx」；封面寫一行致謝'
+    engine: 未實作
+  - id: CITE-34
+    guide: 10_版面/16_出處與引用格式.md
+    level: RED
+    scope: pool
+    kind: regex
+    pattern: '可不標|已致謝|封面已|提供；|自製張|（教師 20\d\d'
+    message: '出處欄（pool 的 IMG 出處、src）只寫來源，不寫內部備註'
+    engine: 未實作
+  - id: CITE-23
+    guide: 10_版面/16_出處與引用格式.md
+    level: WARN
+    scope: deck
+    kind: count_regex
+    pattern: 'Robbins ?沒(有)?篇幅|篇幅限制'
+    max: 1
+    message: '「Robbins沒有篇幅講的事情」每套最多 1 張、只當整張標題、字級 ≥30；不當眉標（CUT-08、TCM-18 同）'
+    engine: 未實作
+  # ---- 21_標題句式 ----
+  - id: TTL-04
+    guide: 20_文字/21_標題句式.md
+    level: WARN
+    level_note: 'TTL-04 是 MUST，但它要求的是「檢查器不得把重複標題報錯」；只有單組 >6 張才 WARN'
+    scope: title_all
+    kind: metric
+    pattern: '相鄰逐字相同的標題（同標題連張）單組張數 > 6'
+    max: 6
+    message: '同標題連張 2–6 張是他的手法，不得報錯；單組超過 6 張才提醒'
+    engine: 未實作（check_deck、style_check 目前都不報重複標題，符合本條）
+  - id: TTL-17
+    guide: 20_文字/21_標題句式.md
+    level: WARN
+    level_note: 'TTL-17 是 NEVER；機械檢查欄寫 WARN 後人工確認，確認是收尾張就照 OPEN-02 刪'
+    scope: last3
+    kind: regex
+    pattern: '總結|小結|回顧|結語|Summary|Q&A|謝謝'
+    message: '全套最後一張的標題不寫總結、回顧、Q&A、謝謝'
+    engine: 未實作
+  # ---- 25_符號與標點 ----
+  - id: SYM-04
+    guide: 20_文字/25_符號與標點.md
+    level: WARN
+    level_note: 'SYM-04 的數量門檻是 SHOULD，只對從零新做的 deck；B2 改寫型與回灌他核定的 deck 不跑'
+    scope: deck
+    kind: metric
+    pattern: '每張 count("=>") > 4 或含「=>」的段 > 2；含「=>」的張／總張數 > 0.10'
+    max: 4
+    message: '從零新做的 deck：一張最多兩條鏈、合計 ≤4 個「=>」；含「=>」的張 ≤10%'
+    engine: 未實作（v0 SYM-02 以全套次數 >10 近似）
+  - id: SYM-05
+    guide: 20_文字/25_符號與標點.md
+    level: WARN
+    scope: deck
+    kind: regex
+    pattern: '^\s*[•‧·■▪◆►▶✓✔●○★▦①-⑳]'
+    message: '照他自製版型（無項目符號的文字方塊）從零做 deck 時不手打條列字元'
+    engine: 未實作
+  - id: SYM-37
+    guide: 20_文字/25_符號與標點.md
+    level: RED
+    scope: xml
+    kind: metric
+    pattern: '每個 a:rPr 有 lang="zh-TW"、altLang="en-US"；每個 a:pPr 有 hangingPunct="0"'
+    message: '產生器的語言標記與行首標點設定（改字後仍要重看 PNG）'
+    engine: 'gen_pptx.py 2026-09-25 版已寫入；未有檢查'
+  # ---- 24_術語與中英對照 ----
+  - id: TERM-01
+    guide: 20_文字/24_術語與中英對照.md
+    level: RED
+    scope: run
+    kind: regex
+    pattern: '[一-鿿] ?\([A-Za-z]'
+    message: '「中文(English)」的英文 run 字級等於前一個中文 run；不另做小字段'
+    engine: 未實作
+  - id: TERM-10
+    guide: 20_文字/24_術語與中英對照.md
+    level: WARN
+    scope: deck
+    kind: metric
+    pattern: '反向格式 [A-Za-z]{3,}\s*\([一-鿿][^()]*\) 的數量／全部中英對照 > 0.03'
+    max: 0.03
+    message: '普通術語不寫成「English(中文)」反向格式'
+    engine: 未實作
+  - id: TERM-34
+    guide: 20_文字/24_術語與中英對照.md
+    level: RED
+    scope: deck
+    kind: metric
+    pattern: 'glossary 的中文詞在該張沒有英文或縮寫；英文詞沒有中文；禁用變體'
+    message: '課程 C 每張首見專有名詞寫「中文(English)」（使用者（教師）2026-09 明令，只管該課）'
+    engine: 'style_check.py 與 check_written.py 內建 glossary 檢查（不掃圖標籤、框架圖格子、國考說明行）'
+  # ---- 23_禁用語與LLM語 ----
+  - id: BAN-12
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: deck
+    kind: count_regex
+    pattern: '[（(]見第\s*\d+\s*章[)）]'
+    max: 3
+    message: '括號「(見第 N 章)」每套 ≤3'
+    engine: 未實作（style_check 的 count 只收字面字串）
+  - id: BAN-19
+    guide: 20_文字/23_禁用語與LLM語.md
+    level: WARN
+    scope: deck
+    kind: count_regex
+    pattern: '透過|從而|不僅|至關重要|扮演.{0,8}角色|一般而言|核心定義|核心概念|關鍵因子'
+    max: 3
+    message: '講課張的書面語連接與評價詞每套合計 ≤3（v0 BAN-03、BAN-04、BAN-09 已把其中幾個詞逐次報出）'
+    engine: 未實作（style_check 的 count 只收字面字串）
+  # ---- 26_語氣與態度 ----
+  - id: TONE-28
+    guide: 20_文字/26_語氣與態度.md
+    level: WARN
+    scope: deck
+    kind: count_regex
+    pattern: '記起來|記牢|牢記|要記|記住'
+    max: 1
+    message: '大堂課投影片的背誦指令每套 ≤1；講稿 ≤3 張'
+    engine: 未實作
+  - id: TONE-21
+    guide: 20_文字/26_語氣與態度.md
+    level: WARN
+    scope: last3
+    kind: regex
+    pattern: '回家複習|請回家|回去念'
+    message: '末段不放叮嚀張或叮嚀行'
+    engine: 未實作
+  # ---- 31_開場與結尾 ----
+  - id: OPEN-02
+    guide: 30_結構/31_開場與結尾.md
+    level: RED
+    scope: last3
+    kind: regex
+    pattern: '(?i)總結|小結|結論|Summary|Take.?home|Conclusion|謝謝|感謝聆聽|Thank|Q&A|參考文獻|References?|重點整理|回顧'
+    message: '最後 3 張不得是收尾張，也不得是開場框架圖的重播；只查投影片文字'
+    engine: 未實作
+  - id: OPEN-01
+    guide: 30_結構/31_開場與結尾.md
+    level: RED
+    scope: slide1
+    kind: regex
+    pattern: '老師製|醫師製|講者|主講|@|20\d{2}[年/.\-]\d{1,2}'
+    message: '封面不放講者姓名、單位、Email、日期（致謝行與課名裡的校名不算）；封面非空段落 ≤3'
+    engine: 未實作
+  - id: OPEN-13
+    guide: 30_結構/31_開場與結尾.md
+    level: WARN
+    scope: last3
+    kind: regex
+    pattern: '原則上不教|有教的內容|不教'
+    message: '新 deck 預設不做結尾範圍張；要做先問他'
+    engine: 未實作
+  - id: OPEN-17
+    guide: 30_結構/31_開場與結尾.md
+    level: WARN
+    scope: slide2
+    kind: regex
+    pattern: '素問|靈樞|難經|傷寒|金匱|《.+》'
+    message: '中醫班第 2 張不用古籍條文當標題；古籍當前提放在其後的開場張（本條查第 2 張首段）'
+    engine: 未實作
+  - id: OPEN-19
+    guide: 30_結構/31_開場與結尾.md
+    level: WARN
+    scope: slide1
+    kind: metric
+    pattern: 'slide 1 圖片數＝0'
+    message: '主題課與實驗課的封面不放圖片'
+    engine: 未實作
+  - id: OPEN-37
+    guide: 30_結構/31_開場與結尾.md
+    level: WARN
+    scope: deck
+    kind: metric
+    pattern: 'Section 編號遞增無跳號；slide 1 備註的主題詞出現在投影片文字'
+    message: '自己產生的 deck 段號連號，不模仿他重切講次留下的殘留'
+    engine: 未實作
+  # ---- 32_段落節奏、33_divider ----
+  - id: RHY-35
+    guide: 30_結構/32_段落節奏與同標題連張.md
+    level: RED
+    scope: xml
+    kind: regex
+    pattern: '<p:transition|<p:timing'
+    message: '不設轉場與動畫；逐步揭露做成同標題連張（p:timing 只可出現在含影片的張）'
+    engine: 未實作
+    evidence: '39 份語料轉場 0；動畫只見於影片張'
+  - id: RHY-30
+    guide: 30_結構/32_段落節奏與同標題連張.md
+    level: RED
+    scope: pool
+    kind: metric
+    pattern: '同一 build 組的 clean(title) 不只一種'
+    message: '<!-- build: 組名 --> 只標逐字同標題的連張；組內標題逐字相同'
+    engine: 'assemble.py（同標題連張組標題不一致 → RED）；make_batches.py 不拆 build'
+  - id: RHY-16
+    guide: 30_結構/32_段落節奏與同標題連張.md
+    level: WARN
+    scope: deck
+    kind: metric
+    pattern: '連張內相鄰兩張皆 pics==0、非 SmartArt、AUTO_SHAPE<6 的對數 ≥3 → WARN'
+    message: '避免兩張都沒有圖的同標題連張（table3 自動拆出的連張要補子題與圖）'
+    engine: 未實作
+  - id: RHY-33
+    guide: 30_結構/32_段落節奏與同標題連張.md
+    level: WARN
+    scope: deck
+    kind: metric
+    pattern: '同一圖片指紋出現在 i、j 兩張，j−i ≥2、標題不同、條列 Jaccard <0.75、j 張文字不含「正常」'
+    message: '不把正常組織圖換上病名標題當病變圖'
+    engine: 未實作
+  - id: DIV-14
+    guide: 30_結構/33_divider.md
+    level: RED
+    scope: section_end
+    kind: regex
+    pattern: '(?i)總結|小結|結論|Summary|Take.?home|Conclusion|謝謝|感謝聆聽|Thank|Q&A|參考文獻|References?|重點整理|回顧'
+    message: '多節 deck 每一節停在該節最後一個內容張，節末 3 張不放收尾張'
+    engine: 未實作
+  - id: DIV-06
+    guide: 30_結構/33_divider.md
+    level: WARN
+    guide_check_level: FAIL
+    scope: divider
+    kind: regex
+    pattern: '長在裡面|是\s*Robbins\s*沒篇幅|換一套|代價|誰[雙吃]|—{2}|其一|其二'
+    message: 'divider 主句不寫比喻、金句、定調句或多問並列（EDIT-27 為別名）'
+    engine: 未實作
+    evidence: '他自製 0/77；改稿 6/6 被改'
+  # ---- 34_國考題 ----
+  - id: EXAM-47
+    guide: 30_結構/34_國考題.md
+    level: RED
+    scope: quiz
+    kind: regex
+    pattern: '^\s*國考題\s*$'
+    message: '國考張不用「國考題」三個字當標題；乙式標題寫年次標籤，大堂課甲式不加標題'
+    engine: 未實作
+  - id: EXAM-21
+    guide: 30_結構/34_國考題.md
+    level: WARN
+    scope: quiz
+    kind: regex
+    pattern: '答案[:：]|解析|正解|考選部|https?://|\bAns\b'
+    message: '國考張上不寫答案、解析、考選部或題庫網址'
+    engine: 未實作
+  - id: EXAM-44
+    guide: 30_結構/34_國考題.md
+    level: RED
+    scope: quiz
+    kind: regex
+    pattern: '&[a-z]+;'
+    message: '題庫文字寫上投影片前做 NFC 正規化，HTML 實體不得殘留'
+    engine: 未實作
+  - id: EXAM-03
+    guide: 30_結構/34_國考題.md
+    level: RED
+    scope: quiz
+    kind: regex
+    pattern: '(?<!\d)1[01]\d-[12](?!\d)|1[01]\d年第[一二]次'
+    message: '每一題都在張上標出年度-次別（甲式第 3 欄或乙式標題列）'
+    engine: '部分：gen_pptx.py 的 L_quiz 由題庫 key 產生標籤'
+  - id: EXAM-26
+    guide: 30_結構/34_國考題.md
+    level: RED
+    scope: quiz
+    kind: metric
+    pattern: '題幹前 22 字在題庫定位 key；key 的年度-次＝張上標籤；正解字母＝answer'
+    message: '年次、題號、正解由題庫 key 與 answer 產生，不從舊投影片複製'
+    engine: '部分：check_deck.py 第 7 項與 assemble.py 只查 key 存在'
+  - id: EXAM-02
+    guide: 30_結構/34_國考題.md
+    level: RED
+    scope: quiz
+    kind: metric
+    pattern: 'difflib 相似度 ≥0.95 且 4 個選項正規化後逐字出現'
+    message: '題幹與選項逐字取自題庫 JSON，不改寫、不翻譯、不補中英'
+    engine: 未實作（style_check 已跳過 quiz 張）
+  - id: EXAM-23
+    guide: 30_結構/34_國考題.md
+    level: RED
+    scope: deck
+    kind: metric
+    pattern: 'course.yaml decks.<deck>.exam == false 而有 quiz 張'
+    message: '不考醫師國考的 B 班投影片不放醫師國考題（B2 只允許中醫臨床題）'
+    engine: 'check_deck.py 第 7 項'
+  - id: EXAM-24
+    guide: 30_結構/34_國考題.md
+    level: WARN
+    scope: quiz
+    kind: metric
+    pattern: '同 deck 內 alltext 完全相同的國考張 ≤1；面積 ≥90% 的含字 AUTO_SHAPE → FAIL'
+    message: '不留同一題的重複張與貼入時帶進來的整頁形狀'
+    engine: 未實作
+  - id: EXAM-40
+    guide: 30_結構/34_國考題.md
+    level: WARN
+    level_note: 'EXAM-40 是 MUST（限課程 C）；題數範圍的檢查指南建議為 WARN'
+    scope: deck
+    kind: metric
+    pattern: '每節 quiz 張數 ∈ [3,5]、全套 ∈ [10,15]'
+    message: '課程 C 牙醫師國考題全套約 10–15 題、每節 3–5 題、就近放在該主題後 1–2 張（使用者（教師）2026-09 明令）'
+    engine: '部分：check_deck.py 第 7 項（key 在牙醫師題庫）'
+  # ---- 35_中醫與古籍 ----
+  - id: TCM-09
+    guide: 30_結構/35_中醫與古籍.md
+    level: RED
+    scope: deck
+    kind: metric
+    pattern: '古籍張（KW 命中或含「中醫臨床」）序號／總張數 > 0.90'
+    max: 0.9
+    message: '古籍張與中醫臨床國考題不放在 deck 最後 10%'
+    engine: 未實作
+  - id: TCM-01
+    guide: 30_結構/35_中醫與古籍.md
+    level: WARN
+    level_note: 'TCM-01 是 MUST；機械檢查欄寫 WARN（有沒有落到機轉要人工看）'
+    scope: deck
+    kind: metric
+    pattern: '古籍張同張須另有一段含「=>」「因此」「Robbins」或「中文(English)」術語'
+    message: '內容章放古籍條文時，同一張寫出對應的現代解剖、生理或機轉'
+    engine: 未實作
+  - id: TCM-13
+    guide: 30_結構/35_中醫與古籍.md
+    level: WARN
+    level_note: 'TCM-13 是 MUST；機械檢查欄寫 WARN'
+    scope: deck
+    kind: regex
+    pattern: '[A-Za-z]{2,}'
+    message: '古籍條文段（「」內、=> 左側、「書名．篇名: 」之後）不夾英文或現代術語；glossary 檢查要跳過條文段'
+    engine: 未實作
+  - id: TCM-19
+    guide: 30_結構/35_中醫與古籍.md
+    level: WARN
+    scope: deck
+    kind: metric
+    pattern: '非中醫班 deck 的古籍 KW 命中張數 > 0，且主題不屬簡介／發炎／細胞傷害'
+    message: '非中醫班的講題預設不放古籍張；要放先問他'
+    engine: 未實作
+  - id: TCM-05
+    guide: 30_結構/35_中醫與古籍.md
+    level: WARN
+    scope: deck
+    kind: metric
+    pattern: '古籍條文 run 全套 >80% 為同一非中性色，且該色只出現在古籍張'
+    message: '不把某一種顏色固定成古籍專用色'
+    engine: 未實作
+  # ---- 36_備註 ----
+  - id: NOTE-11
+    guide: 30_結構/36_備註.md
+    level: WARN
+    guide_check_level: FAIL
+    scope: notes_body
+    kind: metric
+    pattern: '講稿本體長度 >200 且拉丁字母占比 >70%，或連續非漢字 ≥300 字元（書目條列除外）'
+    message: '備註不貼來源原文'
+    engine: 未實作
+  - id: NOTE-18
+    guide: 30_結構/36_備註.md
+    level: RED
+    level_note: '只掃 pool、原句庫、script.md；詞表有單字詞（種要、為免、兼職），命中後先人工確認是不是他的錯字'
+    scope: pool
+    kind: regex
+    pattern: '內直往|慎行的和|種要|組織安|考很係|熔體|為免(?!疫)|重練|卻是是|答案是是|裝抗體|槍是|兼職|一詩|並人|對再一起|粒腺體|字跟|ㄋㄜ'
+    message: '不把他備註裡的聽打錯字學進 pool、句庫或講稿'
+    engine: 未實作
+  # ---- 37_刪張與留張 ----
+  - id: CUT-33
+    guide: 30_結構/37_刪張與留張.md
+    level: WARN
+    level_note: 'CUT-33 是 MUST；check_deck 對張數範圍只報 WARN，取捨寫進待教師裁決清單'
+    scope: deck
+    kind: metric
+    pattern: '各節張數不在 course.yaml per_section；總張數與 target 差 >5%'
+    message: '有張數預算明令的課，預算是硬邊界'
+    engine: 'check_deck.py 第 7 項（per_section）'
+  - id: CUT-03
+    guide: 30_結構/37_刪張與留張.md
+    level: WARN
+    scope: deck
+    kind: metric
+    pattern: '相鄰兩張皆為框架圖、pics==0、標題相同、★標記相同或都沒有'
+    message: '同一張框架圖重複時要帶新東西，否則合併或刪除'
+    engine: 未實作
+  - id: CUT-05
+    guide: 30_結構/37_刪張與留張.md
+    level: WARN
+    scope: deck
+    kind: regex
+    pattern: '詳見第|全貌見第|見第 ?\d+ ?章|Robbins 第[一二三四五六七八九十]+章'
+    message: 'Robbins 本章只一句帶過的跨章疾病不單獨成張（命中且該張是單一疾病、無圖時 WARN）'
+    engine: 未實作
+  - id: CUT-20
+    guide: 30_結構/37_刪張與留張.md
+    level: WARN
+    scope: first3
+    kind: regex
+    pattern: '學習目標|大綱|Outline|Objectives|^內容$'
+    message: '開場不放學習目標張與大綱張（查前 3 張）'
+    engine: 未實作
+  # ---- 38_課別差異 ----
+  - id: AUD-23
+    guide: 30_結構/38_課別差異.md
+    level: WARN
+    scope: deck
+    kind: regex
+    pattern: '國考重要性|臨床重要性|投資報酬率|怎麼準備|準備原則|1[01]\d-1[01]\d年|共\d+題|國考題(分佈|比例)'
+    message: '沒有國考題的班（course.yaml exam: false）不寫考試導向的評價句（簡介課程說明張、中醫臨床題張除外）'
+    engine: 未實作
+  - id: AUD-03
+    guide: 30_結構/38_課別差異.md
+    level: RED
+    scope: deck
+    kind: metric
+    pattern: '兩版逐張 text-diff（去空白）：封面、課程說明張、divider 以外的差異張都要標明原因'
+    message: '衍生版保留下來的內容張逐字不改；差異只能來自換班五個動作或列清單的改字（AUD-01、AUD-35）'
+    engine: 'scripts/diff_decks.py 產差異表；判斷 manual'
+  - id: AUD-24
+    guide: 30_結構/38_課別差異.md
+    level: RED
+    scope: quiz
+    kind: metric
+    pattern: '題幹前 15 個漢字查題庫，比對年次與正解字母'
+    message: '跨 deck 搬國考題時逐題用題庫核對年-次#題號與答案，不符列清單'
+    engine: '部分：check_deck.py 第 7 項（key 在題庫）'

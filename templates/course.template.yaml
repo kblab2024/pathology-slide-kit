@@ -1,0 +1,140 @@
+# course.template.yaml：課程設定檔範本（以 2026-09 牙醫系「免疫疾病」課程的 course.yaml 為例）
+#
+# 用法：複製到 <教材庫>/courses/<課程名>/course.yaml（課程名＝資料夾名，例 immune），逐項改掉。
+# scripts/ 的每支工具都從這份讀路徑、字級、色票、選單、國考題庫與框架圖；換課程只改這份，不改程式。
+# 路徑一律相對於本課程資料夾（<教材庫>/courses/<課程名>/）；用正斜線。
+# 標「必填」的鍵缺了工具會報錯；其他鍵有預設或只在特定版型用到。
+
+course: immune            # 課程名，寫成與資料夾名相同（工具不讀這一鍵；--course 與工作流的 course 參數用的是資料夾名，藍圖 slug 前綴也取自它）
+topic: 免疫疾病            # 必填：主題名（封面、檔名、教案用）
+course_code: C            # 教師的課程代碼（A1、A2、B1、B2、C、實驗…）；他用課程代碼命名檔案，不用系名
+audience: 牙醫系三年級     # 對象（工作流代理讀這一行決定取材方向）
+lecture_date: "20261002"  # 上課日 YYYYMMDD（字串）；gen_pptx 檔名的 {date} 預設用它
+
+textbook:                 # 唯一正典教科書（事實以它為準；文獻只能補充）
+  ref: Robbins 11e 第6章 pp.167-235      # 必填：人讀的出處，事實帳 facts_R.json 的 source
+  pages_dir: ../../textbook/robbins11e_ch06_immune/pages
+                          # 頁圖資料夾：pNN_PPP.jpg|png ＋ .txt（OCR）＋ .tsv（字詞座標）；NN＝PDF 頁、PPP＝印刷頁
+                          # 由 scripts/render_pdf_pages.py 產生；教科書頁面有版權，只放私有教材庫，不放工具包
+  page_offset: 166        # 必填：印刷頁 = PDF 頁 + page_offset
+  pdf: robbinsimmune.pdf  # 選填：掃描 PDF（render_pdf_pages.py、robbins_crop.py 的 --course 用）。相對於課程資料夾；
+                          # PDF 常超過 GitHub 100 MB 上限且有著作權，不要 commit（materials 的 .gitignore 已排除 *.pdf，成品 PDF 例外）。
+                          # 建議放在 repo 以外，這裡寫絕對路徑；雲端沒有 PDF 時切圖直接裁頁圖
+
+paths:                    # 必填：來源檔與成品位置（相對於課程資料夾）
+  pool: sources/免疫疾病-pool.md      # 素材池：每張投影片的標題、type、圖、出處、條列、表格
+  script: sources/免疫疾病-script.md  # 講稿／備註
+  decks_dir: sources/decks            # 選單：<deck>.md 決定張序與分節
+  out_dir: 成品                        # PPTX／PDF 輸出資料夾
+  glossary: glossary.md               # 中英對照唯一用字（style_check 逐張檢查）
+  facts_R: facts/facts_R.json         # 教科書事實帳（merge_facts.py 產生）
+  facts_X: facts/facts_X.json         # 文獻主張帳（只收查核過的）
+  img_todo: 成品/待補圖清單.md         # img_todo.py 輸出
+
+decks:                    # 必填：一門課可有多套（例 ENT 的 med／dent／tcm）；鍵名＝選單檔名 decks/<鍵>.md
+  dent:
+    name: 牙醫系           # 人讀名稱
+    exam: true            # 這套放不放國考題
+    question_bank: 牙醫師  # 題庫資料夾名：<工具包>/question_banks/<名>/*.json（醫師題庫只用題號 76–100）
+    quiz_label: "{年度}年第{第幾次}次專技高考 牙醫學(二) {題號}題"   # 國考題張的標題格式（乙式用）
+    quiz_style: 乙          # 國考題版式（34_國考題 EXAM-03）：乙＝年次當標題、題幹選項、正解選項整段 emphasis 藍（預設）；
+                          # 甲＝1 列 3 欄表「正解字母（粗體）｜題號．題幹＋選項｜年度-次」、不放標題。先問教師（51 第 4 項）
+    sections: 3           # 節數（一節＝一堂 50 分鐘課）
+    target: 180           # 全套目標張數（教師習慣約一分鐘一張，但每節以 40 分鐘講完為目標）
+    per_section: [55, 65] # 每節張數範圍（超出 WARN）
+    filename: "病理學C_免疫疾病(PPTX)_{date}"      # 成品檔名；{date} 會代入日期
+    pdf_filename: "病理學C_免疫疾病(PDF)_{date}"
+deck_order: [dent]        # 必填：產生順序；素材池沒寫 aud 的張屬於這裡列出的全部 deck
+
+slide:                    # 畫幅（英吋）：4:3 為 10×7.5；16:9 為 13.333×7.5（先問教師用哪一種）
+  width: 10.0
+  height: 7.5
+  margin: 0.5
+  background: F4F8FB      # 內容張底色（十六進位，不加 #）
+
+# 字級（pt）。下面這組是 immune 的教師明令（「字不可小」：標題 36、內文 28、學生要讀的字 ≥20、只有出處 14），只管 immune。
+# 沒有明令的新課，把整段 sizes 換成下面「沒有明令時的預設」（照 12_字級 他自製 4:3 deck 的習慣；gen_pptx 用文字方塊，
+# 所以取他手設的值），開工問答第 6 項問過教師再定；在他既有的 deck 上改版則照該 deck 的字級階層（SIZE-11）。
+#   沒有明令時的預設（未經教師確認）：
+#   title: 36, title_small: 32, cover: 54, cover_sub: 28, divider: 50, divider_sub: 24,
+#   body: 30, body_noimg: 30, lead: 36, big: 50, label: 24, table: 18, table_min: 16, quiz: 28, quiz_min: 24,
+#   stats_big: 44, credit: 18, min: 16, body_warn: 20, char_warn: 120, char_red: 150, title_warn_chars: 40,
+#   img_rate_min: 0.65, table_max_rows: 6
+#   （SIZE-02 標題、SIZE-01 內文 30–36、SIZE-06 單句＋圖 36、SIZE-32 大字、SIZE-16 表格 18、SIZE-13 出處 18、DEN-02 ≥30pt 時每張 ≤150 字元）
+sizes:
+  title: 36
+  title_small: 32         # 標題估算超過 2 行時改用
+  cover: 44
+  cover_sub: 28
+  divider: 44
+  divider_sub: 24
+  body: 28                # 有圖張的條列；子層同字級
+  body_noimg: 30          # 無圖張
+  lead: 28                # pair／flash 的說明句
+  big: 44                 # 單句大字張
+  label: 24               # 圖上／圖旁標籤、框架圖格子最低
+  table: 22
+  table_min: 20
+  quiz: 28
+  quiz_min: 24
+  stats_big: 44
+  credit: 14              # 「圖：…」「資料來源：…」：唯一允許小於 min 的文字
+  min: 20                 # 出處以外的下限（低於即 RED）
+  body_warn: 24           # 內文低於此值 WARN
+  char_warn: 120          # 每張可見字元超過即 WARN
+  char_red: 160           # 超過即 RED
+  title_warn_chars: 40
+  img_rate_min: 0.65      # 內容張有圖率下限（教師自製檔實測 65–71%）
+  table_max_rows: 5       # 表格超過就自動拆成同標題連張（含表頭）
+  # 頁碼：gen_pptx 從不放頁碼（他的 deck 不放；靜態頁碼 check_deck 判 RED），不必設定
+
+design:                   # 選填：覆寫 scripts/common.py 的 DESIGN 色票（藍×赤陶）
+  cobaltd: "333F50"       # 此例：說明句底色改中性藍灰，讓 [[藍:]] 與國考正解才是藍
+
+emphasis:                 # 行內標記 [[藍:文字]] 等的色票（見 scripts/README.md）
+  藍: 143F9C              # 本張最該記的東西、國考正解
+  紅: FF0000              # 單字級強調
+  橘: ED7D31              # 關鍵字（教師主題色 ACCENT_2）
+  青: 62A8BB              # 教科書章節對照
+  灰: 2E414F              # 期刊引用
+
+cover:                    # 封面文字：工具不讀；lecture-blueprint 代理寫封面張（pool 的 type: title）時照這裡寫。改封面請改 pool 的 title 張
+  title: "病理學：免疫疾病"
+  subtitle: "Diseases of the Immune System（Robbins 11e 第6章）"
+  # 用到他人（例：其他老師的舊投影片）圖片時，依 brief.md 在封面加致謝行
+
+# 中英對照的範圍（style_check.py、check_written.py 與撰寫、審查工作流都讀這一鍵）：
+#   first_per_deck＝每套第一次出現時寫「中文(English)」，之後可只寫中文（指南 TERM-07；沒寫這一鍵時的預設）
+#   per_slide＝每一張的專有名詞都寫「中文(English)」（immune 的教師明令，TERM-34；只有老師對該課明令才用）
+#   off＝不檢查（禁用變體仍檢查）
+bilingual: per_slide      # 此例＝immune 的明令；新課程沒有明令時刪掉這一行或寫 first_per_deck
+
+# 中英對照白名單：這些可以只寫英文或符號（染色名、分子符號、CD／IL／Ig／補體片段）。
+# 疾病縮寫（SLE、AIDS、HIV…）不放這裡，必須附中文。
+bilingual_whitelist: [H&E, HE, PAS, Giemsa, Congo red, Ig, IgE, IgG, IgM, IgA, IgD, IgG4, CD3, CD4, CD8, CD20, TCR, BCR, IL-1, IL-4, IL-6, TNF, IFN, DNA, RNA, T, B, Th1, Th2, Th17, Treg, C3, C3a, C4d, C5a]
+
+# 框架圖（type: diagram）：節點＋屬性列；素材池用 <!-- diagram: 圖名 | 亮:節點,列 --> 指定點亮哪些。
+# 限制：節點 ≤5、列 ≤3；4 欄、格子 20pt 時每行約 7 個中文字，每格最多兩行（約 14 字，含英文，例「肥大細胞\n(mast cell)」）；
+# 術語依 bilingual 寫「中文(English)」；換行在雙引號字串裡寫 \n，或用 YAML 的多行字串。
+# lecture-blueprint 工作流會把用到的框架圖寫在 _archive/blueprint/diagrams.yaml，確認後貼到這裡。
+diagrams:
+  hyper4:
+    nodes:                # 欄（或列，見 orient）
+    - {label: "第一型\n(type I)", group: t1}
+    - {label: "第二型\n(type II)", group: t2}
+    - {label: "第三型\n(type III)", group: t3}
+    - {label: "第四型\n(type IV)", group: t4}
+    rows:                 # 每列一個屬性；cells 數＝節點數
+    - name: 媒介
+      cells: ["IgE、肥大細胞\n(mast cell)", "IgG、IgM\n抗體(antibody)", "免疫複合體\n(immune complex)", "T細胞\n(T cell)"]
+    - name: 例子
+      cells: ["氣喘(asthma)", "天疱瘡\n(pemphigus)", "血清病\n(serum sickness)", "接觸性皮膚炎\n(contact dermatitis)"]
+    groups:               # 每組主色與淡色；教師接受過的語意色：赤陶 BF5B3C、鈷藍 2563A8、青瓷綠 3D8168、赭棕 9A6B3F
+      t1: {main: BF5B3C, light: F6E4DD}
+      t2: {main: 2563A8, light: DCE7F5}
+      t3: {main: 3D8168, light: DDEDE6}
+      t4: {main: 9A6B3F, light: F0E5D8}
+    label_w: 0.45         # 選填：列名欄寬（英吋）
+    # orient: rows        # 選填：節點排成列（預設排成欄）
+    # node_w: 3.0         # 選填：orient: rows 時的節點寬
+    # col_w: [1.7, 2.9, 0.9]   # 選填：各欄寬

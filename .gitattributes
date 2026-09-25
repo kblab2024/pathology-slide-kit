@@ -1,0 +1,14 @@
+# 全 repo 一律 LF：Workflow 工具拒絕含 CR 的腳本；Windows 的 core.autocrlf=true 取出時也不會轉成 CRLF
+* text=auto eol=lf
+# 二進位檔不轉換（kit 本來就不放圖與投影片；安全網）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.pptx binary
+*.docx binary
+*.xlsx binary
+*.ttc binary
+*.ttf binary
+*.pyc binary

@@ -1,0 +1,6 @@
+# Workflow 工具拒絕含 CR 字元的腳本：本資料夾一律以 LF 取出，不受 core.autocrlf 影響
+* text=auto eol=lf
+*.js text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf

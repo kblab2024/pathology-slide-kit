@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+
+# 暫存與系統檔
+*.tmp
+~$*
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 範例課程的產出（examples/ 只放 course.yaml、brief.md）
+examples/*/成品/
+examples/*/_archive/
+
+# 公開 repo 的安全網：教師投影片語料、教科書 PDF、投影片檔都屬於私有教材庫（pathology-slide-materials）
+# style/corpus 是 corpus_dir() 的最後退路，本機放一份也不會被提交；真要提交請用 git add -f
+style/corpus/
+*.pdf
+*.pptx
+
+# 建置與審查報告（含本機路徑與待辦，不公開）
+_build/

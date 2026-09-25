@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "撰寫結果（文字）：workflows/lecture-write.js 每批寫一份 batch_<k>.json，scripts/merge_written.py 合併成 written.json，再當 scripts/assemble.py 的第二個輸入",
+  "description": "每張投影片的文字。條列子層用開頭兩個空白加「- 」表示（\"  - 子層\"）。強調用 [[藍:…]]、[[紅:…]]、[[橘:…]]、[[青:…]]、[[灰:…]]。專有名詞的中英對照範圍依該課 course.yaml 的 bilingual（per_slide＝每張、first_per_deck＝每套首見一次）。批次檔 batch_<k>.json 另有 batch、glossary_additions、issues、changelog 四個頂層欄位；合併後的 written.json 只保證有 slides。",
+  "type": "object",
+  "required": ["slides"],
+  "properties": {
+    "batch": {"type": "integer", "description": "批次編號（make_batches.py 的 k）；只在 batch_<k>.json 出現"},
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["slug", "title"],
+        "properties": {
+          "slug": {"type": "string"},
+          "title": {"type": "string"},
+          "bullets": {"type": "array", "items": {"type": "string"}, "description": "新寫的張 0–3 條；flash／pair 最多 2 條；big 為 1–3 句大字"},
+          "table_rows": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}, "description": "table3 用；第一列是表頭"},
+          "src": {"type": "array", "items": {"type": "string"}, "description": "文獻出處（投影片左下「資料來源：」14pt），例 J Periodontol. 2019;90(1):23-30."},
+          "notes": {"type": "string", "description": "備註：教科書頁碼＋1–2 句口語提示或（板書）指示"},
+          "handout": {"type": "array", "items": {"type": "string"}, "description": "備註附錄：文獻完整書目等"},
+          "quiz_note": {"type": "string", "description": "國考張（type: quiz）才用：題下一行短說明（例：指向答案所在的教科書頁）；assemble.py 寫成 <!-- quiz: key ｜ 說明 -->"},
+          "fact_ids_used": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "glossary_additions": {
+      "type": "array",
+      "description": "glossary.md 還沒有的術語；merge_written.py 併進課程 glossary.md",
+      "items": {
+        "type": "object",
+        "required": ["zh", "en"],
+        "properties": {
+          "zh": {"type": "string"},
+          "en": {"type": "string"},
+          "abbr": {"type": "string"},
+          "page": {"type": ["integer", "string"], "description": "教科書印刷頁"}
+        }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "description": "撰寫者提出、要列進待教師裁決清單的問題（事實衝突、官方答案與教科書不符等）；merge_written.py 彙整成 issues.md",
+      "items": {"type": ["string", "object"]}
+    },
+    "changelog": {
+      "type": "array",
+      "description": "修訂者依查核結果改了什麼（每條一句）；只在修訂後的 batch_<k>.json 出現",
+      "items": {"type": ["string", "object"]}
+    }
+  }
+}

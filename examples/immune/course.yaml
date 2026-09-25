@@ -1,0 +1,258 @@
+# 課程設定檔：scripts/ 內所有工具都從這裡讀路徑、字級、色票、選單與國考題庫。
+# 新課程：複製 kit 的 templates/course.template.yaml 改寫即可，不必改程式（不要直接複製這份：字級與中英對照是 immune 的明令）。
+course: immune
+topic: 免疫疾病
+course_code: C            # 教師用課程代碼命名檔案（C＝牙醫三）
+audience: 牙醫系三年級
+lecture_date: "20261002"
+textbook:
+  ref: Robbins 11e 第6章 pp.167-235
+  pdf: robbinsimmune.pdf
+  page_offset: 166        # 印刷頁 = PDF 頁 + page_offset
+  pages_dir: ../../textbook/robbins11e_ch06_immune/pages   # pNN_PPP.jpg|png＋.txt＋.tsv（相對於本課程資料夾）
+
+paths:                    # 皆相對於本課程資料夾
+  pool: sources/免疫疾病-pool.md
+  script: sources/免疫疾病-script.md
+  decks_dir: sources/decks
+  out_dir: 成品
+  glossary: glossary.md
+  facts_R: facts/facts_R.json
+  facts_X: facts/facts_X.json
+  img_todo: 成品/待補圖清單.md
+
+decks:
+  dent:
+    name: 牙醫系
+    exam: true
+    question_bank: 牙醫師          # question_banks/牙醫師/*.json
+    quiz_label: "{年度}年第{第幾次}次專技高考 牙醫學(二) {題號}題"
+    sections: 3
+    target: 180
+    per_section: [55, 65]          # 每節張數範圍（超出 WARN）
+    filename: "病理學C_免疫疾病(PPTX)_{date}"
+    pdf_filename: "病理學C_免疫疾病(PDF)_{date}"
+deck_order: [dent]
+
+slide:
+  width: 10.0             # 4:3
+  height: 7.5
+  margin: 0.5
+  background: F4F8FB
+
+# 字級（pt）。使用者要求「字不可小」；依教師 2026 自製檔實測（內文 25–32、子層同母層、學生要讀的字 ≥20、只有出處可小）。
+sizes:
+  title: 36
+  title_small: 32         # 標題估算超過 2 行時
+  cover: 44
+  cover_sub: 28
+  divider: 44
+  divider_sub: 24
+  body: 28                # 有圖張的條列；子層同字級
+  body_noimg: 30          # 無圖張
+  lead: 28                # pair／flash 的說明句
+  big: 44                 # 單句大字張
+  label: 24               # 圖上／圖旁標籤、框架圖格子最低
+  table: 22
+  table_min: 20
+  quiz: 28
+  quiz_min: 24
+  stats_big: 44
+  credit: 14              # 圖：…／資料來源：… 唯一允許 <20pt 的文字
+  min: 20                 # 出處以外的下限（RED）
+  body_warn: 24           # 內文低於此值 WARN
+  char_warn: 120          # 每張可見字元 >120 WARN
+  char_red: 160           # >160 RED
+  title_warn_chars: 40
+  img_rate_min: 0.65
+  table_max_rows: 5       # 表格超過就自動拆成同標題連張（含表頭）
+
+# 說明句（flash／pair／robbins／table3）與國考題說明行的底色改中性藍灰，[[藍:]] 與正解才是藍（審查 round1 voice-01）。
+# 注意 cobaltd 同時用在 pair 標籤、table3 表頭底色、divider／封面右側色塊、stats 第三格。
+design:
+  cobaltd: "333F50"
+
+emphasis:                 # 行內標記 [[藍:文字]] 等（見 scripts/README.md）
+  藍: 143F9C              # 本張最該記的東西、國考正解
+  紅: FF0000              # 單字級強調
+  橘: ED7D31              # 關鍵字（教師主題色 ACCENT_2）
+  青: 62A8BB              # Robbins 章節對照
+  灰: 2E414F              # 期刊引用
+
+cover:
+  title: "病理學：免疫疾病"
+  subtitle: "Diseases of the Immune System（Robbins 11e 第6章）"
+
+# 中英對照範圍：教師 2026-09-24 明令「所有專有名詞『中文(English)』」＝每張都寫（TERM-34）；新課程預設是 first_per_deck
+bilingual: per_slide
+
+# 中英對照白名單：只放染色名、分子符號（CD／IL／Ig／補體片段）；疾病縮寫（SLE、AIDS、HIV…）不在此列，必須附中文
+bilingual_whitelist: [H&E, HE, PAS, Ig, Giemsa, Congo red, IgE, IgG, IgM, IgA, IgD, IgG4, CD3, CD4, CD8, CD20, CD28, CD40, CD40L, CD79a, TCR, BCR, IL-1, IL-2, IL-4, IL-5, IL-6, IL-10, IL-12, IL-13, IL-17, IL-21, IL-22, TNF, IFN, DNA, RNA, T, B, Th1, Th2, Th17, Tfh, Treg, C1, C3, C3a, C3b, C4, C4d, C5a, C5b, gp120, gp41, p24, CCR5, CXCR4]
+
+# 框架圖（type: diagram）：節點＋屬性列；pool 用 <!-- diagram: 圖名 | 亮:節點,列 --> 指定點亮
+diagrams:
+  hyper4:
+    nodes:
+    - label: '第一型
+
+        (type I)'
+      group: t1
+    - label: '第二型
+
+        (type II)'
+      group: t2
+    - label: '第三型
+
+        (type III)'
+      group: t3
+    - label: '第四型
+
+        (type IV)'
+      group: t4
+    rows:
+    - name: 媒介
+      cells:
+      - 'IgE、肥大細胞
+
+        (mast cell)'
+      - 'IgG、IgM
+
+        抗體(antibody)'
+      - '免疫複合體
+
+        (immune complex)'
+      - 'T細胞
+
+        (T cell)'
+    - name: 病灶
+      cells:
+      - '血管擴張
+
+        (vasodilation)
+
+        水腫(edema)'
+      - '吞噬作用
+
+        (phagocytosis)
+
+        細胞溶解(lysis)'
+      - '壞死性血管炎
+
+        (necrotizing
+
+        vasculitis)'
+      - '肉芽腫
+
+        (granuloma)'
+    - name: 例子
+      cells:
+      - '氣喘(asthma)
+
+        食物過敏
+
+        (food allergy)'
+      - '天疱瘡
+
+        (pemphigus)'
+      - '全身性紅斑性狼瘡(SLE)
+
+        血清病(serum sickness)'
+      - '接觸性皮膚炎
+
+        (contact
+
+        dermatitis)'
+    groups:
+      t1:
+        main: BF5B3C
+        light: F6E4DD
+      t2:
+        main: 2563A8
+        light: DCE7F5
+      t3:
+        main: 3D8168
+        light: DDEDE6
+      t4:
+        main: 9A6B3F
+        light: F0E5D8
+    label_w: 0.45
+  imm_map:
+    nodes:
+    - label: '過敏反應
+
+        (hypersensitivity)'
+      group: hyper
+    - label: '自體免疫
+
+        (autoimmunity)'
+      group: auto
+    - label: '移植排斥
+
+        (rejection)'
+      group: graft
+    - label: '免疫缺乏
+
+        (immunodeficiency)'
+      group: defic
+    - label: '類澱粉沉積症
+
+        (amyloidosis)'
+      group: amy
+    rows:
+    - name: 機轉
+      cells:
+      - 反應過度
+      - 攻擊自體
+      - '攻擊移植物
+
+        (graft)'
+      - 反應不足
+      - 蛋白質沉積
+    - name: 代表疾病
+      cells:
+      - '氣喘(asthma)
+
+        天疱瘡(pemphigus)'
+      - '全身性紅斑性狼瘡(SLE)
+
+        修格蘭症候群
+
+        (Sjögren syndrome)'
+      - '急性細胞排斥
+
+        (acute cellular rejection)'
+      - '後天免疫缺乏症候群
+
+        (AIDS)'
+      - 'AL型類澱粉沉積症
+
+        (AL amyloidosis)'
+    - name: 頁碼
+      cells:
+      - p.181
+      - p.191
+      - p.208
+      - p.213
+      - p.230
+    groups:
+      hyper:
+        main: BF5B3C
+        light: F6E4DD
+      auto:
+        main: 2563A8
+        light: DCE7F5
+      graft:
+        main: 3D8168
+        light: DDEDE6
+      defic:
+        main: 9A6B3F
+        light: F0E5D8
+      amy:
+        main: 6B5B95
+        light: ECE8F4
+    orient: rows
+    node_w: 3.0
+    col_w:
+    - 1.7
+    - 2.9
+    - 0.9

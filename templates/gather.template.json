@@ -1,0 +1,151 @@
+{
+  "_說明": [
+    "lecture-gather 工作流的課程設定。複製到 <教材庫>/courses/<課程名>/gather.json 後改寫；以 _ 開頭的鍵只是說明，工作流不讀。",
+    "範例值是 2026-09 牙醫系「免疫疾病」課程（Robbins 11e 第6章，印刷頁 = PDF 頁 + 166）。",
+    "三個部分 exam／literature／facts 各自可關：\"enabled\": false，或執行時給 args.parts。沒有的部分直接刪掉也可以。",
+    "頁圖資料夾與 page_offset 不寫在這裡：工作流從 course.yaml 的 textbook.pages_dir、textbook.page_offset 讀。",
+    "facts.segments[].pages 是 PDF 頁（頁圖檔名 pNN_PPP 的 NN）；id 必須是 S01–S99，scripts/merge_facts.py 只合併 facts/seg/S??_final.json。",
+    "literature.topics[].r 寫「教科書已經講了什麼」（附印刷頁），讓搜尋者只找補充、不找重複；用自己的話摘要，不要整段抄教科書。",
+    "exam.bank 是 <工具包>/question_banks/ 下的資料夾名（醫師、牙醫師…）；醫師題庫只用題號 76–100。update_bank 設成物件時才會先下載新場次。"
+  ],
+  "context": "We are building a 3-hour 免疫疾病 pathology lecture for 3rd-year DENTAL students (牙醫三, course code C) taught by the course's pathology teacher.",
+  "audience": "dental students",
+  "textbook": {
+    "name": "Robbins, Cotran & Kumar Pathologic Basis of Disease 11th ed, Chapter 6 \"Diseases of the Immune System\" (printed pages 167-235)"
+  },
+  "exam": {
+    "enabled": true,
+    "bank": "牙醫師",
+    "exam_name": "專門職業及技術人員高等考試 牙醫師(一) 牙醫學(二)（口腔病理學、牙科材料學、口腔微生物學與免疫學、牙科藥理學）；109 年起分階段，104–108 年為分階段前含口腔病理學與口腔微生物學／免疫學的試卷",
+    "update_bank": false,
+    "_update_bank_例": {
+      "sessions": "115年第二次",
+      "exam": "牙醫師(一) 牙醫學(二)",
+      "fetch_args": "--exam-keyword 牙醫 --subject-keyword \"牙醫學(二)\" --start 115 --end 115"
+    },
+    "scope": "normal immune response (innate/adaptive, receptors, lymphocytes, MHC/HLA, cytokines, antibodies, lymphoid tissues), hypersensitivity types I-IV, tolerance & autoimmunity, SLE, Sjögren syndrome, systemic sclerosis, inflammatory myopathies, MCTD, vasculitis (as in ch.6), IgG4-related disease, transplant rejection, GVHD, primary immunodeficiencies (innate & adaptive defects, complement deficiencies incl. hereditary angioedema), secondary immunodeficiency, HIV/AIDS (incl. oral lesions of HIV), amyloidosis",
+    "include_also": "oral-medicine questions about these diseases (e.g., pemphigus as type II, lichenoid reaction as type IV, oral candidiasis in HIV)",
+    "categories": ["normal_immunity", "hypersensitivity", "autoimmunity", "transplant", "immunodeficiency", "hiv", "amyloid", "oral_manifestation"],
+    "recommend": {
+      "candidates": "12-18",
+      "final": "10-15",
+      "per_section": "3-6",
+      "sections": [
+        "第一節 = normal immunity review + hypersensitivity I-IV",
+        "第二節 = autoimmunity (SLE, Sjögren, systemic sclerosis, IgG4-RD...) + transplant/GVHD",
+        "第三節 = immunodeficiency (primary, HIV/AIDS with oral lesions) + amyloidosis"
+      ],
+      "prefer": "recent years, clear stems, dental relevance, no duplicates in concept"
+    }
+  },
+  "literature": {
+    "enabled": true,
+    "purpose": "mostly oral/dental manifestations",
+    "adds": "dental/oral relevance",
+    "claims_per_topic": "3-6",
+    "years": "2010-2026",
+    "journals": "Oral Dis, Oral Surg Oral Med Oral Pathol Oral Radiol, J Oral Pathol Med, J Dent Res, J Periodontol, J Am Dent Assoc, Br Dent J, Ann Rheum Dis, Arthritis Rheumatol, Biol Blood Marrow Transplant/Transplant Cell Ther, J Allergy Clin Immunol",
+    "images": true,
+    "image_dir": "assets/images/文獻圖",
+    "image_wanted": "clinical photos of the oral lesion and/or histology (H&E) that a pathology teacher would show dental students",
+    "_image_sources_說明": "不寫 image_sources 就用預設：Wikimedia Commons（PD、CC0、CC BY、CC BY-SA）、CDC PHIL（公有領域）、PMC Open Access（CC BY／CC BY-NC）。",
+    "topics": [
+      {
+        "id": "innate_defect_perio",
+        "q": "先天免疫缺陷與牙周炎：白血球黏附缺陷(leukocyte adhesion deficiency; LAD)、Chediak-Higashi 症候群、慢性肉芽腫病(chronic granulomatous disease; CGD)、嗜中性球減少的口腔表現（早發性／侵襲性牙周炎、口腔潰瘍）",
+        "r": "Robbins p.213-214 (Table 6.12): LAD1 = defective beta2 integrin (CD18), LAD2 = absent sialyl-Lewis X (fucosyl transferase); recurrent bacterial infections; CGD = NADPH oxidase defect; Chediak-Higashi = defective lysosomal fusion (LYST). Ch.6 does not mention periodontitis or gingivitis."
+      },
+      {
+        "id": "hae_dental",
+        "q": "遺傳性血管性水腫(hereditary angioedema; HAE)與牙科處置：拔牙等處置誘發上呼吸道水腫、術前預防",
+        "r": "Robbins p.214: C1 inhibitor deficiency causes hereditary angioedema; episodic edema of skin and mucosa (larynx, GI tract), often after emotional stress or trauma; bradykinin-mediated; treated with C1 inhibitor."
+      },
+      {
+        "id": "local_anesthetic_allergy",
+        "q": "局部麻醉藥過敏的真實頻率（真正 IgE 媒介過敏罕見）與牙科診間的全身性過敏性反應(anaphylaxis)、乳膠(latex)過敏",
+        "r": "Robbins p.184-185: type I hypersensitivity; systemic anaphylaxis after drugs (e.g. penicillin), insect venom or foods, within minutes; laryngeal edema, bronchoconstriction, shock; epinephrine."
+      },
+      {
+        "id": "dental_material_type4",
+        "q": "牙科材料的第四型過敏：鎳(nickel)、甲基丙烯酸酯(methacrylates)接觸性過敏，汞合金(amalgam)相關的口腔苔蘚樣病變(oral lichenoid lesion)",
+        "r": "Robbins p.189-191: type IV (T cell-mediated) hypersensitivity; contact dermatitis is a CD4 T-cell reaction to modified self proteins (check whether nickel is named on the page); delayed reactions take 24-48 h."
+      },
+      {
+        "id": "pemphigus_oral",
+        "q": "尋常性天疱瘡(pemphigus vulgaris)的口腔病灶：常為首發部位、比例、desmoglein 3 抗體",
+        "r": "Robbins Table 6.3 (p.187): pemphigus vulgaris is an antibody-mediated (type II) disease; antigen in the intercellular junctions of epidermal cells (desmoglein); antibody-mediated protease activation disrupts adhesion; skin vesicles (bullae)."
+      },
+      {
+        "id": "sle_oral",
+        "q": "全身性紅斑性狼瘡(systemic lupus erythematosus; SLE)的口腔病灶：盛行率、型態（潰瘍、盤狀病灶）、分類標準中的口腔潰瘍",
+        "r": "Robbins Table 6.9 (p.197): oral or nasopharyngeal ulceration (usually painless) is a classification criterion; skin: malar rash, discoid rash, photosensitivity."
+      },
+      {
+        "id": "sjogren_oral",
+        "q": "修格蘭症候群(Sjögren syndrome)：唇部小唾液腺切片(labial minor salivary gland biopsy)與 focus score（2016 ACR/EULAR 分類標準）、口乾造成的齲齒(dental caries)與口腔念珠菌病",
+        "r": "Robbins p.203-204: dry eyes (keratoconjunctivitis sicca) and dry mouth (xerostomia) from immune destruction of lacrimal and salivary glands; periductal and perivascular lymphocytic infiltrate with germinal centers; lip biopsy of minor salivary glands (verify on the page); anti-SS-A (Ro) / SS-B (La); about 5% develop marginal zone lymphoma."
+      },
+      {
+        "id": "ssc_oral",
+        "q": "全身性硬化症(systemic sclerosis; scleroderma)的口腔表現：小口症(microstomia)、牙周韌帶間隙增寬(periodontal ligament space widening)、下顎骨吸收",
+        "r": "Robbins p.204-206: fibrosis of skin and internal organs; mask-like face; Raynaud phenomenon; GI (esophageal) involvement common."
+      },
+      {
+        "id": "igg4_salivary",
+        "q": "IgG4 相關疾病(IgG4-related disease)的唾液腺表現：Mikulicz 病、Küttner 腫瘤（慢性硬化性唾液腺炎 chronic sclerosing sialadenitis）",
+        "r": "Robbins p.207-208: tumor-like lesions with dense lymphoplasmacytic infiltrate rich in IgG4+ plasma cells, storiform fibrosis, obliterative phlebitis; serum IgG4 often raised; includes Mikulicz syndrome (lacrimal and salivary), Riedel thyroiditis, autoimmune pancreatitis; Fig 6.31C submandibular gland; responds to steroids / rituximab."
+      },
+      {
+        "id": "oral_gvhd",
+        "q": "口腔慢性移植物對抗宿主病(chronic graft-versus-host disease; cGVHD)：苔蘚樣變化、口乾、NIH 共識診斷標準",
+        "r": "Robbins p.211-212: GVHD after hematopoietic stem cell transplantation; donor T cells attack the host; acute GVHD targets skin, liver (bile ducts) and GI mucosa; chronic GVHD resembles autoimmune diseases (e.g. skin fibrosis like systemic sclerosis)."
+      },
+      {
+        "id": "hiv_oral",
+        "q": "人類免疫缺乏病毒(HIV)感染的口腔病灶分類（EC-Clearinghouse 1993）：口腔念珠菌病、口腔毛狀白斑(oral hairy leukoplakia)、卡波西肉瘤(Kaposi sarcoma)、非何杰金氏淋巴瘤、HIV 相關牙周病；抗反轉錄病毒治療後的變化",
+        "r": "Robbins p.226-228: oral candidiasis (thrush) often an early sign of immune decline; herpes simplex ulcers; Kaposi sarcoma (KSHV/HHV8); B-cell lymphomas; oral hairy leukoplakia = EBV, white confluent patches on the tongue; many of these fall with antiretroviral therapy."
+      },
+      {
+        "id": "amyloid_oral",
+        "q": "類澱粉症(amyloidosis)的口腔表現與診斷：巨舌症(macroglossia)、牙齦或唇腺切片的敏感度",
+        "r": "Robbins p.233-234: tongue involvement can cause macroglossia (tumor-like deposits) that hampers speech and swallowing; diagnosis by biopsy (abdominal fat aspirate, gingival or rectal biopsy); Congo red with apple-green birefringence."
+      },
+      {
+        "id": "hyper_ige_teeth",
+        "q": "高 IgE 症候群(hyper-IgE syndrome; Job syndrome; STAT3 缺陷)的牙齒與口腔表現：乳牙滯留(retained primary teeth)、慢性黏膜皮膚念珠菌病",
+        "r": "Robbins ch.6 p.217-218 (verify the page): defects in lymphocyte activation; Th17 defects cause chronic mucocutaneous candidiasis; hyper-IgE (Job) syndrome with STAT3 mutations and defective Th17 responses."
+      },
+      {
+        "id": "taiwan_hiv",
+        "q": "台灣 HIV 流行病學在地數據（衛生福利部疾病管制署，最新年度新增通報數、主要傳染途徑、年齡層）",
+        "r": "Robbins p.219: worldwide epidemiology; sexual, parenteral and mother-to-infant transmission; in the US men who have sex with men are the largest group.",
+        "sources": "衛生福利部疾病管制署 official statistics (not journals)",
+        "images": false
+      }
+    ]
+  },
+  "facts": {
+    "enabled": true,
+    "yield_per_page": "25-45",
+    "relevance": {
+      "field": "dental",
+      "values": "none|low|high",
+      "high_means": "mouth, teeth, salivary glands, tongue, gingiva, oral mucosa, jaw, face, pharynx/tonsil"
+    },
+    "segments": [
+      { "id": "S01", "pages": [1, 6], "scope": "chapter opener/contents (record the contents list with printed pages), NORMAL IMMUNE RESPONSE: innate immunity, components, receptors (TLR, NLR, inflammasome, cytosolic nucleic-acid receptors), NK cells, reactions of innate immunity, adaptive immunity, lymphocytes, lymphocyte diversity, T lymphocytes" },
+      { "id": "S02", "pages": [7, 11], "scope": "B lymphocytes, myeloid cells (dendritic cells, macrophages), tissues of the immune system, MHC molecules, cytokines, overview of lymphocyte activation, display and recognition of antigens, start of cell-mediated immunity" },
+      { "id": "S03", "pages": [12, 15], "scope": "cell-mediated immunity, humoral immunity, decline of immune responses and memory, KEY CONCEPTS normal immune response, HYPERSENSITIVITY intro and classification" },
+      { "id": "S04", "pages": [16, 19], "scope": "Table 6.1 and Immediate (Type I) hypersensitivity through its KEY CONCEPTS; STOP at the heading \"Antibody-Mediated (Type II) Hypersensitivity\" on p.185" },
+      { "id": "S05", "pages": [19, 25], "scope": "START at \"Antibody-Mediated (Type II) Hypersensitivity\" (p.185); types II, III, IV, KEY CONCEPTS; STOP at the heading AUTOIMMUNE DISEASES on p.191" },
+      { "id": "S06", "pages": [25, 30], "scope": "START at AUTOIMMUNE DISEASES (p.191): Table 6.6, immunologic tolerance (central, peripheral), mechanisms of autoimmunity, susceptibility genes, Tables 6.7-6.8, infections and environment, KEY CONCEPTS, general features of autoimmune diseases (through p.196)" },
+      { "id": "S07", "pages": [31, 37], "scope": "SYSTEMIC LUPUS ERYTHEMATOSUS: Tables 6.9-6.11, autoantibodies, ANA patterns, pathogenesis, morphology (all organs), clinical features, chronic discoid / subacute cutaneous / drug-induced LE, KEY CONCEPTS SLE; STOP at the heading Rheumatoid Arthritis on p.203" },
+      { "id": "S08", "pages": [37, 42], "scope": "START at Rheumatoid Arthritis (p.203): RA pointer, Sjögren syndrome (pathogenesis, morphology, clinical, KEY CONCEPTS), systemic sclerosis (pathogenesis, morphology, clinical, KEY CONCEPTS), inflammatory myopathies, mixed connective tissue disease, polyarteritis nodosa and other vasculitides, IgG4-related disease (incl. Fig 6.31); STOP at REJECTION OF TISSUE TRANSPLANTS on p.208" },
+      { "id": "S09", "pages": [42, 47], "scope": "START at REJECTION OF TISSUE TRANSPLANTS (p.208): recognition of alloantigens, patterns and mechanisms of rejection (hyperacute, acute cellular, acute antibody-mediated, chronic), morphology, methods of increasing graft survival, hematopoietic stem cell transplantation, GVHD, KEY CONCEPTS, Fig 6.36; STOP at IMMUNODEFICIENCY DISEASES on p.213" },
+      { "id": "S10", "pages": [47, 52], "scope": "START at IMMUNODEFICIENCY DISEASES (p.213): primary immunodeficiencies, defects in innate immunity (leukocyte function, Table 6.12, complement deficiencies incl. hereditary angioedema), defects in adaptive immunity (SCID, XLA, DiGeorge, hyper-IgM, CVID, IgA deficiency, XLP, other activation defects, immune regulatory disorders), immunodeficiencies with systemic diseases (Wiskott-Aldrich, ataxia telangiectasia), KEY CONCEPTS; STOP at Secondary Immunodeficiencies on p.218" },
+      { "id": "S11", "pages": [52, 58], "scope": "START at Secondary (Acquired) Immunodeficiencies (p.218): Table 6.13, AIDS epidemiology, transmission, etiology (HIV structure, genome), pathogenesis (life cycle, infection of cells, replication, T-cell depletion, non-T cells, Table 6.14, B-cell function, CNS), start of natural history (through p.224)" },
+      { "id": "S12", "pages": [59, 64], "scope": "HIV natural history (acute retroviral syndrome, clinical latency, AIDS), clinical features, Table 6.15, opportunistic infections, Table 6.16, tumors (Kaposi sarcoma, lymphomas, oral hairy leukoplakia, other tumors), CNS disease, effect of antiretroviral therapy, MORPHOLOGY, KEY CONCEPTS HIV/AIDS; STOP at AMYLOIDOSIS on p.230" },
+      { "id": "S13", "pages": [64, 68], "scope": "START at AMYLOIDOSIS (p.230): properties, physical and chemical nature, pathogenesis and classification (AL, AA, ATTR, Table 6.17, heredofamilial, hemodialysis-associated, localized, endocrine), morphology (kidney, spleen, liver, heart, other organs incl. tongue), clinical features, diagnosis, KEY CONCEPTS" }
+    ]
+  }
+}

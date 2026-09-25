@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "教案藍圖（結構）：scripts/assemble.py 的第一個輸入",
+  "description": "藍圖只決定每張投影片的結構、圖與依據；文字由撰寫階段產生（written.schema.json）。slug 全套唯一，建議格式 <課程>-<段落>-<序號>-<關鍵字>，例 imm-s1t1-03-mast-cell。",
+  "type": "object",
+  "required": ["sections", "slides"],
+  "properties": {
+    "sections": {
+      "type": "array",
+      "description": "節（一節＝一堂課）。label 例：第一節；title 為節名。",
+      "items": {
+        "type": "object",
+        "required": ["label", "title", "segments"],
+        "properties": {
+          "label": {"type": "string"},
+          "title": {"type": "string"},
+          "minutes_target": {"type": "number", "description": "預計講授分鐘（教師目標：每節 40 分鐘講完）"},
+          "segments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "title"],
+              "properties": {"id": {"type": "string"}, "title": {"type": "string"}}
+            }
+          }
+        }
+      }
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["slug", "segment", "type", "brief"],
+        "properties": {
+          "slug": {"type": "string"},
+          "segment": {"type": "string", "description": "對應 sections[].segments[].id"},
+          "type": {"enum": ["title", "divider", "left", "flash", "big", "pair", "robbins", "table3", "quiz", "stats", "diagram"]},
+          "aud": {"type": "string", "description": "逗號分隔的 deck 名；單一 deck 可省略"},
+          "build": {"type": "string", "description": "同標題連張組名；同組各張標題必須完全相同"},
+          "img": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["path"],
+              "properties": {
+                "path": {"type": "string", "description": "相對課程資料夾，例 assets/images/Robbins抽圖/fig6_13.png"},
+                "src": {"type": "string", "description": "圖說出處，例 Robbins Fig. 6.13；期刊寫 (資料來源: …)；網路圖寫授權與作者"},
+                "label": {"type": "string", "description": "pair 版型圖上方標籤，例 H&E、C4d 免疫染色"},
+                "desc": {"type": "string"}
+              }
+            }
+          },
+          "img_wanted": {"type": "string", "description": "找不到圖時描述想要的圖（進待補圖清單，不畫佔位框）"},
+          "quiz": {"type": "string", "description": "國考題 key：年度-次#題號，例 113-1#45"},
+          "diagram": {"type": "string", "description": "course.yaml diagrams 的名稱"},
+          "diagram_bright": {"type": "array", "items": {"type": "string"}},
+          "fact_ids": {"type": "array", "items": {"type": "string"}, "description": "facts_R.json 的事實 id（Robbins 依據）"},
+          "lit_ids": {"type": "array", "items": {"type": "string"}, "description": "facts_X.json 的文獻主張 id"},
+          "minutes": {"type": "number", "description": "估計講授分鐘"},
+          "brief": {"type": "string", "description": "這張要講什麼、為什麼放這裡（給撰寫者）"}
+        }
+      }
+    }
+  }
+}

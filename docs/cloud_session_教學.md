@@ -219,3 +219,9 @@ Session 做到一個段落會把分支推上 GitHub（名稱通常以 `claude/` 
 7. **Workflow 工具**（多代理腳本）在雲端 session 能不能用、能同時跑幾個代理，還沒有實測，請以官方說明為準；雲端電腦的 CPU 數可能比您的電腦少，同時跑的代理數跟著變少，整體會比較慢。第一次請 Claude 先用小範圍試（例：蒐集只跑一段）。不能用時，請 Claude 照 kit 的 `AGENTS.md` 一步一步循序做（較慢，產出的檔案相同）。
 8. **Setup 快取約 7 天**；`cloud-setup.sh` 更新後要重新貼進環境設定。
 9. **閒置回收。** 見第 6 節；每個階段都要 push。
+10. **在自己電腦上跑、用網頁或手機遙控（Remote Control）時**，關掉遙控或本機的 Claude Code 結束後，網頁會顯示「This session's environment was deleted」，那個網頁 session 就不能再打字。但檔案、本機 commit 和對話紀錄都還在您的電腦上，沒有遺失。會真正中斷的是正在跑的工作流。
+    - 工作流在跑時，不要關遙控，也不要關本機終端機；只是不想看的話，關瀏覽器分頁或手機 app 就好。
+    - 電腦不要睡著：另開一個終端機視窗執行 `caffeinate -i`；闔上筆電要接電源。
+    - 要接回來：在本機終端機進到同一個資料夾，執行 `claude --continue`（接最近一次對話）或 `claude --resume`（從清單選），再重新開遙控。
+    - 工作流被中斷時，照 CLAUDE.md 規則 9 用 DONE 表（`args.done`）重跑剩下的代理，不要用 `resumeFromRunId`。
+    - 每個階段照樣 commit＋push，GitHub 是電腦本身出事時的最後一道備份。

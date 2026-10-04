@@ -84,6 +84,7 @@ Workflow({
   2. `.gitignore` 排除 `成品/*.pptx`，交件那一個檔用 `git add -f` 加入（`_layout.json` 與 PDF 照常加）；先 `ls -l` 確認小於 100 MB（GitHub 上限；超過 50 MB 會警告）。太大就分節輸出（`gen_pptx.py --section N`，檔名自動加「_第N節」，不會蓋掉全套檔）或降低圖片解析度。同一門課只 commit 最後交件的 PPTX，不要每次重產都提交（每版約 60 MB，repo 歷史會一直變大）。
   3. 每跑完一個階段（蒐集、藍圖、撰寫、每一輪審查）就 commit＋push 一次 `_archive/`（含 `journals/`）與來源檔：雲端 VM 閒置會被回收，沒 push 的檔案與正在跑的工作流不會回來。
   4. 最後告訴使用者：分支名稱、成品路徑、張數、檢查結果、待他裁決的項目數。
+- **交給教師的成品一律是草稿**：交件資料夾、檔名、文件標題都標「草稿」，放進他的 OneDrive 時的步驟也照 `docs/教師偏好與決策.md` 第 8 節。
 - 本 repo 的工具若有修改，另外 commit 在本 repo 的 session 分支（先跑 `check_public.py`）；課程檔案絕不 commit 到本 repo。
 
 ## 6. 路徑對照（指南與舊文件裡的寫法 → 現在的位置）

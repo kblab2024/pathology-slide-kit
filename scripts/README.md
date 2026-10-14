@@ -88,6 +88,7 @@ Mac、任務 B 與交件工具（不收 `--course`，除了 draw_flow 的 `--cou
 - `ppt_pdf_mac.sh <課程>/成品/<in.pptx> [out.pdf] [png資料夾] [縮圖資料夾]`：Mac 用 PowerPoint for Mac 存 PDF，再用 export_pdf.py 的函式出拼板與逐張 PNG（預設放 `<課程>/_archive/render/{png,sheets}`）。只接受課程 `成品/` 底下的檔、拒絕 OneDrive 路徑；PowerPoint 開著別的簡報就停（結束碼 3），只開、只存、只關自己那一份。第一次跑會跳 macOS 自動化授權，要教師在電腦前按允許。
 - `shrink_pdf.py <in.pdf> <out.pdf> [長邊px=900] [品質=72]`：把 PDF 裡的 JPEG 縮小，給 OneDrive（約 15 MB 以上的非 Office 檔會卡住上傳）。交件檔名用 `(PDF壓縮)`。
 - `compose_from_pdf.py <in.pptx> <in.pdf> <代號> <輸出資料夾> [--config cfg.json] [--only 張號…]`：任務 B，從教師的 PDF 原樣切出每張的圖區；設定檔寫要留的標籤（文字開頭或 shape 名）與要丟的圖形。輸出 `<代號>_sNNN.png|jpg` 與 `<代號>_compose.json`。
+- `label_image.py <規格.json> [--preview 縮圖.png]`：示意圖加標籤（標準做法：Runway 只產沒有字的母圖，標籤由 Claude 設計、用這支疊上）。每個標籤兩行「中文」「(English)」，引線＋圓點指到構造（母圖座標比例），標籤放白邊（margins 加寬）或白色圓角底；字級以版位寬換算，預設 24pt／標題 28pt；標籤重疊、超出畫布、引線交叉、低於 24pt 時結束碼 1。規格格式見該檔 docstring。
 - `draw_flow.py <規格.json> <輸出資料夾> [--course <課程>] [--only 圖名…]`：程式畫的中英對照流程圖（機轉、病程、治療流程），印出放進版位後的實際 pt，最小 < 24pt 或超出畫布時結束碼 1。規格格式見該檔 docstring。
 
 風格研究與回灌工具（不收 `--course`）：

@@ -65,6 +65,7 @@ cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 py
 12. **公開與私人的分界。** Robbins 頁圖、切圖、OCR、事實帳、老師與他人的投影片、語料、成品只放私人 repo；本 repo 不放任何課程內容、個人聯絡方式、教學評量資料或本機絕對路徑。第三人（同事）在公開文件一律用代稱（同事甲、同事乙；對照表只在私人 repo 的 `corpus/pseudonyms.tsv`），他人投影片的引句換成〔他人投影片引句，公開版省略；完整版在私人素材庫 style_evidence〕。**每次 commit 到本 repo 前跑 `python check_public.py`，FAIL 要是 0**（它讀私人 repo 的代稱表與他人段落表，所以要在兩個 repo 都在的環境跑）。
 13. **修稿取捨順序**：事實 ＞ 術語 ＞ 版面 ＞ 文風；圖片與國考題的修正讓位（`01_權威順序.md` AUTH-07）。
 14. **Traditional Chinese（台灣用語）**：投影片、講稿、文件都用繁體中文；dysplasia 寫「分化不良」。
+15. **示意圖：影像模型只產沒有字的母圖，標籤由 Claude 加。** Runway（或其他影像模型）出母圖，Claude 設計標籤位置與引線，用 `scripts/label_image.py` 以微軟正黑體疊上中英對照標籤（至少 24pt）；不讓模型寫字（教師 2026-10-14 明令：「字最清晰」，`docs/教師偏好與決策.md` 第 4 節）。
 
 ## 4. 工作流怎麼叫
 
@@ -79,7 +80,7 @@ Workflow({
 
 **一門課分成好幾個 session 做**（`docs/多session做法.md`，教師 2026-10-14：「這種多 session 的做法我覺得很棒」）：一個階段一個 session，第一句固定「先讀 courses/<課>/_archive/handoff.md 與 courses/<課>/CLAUDE.md，驗環境，然後做階段 N」；工作流開跑前更新 handoff、請他 `/compact`、確認筆電不闔蓋帶走、報代理數與費用並附 `/usage`，他說好才跑；跑的同時主 session 做不需代理的事；收尾更新 handoff 並 commit。
 
-**常用程式放 kit，不要每門課各抄一份**（教師 2026-10-14）：Mac 算圖 `scripts/ppt_pdf_mac.sh`、OneDrive 用的 PDF 壓縮 `scripts/shrink_pdf.py`、從他的 PDF 切圖區 `scripts/compose_from_pdf.py`、中英對照流程圖 `scripts/draw_flow.py`、沒有 node 時的工作流檢查 `workflows/tools/wf_check_mac.js`。課程只放設定檔（例 `_archive/build/compose_config.json`、`flow_specs.json`）。
+**常用程式放 kit，不要每門課各抄一份**（教師 2026-10-14）：Mac 算圖 `scripts/ppt_pdf_mac.sh`、OneDrive 用的 PDF 壓縮 `scripts/shrink_pdf.py`、從他的 PDF 切圖區 `scripts/compose_from_pdf.py`、中英對照流程圖 `scripts/draw_flow.py`、示意圖加標籤 `scripts/label_image.py`（Runway 母圖＋Claude 標籤的標準做法）、沒有 node 時的工作流檢查 `workflows/tools/wf_check_mac.js`。課程只放設定檔（例 `_archive/build/compose_config.json`、`flow_specs.json`）。
 
 ## 5. 產出放哪、怎麼交回
 

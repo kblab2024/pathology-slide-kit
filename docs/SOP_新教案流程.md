@@ -26,6 +26,7 @@
 **在他的 deck 上改版（任務 B）時多用到的工具**：
 - `compose_from_pdf.py`：從他自己用 PowerPoint 匯出的 PDF，原樣切出每張的圖區（保留箭頭、標籤、SmartArt）。
 - `draw_flow.py`：把英文機轉圖改畫成中英對照的流程圖。
+- `label_image.py`：Runway 重繪的母圖（沒有字）加上中英對照標籤、引線與圓點。這是示意圖的標準做法（教師 2026-10-14）：模型只畫圖，字由 Claude 加。
 - Mac 上算圖用 `ppt_pdf_mac.sh`，交 OneDrive 的大 PDF 用 `shrink_pdf.py` 壓。
 
 ## 指令寫法

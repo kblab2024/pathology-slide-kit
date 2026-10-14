@@ -1,7 +1,7 @@
 # scripts/：共用教案工具（只有一份，所有課程共用）
 
 讀課程設定的工具用 `--course <課程>` 指定課程；`<課程>` 是課程資料夾名（例 `immune`），或直接給 course.yaml（或含它的資料夾）的路徑。
-收 `--course` 的：gen_pptx、check_deck、style_check、img_todo、assemble、merge_facts、merge_written、validate_blueprint、check_written、render_pdf_pages、robbins_crop、to_claude_slides。
+收 `--course` 的：gen_pptx、check_deck、style_check、img_todo、fit_capacity、assemble、merge_facts、merge_written、validate_blueprint、check_written、render_pdf_pages、robbins_crop、to_claude_slides。
 不收 `--course` 的（照下方各自的用法）：make_batches、export_pdf、extract_deck_images、dump_pptx、diff_decks、gen_lab_pptx、verify_quotes、check_public、fetch_moex_dent_exam、parse_moex_exam。每支都有 `--help`。
 所有路徑、字級、色票、選單、國考題庫、框架圖都在 course.yaml；**換課程不改程式，只改 course.yaml**。
 安裝見 `../setup/windows.md`（本機）與 `../setup/cloud-setup.sh`（Claude Code 雲端，Ubuntu）。
@@ -64,6 +64,7 @@ gen_pptx 每次會印出「量字字型：…」，也寫進 `_layout.json` 的 
 | 2 切教科書圖表 | `python robbins_crop.py --course <課程> --chapter N --out <課程>/assets/images/Robbins抽圖 --expect 圖數 [--ovr ovr.json]` | figN_M.png、面板、tableN_M.png、index.json、`圖片清單.md`（藍圖代理找圖用；已有手寫的清單時改寫 `圖片清單_auto.md`）、contact_*.png |
 | 3 抽舊投影片的圖 | `python extract_deck_images.py <舊.pptx> <課程>/assets/images/舊講義抽圖 --code 代號 [--slides 1-47] [--author 作者]` | 圖檔＋`圖片清單.md` |
 | 4 國考題庫 | `python parse_moex_exam.py …`（見該檔 docstring） | `question_banks/<醫師|牙醫師>/*.json` |
+| 4.5 版型容量 | `python fit_capacity.py --course <課程> [--json]` | 這門課的字級下每種版型每行幾字、幾行、表格幾列（用 gen_pptx 的量字函式，0.1 秒）；規劃、撰寫代理先讀這張表，不要自己試產校準 |
 | 5 藍圖＋撰寫 | 由工作流產生（見 `workflows/README.md`），格式見 `templates/blueprint.schema.json`、`templates/written.schema.json` | blueprint.json、written.json |
 | 6 組裝來源檔 | `python assemble.py --course <課程> blueprint.json written.json [--dry-run]` | `sources/*-pool.md`、`*-script.md`、`decks/<deck>.md`（有 RED 不寫檔） |
 | 7 產投影片 | `python gen_pptx.py --course <課程> [--date YYYYMMDD] [--section N] [--name 檔名]` | `成品/<檔名>.pptx`＋`_layout.json`，並自動跑 check_deck。`--section N` 的檔名自動加「_第N節」；多套 deck 又給 `--name` 時自動加「_<deck>」；覆寫既有檔會印提醒 |

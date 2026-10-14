@@ -27,7 +27,7 @@ cd "<kit>/scripts" && PYTHONIOENCODING=utf-8 python -c "import common; print(com
 cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 python <script>.py --course <course> ...
 ```
 
-`--course` 只給讀課程設定的工具：gen_pptx、check_deck、style_check、img_todo、assemble、merge_facts、merge_written、validate_blueprint、check_written、render_pdf_pages、robbins_crop、to_claude_slides。其他工具（make_batches、export_pdf、extract_deck_images、dump_pptx、diff_decks、verify_quotes、check_public、fetch_moex_dent_exam、parse_moex_exam）照各自的用法，不加 `--course`；每支都有 `--help`，用法總表在 `scripts/README.md`。
+`--course` 只給讀課程設定的工具：gen_pptx、check_deck、style_check、img_todo、fit_capacity、assemble、merge_facts、merge_written、validate_blueprint、check_written、render_pdf_pages、robbins_crop、to_claude_slides。其他工具（make_batches、export_pdf、extract_deck_images、dump_pptx、diff_decks、verify_quotes、check_public、fetch_moex_dent_exam、parse_moex_exam）照各自的用法，不加 `--course`；每支都有 `--help`，用法總表在 `scripts/README.md`。
 
 `<kit>`、`<materials>` 用絕對路徑（先 `pwd`、`ls` 確認；雲端的實際位置以 `ls` 為準）。課程資料夾 = `<materials>/courses/<course>`。
 

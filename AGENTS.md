@@ -26,7 +26,7 @@ cd "<kit>/scripts" && PYTHONIOENCODING=utf-8 python -c "import common; print(com
 cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 python <script>.py --course <course> ...
 ```
 
-`--course` 只給讀課程設定的工具（gen_pptx、check_deck、style_check、img_todo、assemble、merge_facts、merge_written、validate_blueprint、check_written、render_pdf_pages、robbins_crop、to_claude_slides）；make_batches、export_pdf、extract_deck_images、dump_pptx、diff_decks、verify_quotes、check_public、fetch_moex_dent_exam、parse_moex_exam 照各自用法（每支都有 `--help`）。Linux 找不到 `python` 就用 `python3`。
+`--course` 只給讀課程設定的工具（gen_pptx、check_deck、style_check、img_todo、fit_capacity、assemble、merge_facts、merge_written、validate_blueprint、check_written、render_pdf_pages、robbins_crop、to_claude_slides）；make_batches、export_pdf、extract_deck_images、dump_pptx、diff_decks、verify_quotes、check_public、fetch_moex_dent_exam、parse_moex_exam 照各自用法（每支都有 `--help`）。Linux 找不到 `python` 就用 `python3`。
 
 ## 2. 先讀什麼
 

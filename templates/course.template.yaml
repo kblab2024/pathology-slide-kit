@@ -53,14 +53,18 @@ slide:                    # 畫幅（英吋）：4:3 為 10×7.5；16:9 為 13.3
   background: F4F8FB      # 內容張底色（十六進位，不加 #）
 
 # 字級（pt）。下面這組是 immune 的教師明令（「字不可小」：標題 36、內文 28、學生要讀的字 ≥20、只有出處 14），只管 immune。
-# 沒有明令的新課，把整段 sizes 換成下面「沒有明令時的預設」（照 12_字級 他自製 4:3 deck 的習慣；gen_pptx 用文字方塊，
-# 所以取他手設的值），開工問答第 6 項問過教師再定；在他既有的 deck 上改版則照該 deck 的字級階層（SIZE-11）。
-#   沒有明令時的預設（未經教師確認）：
+# 沒有明令的新課，把整段 sizes 換成下面「沒有明令時的預設」，開工問答第 6 項問過教師再定；在他既有的 deck 上改版則照該 deck 的字級階層（SIZE-11）。
+#   沒有明令時的預設（2026-10-14 晚教師裁決：內文 24–35pt 依版型、表格與標籤 24、只有出處行更小、不要單句張；
+#   docs/教師偏好與決策.md 第 4 節。數值取 uro-a3 照這條裁決設的 course.yaml；只有 img_rate_min 照 IMG-01 留 0.65，
+#   uro-a3 的 0.52 是那門課待裁決的調整，不外推）：
 #   title: 36, title_small: 32, cover: 54, cover_sub: 28, divider: 50, divider_sub: 24,
-#   body: 30, body_noimg: 30, lead: 36, big: 50, label: 24, table: 18, table_min: 16, quiz: 28, quiz_min: 24,
-#   stats_big: 44, credit: 18, min: 16, body_warn: 20, char_warn: 120, char_red: 150, title_warn_chars: 40,
-#   img_rate_min: 0.65, table_max_rows: 6
-#   （SIZE-02 標題、SIZE-01 內文 30–36、SIZE-06 單句＋圖 36、SIZE-32 大字、SIZE-16 表格 18、SIZE-13 出處 18、DEN-02 ≥30pt 時每張 ≤150 字元）
+#   body: 28, body_noimg: 30, lead: 30, big: 35, label: 24, table: 24, table_min: 24, quiz: 28, quiz_min: 24,
+#   stats_big: 44, credit: 18, min: 24, body_warn: 24, char_warn: 150, char_red: 200, title_warn_chars: 40,
+#   img_rate_min: 0.65, table_max_rows: 5
+#   （big 只是備用值，新課不用單句大字張；char_warn、char_red 是做 uro-a3 的代理定的，不是教師給的數字；
+#   table_max_rows 5 是因為表格 24pt 以後一張只放得下表頭＋5 列）
+#   2026-10-14 以前的預設（照 12_字級 他自製 4:3 deck 的習慣，已被上面取代）：body 30、lead 36、big 50、table 18、
+#   table_min 16、credit 18、min 16、body_warn 20、char_warn 120、char_red 150、table_max_rows 6
 sizes:
   title: 36
   title_small: 32         # 標題估算超過 2 行時改用
@@ -71,7 +75,7 @@ sizes:
   body: 28                # 有圖張的條列；子層同字級
   body_noimg: 30          # 無圖張
   lead: 28                # pair／flash 的說明句
-  big: 44                 # 單句大字張
+  big: 44                 # 單句大字張：2026-10-14 教師不要單句張（docs/教師偏好與決策.md 第 4 節），新課不用 big 版型
   label: 24               # 圖上／圖旁標籤、框架圖格子最低
   table: 22
   table_min: 20

@@ -4,30 +4,33 @@
 
 ## 總表
 
-| 步 | 做什麼 | 工具或工作流 | 代理數（immune 實數，供估費用） | 老師決定 |
-|---|---|---|---|---|
-| 0 | 開工問答、建課程資料夾 | `templates/`、`51_撰寫前檢查清單.md` | 0 | 【老師決定】規格 |
-| 1 | 教科書轉頁圖＋OCR | `render_pdf_pages.py` | 0 | |
-| 2 | 切圖、抽舊投影片的圖 | `robbins_crop.py`、`extract_deck_images.py` | 0 | |
-| 3 | 國考題庫（多半已有） | `fetch_moex_dent_exam.py`、`parse_moex_exam.py` | 0 | |
-| 4 | 蒐集事實、選題、文獻 | `lecture-gather.js` → `merge_facts.py` | 97（更新題庫時 98） | 衝突清單（不擋進度） |
-| 5 | 藍圖 | `lecture-blueprint.js` → `validate_blueprint.py` | 10 | 【老師決定】大綱（建議） |
-| 6 | 撰寫與組裝 | `make_batches.py` → `lecture-write.js` → `merge_written.py` → `assemble.py` | 57（11 批 × 5＋連貫性 1＋讀檔 1） | |
-| 7 | 產檔、檢查、看 PNG | `gen_pptx.py`、`style_check.py`、`export_pdf.py`、`img_todo.py` | 0 | |
-| 8 | 審查 | `lecture-review.js`（每輪） | 19／輪（沒給 pngs 時 20） | |
-| 9 | 交付前檢查、裁決清單 | `52_交付前檢查清單.md` | 0 | |
-| 10 | 交付 | git 或直接給檔 | 0 | 【老師決定】回覆裁決清單 |
-| 11 | 回灌老師改稿 | `dump_pptx.py`＋`diff_decks.py` | 0 | |
+| 步 | 做什麼 | 工具或工作流 | 代理數（immune 實數，供估費用） | 老師決定 | 階段（`docs/多session做法.md`） |
+|---|---|---|---|---|---|
+| 0 | 開工問答、建課程資料夾 | `templates/`、`51_撰寫前檢查清單.md` | 0 | 【老師決定】規格 | 0 腳本與工具 |
+| 1 | 教科書轉頁圖＋OCR | `render_pdf_pages.py` | 0 | | 0 |
+| 2 | 切圖、抽舊投影片的圖 | `robbins_crop.py`、`extract_deck_images.py` | 0 | | 0（也可以在階段 1 邊跑工作流邊做） |
+| 3 | 國考題庫（多半已有） | `fetch_moex_dent_exam.py`、`parse_moex_exam.py` | 0 | | 0 |
+| 4 | 蒐集事實、選題、文獻 | `lecture-gather.js` → `merge_facts.py` | 97（更新題庫時 98） | 衝突清單（不擋進度） | 1 研究 |
+| 5 | 藍圖 | `lecture-blueprint.js` → `validate_blueprint.py`（新課的階段 2 改用課程自寫的撰寫工作流，一支做完第 5、6 步，見表下） | 10 | 【老師決定】大綱（建議） | 2 初稿 |
+| 6 | 撰寫與組裝 | `make_batches.py` → `lecture-write.js` → `merge_written.py` → `assemble.py` | 57（11 批 × 5＋連貫性 1＋讀檔 1） | | 2 |
+| 7 | 產檔、檢查、看 PNG | `gen_pptx.py`、`style_check.py`、`export_pdf.py`（Mac：`ppt_pdf_mac.sh`）、`img_todo.py` | 0 | | 2（毛胚）、3 |
+| 7b | 照老師對毛胚的評語充實 | 課程自寫的充實工作流（範本見第 7b 步） | uro-a3 空跑最多 34 | 【老師決定】看毛胚給評語 | 3 充實 |
+| 8 | 審查 | `lecture-review.js`（每輪） | 19／輪（沒給 pngs 時 20） | | 3 |
+| 9 | 交付前檢查、裁決清單 | `52_交付前檢查清單.md` | 0 | | 2（毛胚）、3（草稿） |
+| 10 | 交付 | OneDrive、git 或 Dropbox（第 10 步） | 0 | 【老師決定】回覆裁決清單 | 2（毛胚）、3（草稿） |
+| 11 | 回灌老師改稿 | `dump_pptx.py`＋`diff_decks.py` | 0 | | 老師改稿後另開 session |
 
-一門三節約 180 張的課，工作流合計約 200 個代理（兩輪審查）；以 API 牌價換算約 $950–1,200，只做一輪審查約 $830–990。各階段的單價與「這些金額和方案用量、usage credits 的關係」見 `docs/cloud_session_教學.md` 第 9 節，公式見 `workflows/README.md`。風格挖掘（`style-mining.js`，約 89 個）與重寫風格指南（`style-guide.js`，約 49 個）已經做完，新教案不必重跑（只有新課程的撰寫 brief 要跑 1 個代理，見第 6 步）。
+一門三節約 180 張的課，工作流合計約 200 個代理（兩輪審查）；以 API 牌價換算約 $950–1,200，只做一輪審查約 $830–990。各階段的單價與「這些金額和方案用量、usage credits 的關係」見 `docs/cloud_session_教學.md` 第 9 節，公式見 `workflows/README.md`。風格挖掘（`style-mining.js`，約 89 個）與重寫風格指南（`style-guide.js`，約 49 個）已經做完，新教案不必重跑（只有新課程的撰寫 brief 要跑 1 個代理，見第 6 步）。uro-a3（四個階段、多 session 的範例）的實測見 `workflows/README.md`「代理數與費用」。
 
-**分 session 做**：上表的步驟分成幾個階段，一個階段一個 session，靠該課的 `_archive/handoff.md` 交接。做法與範例（2026-10 A3 泌尿 L1）見 `docs/多session做法.md`，handoff 的格式見 `templates/handoff.template.md`。教師 2026-10-14 指定以後都這樣做。
+**四個階段、四個 session**：上表的步驟分成四個階段（0 腳本與工具、1 研究、2 初稿、3 充實；對應見上表最後一欄），一個階段一個 session，靠該課的 `_archive/handoff.md` 交接。每個階段的工作流、每個角色的強度、反駁與複查的上限見 `docs/多session做法.md` 與 `workflows/README.md`；handoff 的格式見 `templates/handoff.template.md`。教師 2026-10-14 指定以後都這樣做。
+
+**階段 2 用哪一支工作流**：上表第 5、6 步寫的 `lecture-blueprint.js`、`lecture-write.js` 是 2026-09 immune 的結構（藍圖三視角、三評審；撰寫每批 3 位查核，沒有反駁與複查）。新課的階段 2 照 `docs/多session做法.md` 用 ultracode 結構：課程自寫的一支撰寫工作流做完第 5、6 步（大綱 → 大綱批評 → 修訂 → 分批撰寫 → 多面向批評＋2 位反駁 → 修訂 → 複查 → 全套完整性批評），範本是私人 repo `courses/uro-a3/_archive/journals/uro-write.js`；之後的組裝（第 6 步的 `merge_written.py`、`assemble.py` 或課程的組裝程式）與第 7 步照做。第 5、6 步的說明留著，是 kit 通用工作流的用法。
 
 **在他的 deck 上改版（任務 B）時多用到的工具**：
 - `compose_from_pdf.py`：從他自己用 PowerPoint 匯出的 PDF，原樣切出每張的圖區（保留箭頭、標籤、SmartArt）。
 - `draw_flow.py`：把英文機轉圖改畫成中英對照的流程圖。
-- `label_image.py`：Runway 重繪的母圖（沒有字）加上中英對照標籤、引線與圓點。這是示意圖的標準做法（教師 2026-10-14）：模型只畫圖，字由 Claude 加。
-- Mac 上算圖用 `ppt_pdf_mac.sh`，交 OneDrive 的大 PDF 用 `shrink_pdf.py` 壓。
+- `label_image.py`：Runway 重繪的母圖（沒有字）加上中英對照標籤、引線與圓點。這是示意圖的標準做法（教師 2026-10-14）：模型只畫圖，字由做投影片的代理加。
+- Mac 上算圖用 `ppt_pdf_mac.sh`，交 OneDrive 的大 PDF 用 `shrink_pdf.py` 壓（大檔可能整個傳不上，見 `docs/教師偏好與決策.md` 第 8 節）。
 
 ## 指令寫法
 
@@ -48,7 +51,7 @@ cd "$KIT/scripts" && SLIDEKIT_MATERIALS="$MAT" PYTHONIOENCODING=utf-8 python xxx
 
 PowerShell 的寫法：`$env:SLIDEKIT_MATERIALS="<materials>"; $env:PYTHONIOENCODING="utf-8"; cd <kit>\scripts; python xxx.py …`。
 
-工作流用 Claude Code 的 Workflow 工具執行，參數一律 `{kit, materials, course, …, done}`，`kit`、`materials` 用絕對路徑。各工作流的完整參數見 `workflows/README.md`。沒有 Workflow 工具時照 `AGENTS.md` 第 4 節循序做。
+工作流用 Claude Code 的 Workflow 工具執行，參數一律 `{kit, materials, course, …, done}`，`kit`、`materials` 用絕對路徑。各工作流的完整參數見 `workflows/README.md`。沒有 Workflow 工具時照 `AGENTS.md` 第 4.0 節與 `docs/跨工具做法.md` 做。用 Claude 時每個代理寫死 `model: 'opus'`（其他工具照 `AGENTS.md` 硬規則 8），每個代理明寫 effort；開跑前先空跑數出代理數上限，照上限報價，老師說好才跑（`AGENTS.md` 硬規則 8、10、16）。
 
 ---
 
@@ -64,7 +67,7 @@ PowerShell 的寫法：`$env:SLIDEKIT_MATERIALS="<materials>"; $env:PYTHONIOENCO
 4. 國考題版式與正解顏色；
 5. 畫幅（預設沿用該系列，新系列 4:3）；
 6. 字級有沒有明令；
-7. 中英對照的範圍（每套首見一次，或每張都要）；
+7. 中英對照：2026-10-14 起所有課每一張都寫（`per_slide`），只問有沒有例外；
 8. 正典與文獻範圍；
 9. 出處放哪裡；
 10. 關鍵字色；
@@ -82,10 +85,11 @@ cp "$KIT/templates/brief.template.md"    "$CD/brief.md"
 cp "$KIT/templates/gather.template.json" "$CD/gather.json"
 ```
 
-填 `course.yaml`（課程代碼、對象、日期、`textbook` 的 ref／page_offset／pages_dir（PDF 放 repo 外，`textbook.pdf` 寫絕對路徑）、`paths`、`decks`（節數、目標張數、每節範圍、國考題庫、國考題版式 `quiz_style`、檔名）、`sizes`（沒有字級明令就用範本註解裡「沒有明令時的預設」，不要照抄 immune 的明令值）、`bilingual`（沒有「每張中英」明令就刪掉或寫 `first_per_deck`）、`emphasis`、`cover`、`bilingual_whitelist`）；填 `brief.md` 的「教師已裁決」表（每列寫日期）；從 `templates/course.CLAUDE.template.md` 複製一份課程專屬的 `CLAUDE.md`（課程、裁決、單一事實來源、重產指令、待辦）：
+填 `course.yaml`（課程代碼、對象、日期、`textbook` 的 ref／page_offset／pages_dir（PDF 放 repo 外，`textbook.pdf` 寫絕對路徑）、`paths`、`decks`（節數、目標張數、每節範圍、國考題庫、國考題版式 `quiz_style`、檔名）、`sizes`（沒有字級明令就用範本註解裡「沒有明令時的預設」，不要照抄 immune 的明令值）、`bilingual: per_slide`（2026-10-14 起所有課；不要刪掉這一行，沒寫時程式會退回 `first_per_deck`）、`emphasis`、`cover`、`bilingual_whitelist`）；填 `brief.md` 的「教師已裁決」表（每列寫日期）；從 `templates/course.CLAUDE.template.md` 複製一份課程專屬的 `CLAUDE.md`（課程、裁決、單一事實來源、重產指令；檔名叫 CLAUDE.md，內容對所有工具都適用），從 `templates/handoff.template.md` 複製交接檔 `_archive/handoff.md`（`docs/多session做法.md`）：
 
 ```bash
 cp "$KIT/templates/course.CLAUDE.template.md" "$CD/CLAUDE.md"
+cp "$KIT/templates/handoff.template.md"       "$CD/_archive/handoff.md"
 ```
 
 **【老師決定】** 規格表。明令只寫進這門課的 course.yaml、brief.md、glossary.md，不改風格指南的一般規則。
@@ -140,7 +144,7 @@ Workflow({ scriptPath: "<kit>/workflows/lecture-gather.js",
            args: { kit: "<kit>", materials: "<materials>", course: "<course>", done: {} } })
 ```
 
-可選參數（省額度或補跑一部分時用）：`parts: ["facts","exam","literature"]` 只跑其中幾部分、`segments: ["S01", …]` 只跑某幾段、`topics: ["<id>", …]` 只跑某幾個文獻題目、`refuters: 1`（預設 2）。
+可選參數（省額度或補跑一部分時用）：`parts: ["facts","exam","literature"]` 只跑其中幾部分、`segments: ["S01", …]` 只跑某幾段、`topics: ["<id>", …]` 只跑某幾個文獻題目。`refuters` 只用在教科書事實帳，固定 2 位（硬規則 16），不要減。
 
 產出：`facts/seg/<段>_final.json`（每段經兩位反駁者與一位裁決者）、`_archive/gather/exam/exam_candidates.json`、`_archive/gather/lit/<題>_verified.json` 與 `_images.json`（開放授權圖放 `assets/images/文獻圖/`）。然後：
 
@@ -187,6 +191,8 @@ Workflow({ scriptPath: "<kit>/workflows/lecture-write.js",
 
 每批：撰寫 → 事實、老師語氣、中英術語與密度三位查核 → 修訂（`check_written.py` RED 0）；最後一位通讀全套做連貫性。產出 `_archive/written/batch_<k>.json`、`continuity_report.md`。
 
+kit 的 `lecture-write.js` 是 2026-09 的結構（每批撰寫 → 3 位查核 → 修訂，沒有反駁與複查）。要用 ultracode 等級的結構（大綱批評、多面向批評＋2 位反駁、有上限的複查、全套完整性批評），以私人 repo `courses/uro-a3/_archive/journals/uro-write.js` 為範本改寫（`docs/多session做法.md`「四個階段」）。
+
 ```bash
 [py] merge_written.py --course $C --dir "$CD/_archive/written" --blueprint "$CD/_archive/blueprint/blueprint.json"
 [py] assemble.py --course $C "$CD/_archive/blueprint/blueprint.json" "$CD/_archive/written/written.json" --dry-run
@@ -212,6 +218,14 @@ Workflow({ scriptPath: "<kit>/workflows/lecture-write.js",
 - Windows 用 PowerPoint 匯出；雲端用 LibreOffice，字型換成 Noto，斷行可能和 PowerPoint 略有不同，交件前最好在 Windows 的 PowerPoint 再看一次。
 - 發現問題改來源檔，重跑本步。
 
+## 第 7b 步：照老師對毛胚的評語充實（階段 3）
+
+階段 2 交出毛胚（老師要先看時可以先不審查）後，老師看過會給整體評語（例：uro-a3 2026-10-14 晚「深度跟統整性是略顯不足的」「可以在120以內多充實一些內容 且增加連貫性」「please suppress one-sentence slide」）。做法：
+
+1. 把評語連日期與原話寫進該課 `brief.md`「教師已裁決」表；適用所有課的寫進 kit 的 `docs/教師偏好與決策.md` 第 4 節。
+2. 跑充實工作流：規劃 → 規劃批評（深度、連貫）→ 修訂計畫 → 分批改寫 → 事實批評＋2 位反駁、版面與口吻、連貫三個面向 → 修訂 → 複查 → 全套檢查 → 跨批修正 → 用字審查。kit 還沒有通用的充實工作流；以私人 repo `courses/uro-a3/_archive/journals/uro-deepen.js` 為範本改寫（空跑最多 34 個代理）。強度與上限照 `workflows/README.md`「角色與強度」「反駁與複查的上限」。
+3. 組裝、重跑第 7 步，再做第 8 步審查（審查要讀算好的 PNG，所以排在算圖之後），然後交草稿。
+
 ## 第 8 步：審查（一到兩輪）
 
 ```text
@@ -221,11 +235,11 @@ Workflow({ scriptPath: "<kit>/workflows/lecture-review.js",
                    round: 1, done: {} } })
 ```
 
-沒給 `pngs` 時，工作流先派一個代理跑 `export_pdf.py` 產 PNG。可選：`lenses: ["facts","layout"]` 只審某幾個面向、`refuters: 1`（預設 2）、`sheets`（縮圖拼板資料夾）。
+沒給 `pngs` 時，工作流先派一個代理跑 `export_pdf.py` 產 PNG。可選：`lenses: ["layout"]` 只審某幾個面向、`refuters: 1`（預設 2；舊有的省錢選項，只限非事實面向，那 1 位推翻就丟，報價寫明；facts 面向固定 2 位）、`sheets`（縮圖拼板資料夾）。
 
-六個面向（事實、語氣與 LLM 語、中英術語、版面 PNG、國考題、圖）各一位審查＋兩位反駁，最後一位修正者只套用至少一位反駁者確認的項目，直接改來源檔並重產。報告在 `_archive/review/round1/fix_report.md`（確認幾條、套用幾條、未套用的理由、要老師決定的事）。
+六個面向（事實、語氣與 LLM 語、中英術語、版面 PNG、國考題、圖）各一位審查＋兩位反駁，只做一輪；最後一位修正者：兩位反駁者都推翻的不套用，都確認的套用，一推一留的回原始資料（教科書頁圖、事實帳、glossary、PNG）查過再決定，直接改來源檔並重產（`AGENTS.md` 硬規則 16）。報告在 `_archive/review/round1/fix_report.md`（確認幾條、套用幾條、未套用的理由、要老師決定的事）。第 2 輪：第 1 輪沒有事實問題就不跑；要跑只跑問題多的面向，另外報價（硬規則 16）。
 
-之後重跑第 7 步。immune 第一輪 206 條確認 192 套用 173，第二輪 129 條確認 126 套用 117；第二輪的邊際效益明顯較低，額度緊時做一輪即可，或第二輪只審問題多的面向（例：`lenses: ["layout","facts"]`）。
+之後重跑第 7 步。immune 第一輪 206 條確認 192 套用 173，第二輪 129 條確認 126 套用 117；第二輪的邊際效益明顯較低，額度緊時做一輪即可，或第二輪只審問題多的面向（例：`lenses: ["layout","facts"]`）。第二輪是另一次工作流，開跑前另外報價。
 
 ## 第 9 步：交付前檢查與待教師裁決清單
 
@@ -240,8 +254,10 @@ Workflow({ scriptPath: "<kit>/workflows/lecture-review.js",
 
 成品在 `$CD/成品/`：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`、同名 `(PDF)`、`待教師裁決清單.md`、`待補圖清單.md`。日期用上課日（course.yaml `lecture_date`）。
 
-- **Windows 本機**：直接告訴老師檔案位置。
-- **雲端 session**：在私人 repo 的 session 分支
+- **一律是草稿**：交件資料夾、檔名、一起交的檔照 `docs/教師偏好與決策.md` 第 8 節。
+- **本機（他的 Mac）**：放進他的 OneDrive，步驟與禁用檔名照那台 Mac 的工作區 `AGENTS.md`；大檔傳不上時改走下面的 git（教師 2026-10-14：「還不如推到git」）。Dropbox 他也說可以，資料夾還沒定。
+- **Windows 本機**：成品留在 repo 的 `成品/`，告訴老師檔案位置；不寫 OneDrive（`docs/教師偏好與決策.md` 第 8 節：讀不到 Mac 工作區 `AGENTS.md` 的環境不寫），要給他別處的檔就用下面的 git 交件。
+- **用 git 交件**（雲端 session，或 OneDrive 傳不上大檔時）：在私人 repo 的課程分支（雲端是 session 分支）
 
   ```bash
   cd "$MAT"
@@ -254,7 +270,7 @@ Workflow({ scriptPath: "<kit>/workflows/lecture-review.js",
 
   回報分支名稱與檔案路徑；老師從 GitHub 網頁下載或 `git pull`（見 `docs/cloud_session_教學.md`）。
 
-  同一門課只提交最後交件的那一版 PPTX（每版約 60 MB，每提交一次 repo 歷史就多 60 MB）；中途給老師看的版本用 PDF。要保留多個版本時，把 PPTX 放到 GitHub Release 的附件，不放進 git。
+  只提交交給老師的版本（毛胚、草稿；每版約 20–60 MB，每提交一次 repo 歷史就多一份），中途重產的不提交；新版本推同一路徑、覆蓋同名檔。要保留多個版本時，把 PPTX 放到 GitHub Release 的附件，不放進 git。
 
 **【老師決定】** 他回覆裁決清單，或直接改 PPTX。
 
@@ -296,7 +312,7 @@ Workflow({ scriptPath: "<kit>/workflows/lecture-review.js",
 5. `[py] verify_quotes.py` 核對全部引句，FAIL 修到 0；
 6. 他沒動到的張不算「接受」（AUTH-03）；某課的明令只更新該課。
 
-風格指南的更新 commit 在公開 kit（commit 前跑 `[py] check_public.py`，FAIL 0；新證據裡有同事的名字就用代稱，並把對照加進 `$MAT/corpus/pseudonyms.tsv`）；語料與 edits commit 在私人 repo。
+風格指南的更新 commit 在 kit（有私人工作版就先改那邊，再照它 `AGENTS.md` 第 8 節同步到公開版；commit 前跑 `[py] check_public.py`，FAIL 0；新證據裡有同事的名字就用代稱，並把對照加進 `$MAT/corpus/pseudonyms.tsv`）；語料與 edits commit 在私人 repo。
 
 ---
 

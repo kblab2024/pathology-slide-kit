@@ -83,7 +83,7 @@ cover:
   title: "病理學：免疫疾病"
   subtitle: "Diseases of the Immune System（Robbins 11e 第6章）"
 
-# 中英對照範圍：教師 2026-09-24 明令「所有專有名詞『中文(English)』」＝每張都寫（TERM-34）；新課程預設是 first_per_deck
+# 中英對照範圍：教師 2026-09-24 明令「所有專有名詞『中文(English)』」＝每張都寫（TERM-34）；2026-10-14 起所有課都寫 per_slide（程式在沒寫這一鍵時才退回 first_per_deck）
 bilingual: per_slide
 
 # 中英對照白名單：只放染色名、分子符號（CD／IL／Ig／補體片段）；疾病縮寫（SLE、AIDS、HIV…）不在此列，必須附中文

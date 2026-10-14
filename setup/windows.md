@@ -36,6 +36,8 @@ git clone -c core.autocrlf=false https://github.com/kblab2024/pathology-slide-ki
 git clone -c core.autocrlf=false https://github.com/kblab2024/pathology-slide-materials.git
 ```
 
+維護者另有 kit 的私人工作版：有權限時做課用工作版，上面第一行 clone 與下文的 `pathology-slide-kit` 資料夾都換成工作版（repo 名與 clone 指令在私人 repo 的 `AGENTS.md` 第 2 節）。
+
 已經用預設設定 clone 過、檔案變成 CRLF 的話：先提交或備份自己的修改，再用上面的指令重新 clone（最單純）。
 
 ## 安裝 Python 套件

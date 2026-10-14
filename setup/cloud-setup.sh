@@ -11,7 +11,8 @@
 # 可用的環境變數（在雲端環境設定的環境變數欄位設定）：
 #   SLIDEKIT_SKIP_APT=1        不裝系統套件（只裝 Python 套件，最快）
 #   SLIDEKIT_NO_CLONE=1        只有教材庫時，不要自動 git clone 公開工具包
-#   SLIDEKIT_KIT_URL=<網址>    工具包 repo 網址（預設 https://github.com/kblab2024/pathology-slide-kit.git）
+#   SLIDEKIT_KIT_URL=<網址>    工具包 repo 網址（預設 https://github.com/kblab2024/pathology-slide-kit.git；
+#                              有私人工作版權限時改成工作版的網址，repo 名見私人 repo 的 AGENTS.md 第 2 節）
 #   SLIDEKIT_MATERIALS=<路徑>  教材庫位置（通常不必設：工具包會自動找同層的 pathology-slide-materials）
 
 set -u

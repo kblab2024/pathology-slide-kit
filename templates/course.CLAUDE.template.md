@@ -1,14 +1,14 @@
 # <課程>：<系級> 病理學<碼>「<講題>」課程指引
 
-> 複製到 `<materials>/courses/<課程>/CLAUDE.md` 後把角括號換掉。本檔只寫這門課專屬的事：課程資訊、教師裁決摘要、單一事實來源、重產指令、素材位置、待辦。
-> 通則（硬規則、環境、工作流、交件）在 kit 的 `CLAUDE.md`；風格在 kit 的 `style/guide/`；工具用法在 kit 的 `scripts/README.md`。
+> 複製到 `<materials>/courses/<課程>/CLAUDE.md` 後把角括號換掉。本檔只寫這門課專屬的事：課程資訊、教師裁決摘要、單一事實來源、重產指令、素材位置。進度、下一步、待辦只寫在 `_archive/handoff.md`。
+> 通則（硬規則、環境、工作流、交件）在 kit 的 `AGENTS.md`（Claude Code 經 kit 的 `CLAUDE.md` 匯入）；風格在 kit 的 `style/guide/`；工具用法在 kit 的 `scripts/README.md`。本檔檔名叫 CLAUDE.md，內容對所有工具都適用。
 > 不寫本機絕對路徑、學生資料、教學評量資料；路徑一律寫 `<kit>`、`<materials>` 或相對於本課程資料夾。
 
 ## 開工（每個 session）
-- 一個階段一個 session（`<kit>/docs/多session做法.md`）。第一句：「先讀 courses/<課程>/_archive/handoff.md 與 courses/<課程>/CLAUDE.md，驗環境，然後做階段 N。」
+- 四個階段（0 腳本與工具、1 研究、2 初稿、3 充實），一個階段一個 session（`<kit>/docs/多session做法.md`）。第一句：「先讀 pathology-slide-materials/courses/<課程>/_archive/handoff.md 與 pathology-slide-materials/courses/<課程>/CLAUDE.md，驗環境，然後做階段 N。」不會自動載入 `AGENTS.md` 的工具，先讀 kit 與 materials 的 `AGENTS.md`（在教師的 Mac 上再加工作區的）。
 - 交接狀態只寫在 `_archive/handoff.md`（範本 `<kit>/templates/handoff.template.md`），每個 session 收尾更新並 commit。
 - 驗環境：`python -c 'import fitz,yaml,pptx'`；`cd <kit>/scripts && python -c "import common; print(common.ROOT); print(common.find_materials())"`；kit 在哪個分支（寫在這裡）。
-- 工作流開跑前：更新 handoff、請教師 `/compact`、確認筆電不闔蓋帶走、報代理數與約略費用並附 `/usage`，他說好才跑。
+- 工作流開跑前：更新 handoff、請教師壓縮對話（Claude Code：`/compact`；其他工具見 `<kit>/docs/跨工具做法.md`）、確認筆電不闔蓋帶走、空跑數出代理數上限、照上限報代理數與約略費用並附目前用量（Claude Code：`/usage`；其他工具同上），他說好才跑。用 Claude 時每個代理寫死 `model: 'opus'`（其他工具照 kit `AGENTS.md` 硬規則 8），每個代理明寫 effort；反駁一輪、複查最多 2 輪（kit `AGENTS.md` 硬規則 8、16）。
 
 ## 課程
 - <系級>（課程代碼 <碼>），<上課日 YYYY-MM-DD>，<節數> 節。
@@ -54,6 +54,6 @@ bash "$KIT/scripts/ppt_pdf_mac.sh" "$CD/成品/<PPTX 檔名>.pptx"
 ## 續跑紀錄
 工作流的 journal、當次 args 與 DONE 表放 `_archive/journals/`（見 `<kit>/workflows/README.md`「續跑」）。
 
-## 待辦
-- <例：等教師回覆 `成品/待教師裁決清單.md` 後改 pool.md 再重產。>
+## 注意（不太變的事）
+- 進度、下一步、待辦寫在 `_archive/handoff.md`，不寫在這裡。
 - 教師若親手改了成品：先照 `<kit>/docs/SOP_新教案流程.md` 第 11b 步回灌，才可以重產。

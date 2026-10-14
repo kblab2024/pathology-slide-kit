@@ -1,6 +1,6 @@
 # 經驗教訓（管線踩過的坑）
 
-2026-09 做頭頸部、呼吸系統、免疫疾病三門課時學到的事。每條寫「發生什麼 → 現在怎麼做」。投影片風格上的教訓在 `style/guide/40_範例/43_反例庫.md`，這裡只寫工具與流程。
+2026-09 做頭頸部、呼吸系統、免疫疾病三門課時學到的事；第 12、13 節是 2026-10 做 uro-a3 時加的。每條寫「發生什麼 → 現在怎麼做」。投影片風格上的教訓在 `style/guide/40_範例/43_反例庫.md`，這裡只寫工具與流程。
 
 ## 1. 換行字元（CRLF）
 
@@ -14,7 +14,7 @@
 
 - **發生什麼**：額度在工作流中途用完好幾次（immune 的風格挖掘、藍圖、撰寫都停過）。`resumeFromRunId` 只能沿用「從頭算起沒改動的那一段 agent() 呼叫」，而且要在同一台電腦、run 的紀錄還在；當時為了改用 Opus 而改了每個代理的 model，第一個呼叫就不同，結果整批重跑。
 - **現在怎麼做**：每支工作流都支援 `args.done = {"<label>": "<輸出檔路徑>"}`，列在裡面的代理直接回傳舊檔、不呼叫模型，log 會出現 `reuse (not re-run): <label>`。
-  - 重建 DONE 表一律用 `workflows/tools/done_from_journal.py`：有 journal 就讀 journal（本機在 `~/.claude/projects/<專案>/<session>/subagents/workflows/<runId>/journal.jsonl`）；journal 不見了（雲端 VM 被回收）就用 `--scan` 依輸出檔名推回 label（例：`batch_3_check_voice.json` → `voice:3`）。
+  - 重建 DONE 表一律用 `workflows/tools/done_from_journal.py`：有 journal 就讀 journal（Claude Code 本機在 `~/.claude/projects/<專案>/<session>/subagents/workflows/<runId>/journal.jsonl`）；journal 不見了（雲端 VM 被回收）就用 `--scan` 依輸出檔名推回 label（例：`batch_3_check_voice.json` → `voice:3`）。
   - 被中斷當下正在跑的代理要重跑（它的輸出檔可能不完整，用 `--drop`）。
   - journal、當次 args 與 DONE 表都存在課程的 `_archive/journals/` 並 commit（`workflows/README.md`「續跑」）。
 - 任何代理回傳 null（多半是額度用完）時，腳本停止派新代理；不要自動重試，等使用者同意再續跑。
@@ -59,7 +59,7 @@
 
 ## 8. 審查工作流
 
-- 每個面向一位審查、兩位獨立反駁，只套用至少一位反駁者確認的項目；兩位給不同改法時，選較忠於 Robbins 與他原句的。
+- 每個面向一位審查、兩位獨立反駁，只做一輪：兩位都推翻的不套用，都確認的套用，一推一留由修正者回原始資料查過再決定（硬規則 16）；兩位給不同改法時，選較忠於 Robbins 與他原句的。
 - 修正互相衝突時：事實 ＞ 術語 ＞ 版面 ＞ 文風；圖片與國考題的修正讓位。
 - 課程明令優先於審查建議（例：審查建議某術語只寫英文，但該課明令每張中英對照，就不套用）。
 - immune：第一輪 206 條、確認 192、套用 173；第二輪 129 條、確認 126、套用 117。第二輪仍有價值，但額度緊時一輪即可。
@@ -67,21 +67,35 @@
 ## 9. Windows 環境的小坑
 
 - Python 印中文要設 `PYTHONIOENCODING=utf-8`，否則 cp950 報 `UnicodeEncodeError`。
-- 在 Windows 的 Bash 工具裡寫超過約 100 行的 heredoc 會被截斷（報 unexpected EOF）；大檔用 Write 寫成檔再執行。
+- 在 Windows 的 shell 裡寫超過約 100 行的 heredoc 會被截斷（報 unexpected EOF）；大檔先存成檔再執行（Claude Code 用 Write 工具）。
 - PowerPoint 匯出 PDF 前先關掉開著的同名 PPTX；`export_pdf.py` 用 PowerShell 呼叫 PowerPoint，不需要 pywin32。
 
 ## 10. 檔案大小與 GitHub
 
 - immune 184 張的 PPTX 約 58 MB，幾乎全是圖。GitHub 單檔上限 100 MB（50 MB 以上警告），網頁上傳限 25 MB。
 - 接近上限時：分節輸出（`gen_pptx.py --section N`，檔名自動加「_第N節」，不會蓋掉全套檔）或把圖先降到投影片實際需要的解析度再放進素材池。
-- 成品 PPTX 預設不進 git（`.gitignore`）；交件的那一個用 `git add -f`，同名 `_layout.json` 照常提交（回灌時對 slug 用）。同一門課只提交最後一版 PPTX，repo 歷史才不會一直長大。
+- 成品 PPTX 預設不進 git（`.gitignore`）；交件的那一個用 `git add -f`，同名 `_layout.json` 照常提交（回灌時對 slug 用）。只提交交給老師的版本（毛胚、草稿），中途重產的不提交，repo 歷史才不會一直長大（SOP 第 10 步）。
 - 教科書 PDF 放 repo 外；私人 repo 的 `.gitignore` 排除成品以外的所有 PDF。
 
 ## 11. 額度與費用管理
 
 - 花費幾乎都在多代理工作流；每個代理都要讀事實帳、指南、頁圖等大檔。immune 整門課約 200 個代理（蒐集 97、藍圖 10、撰寫 57、審查兩輪 38），以 API 牌價換算約 $950–1,200；風格挖掘約 89、風格指南約 49 已完成不必重跑。
-- 開跑前先報代理數、等使用者同意；分次跑、看用量；停下時存 DONE 表並 commit。
+- 開跑前先空跑數出代理數上限，照上限報代理數與費用、等使用者同意；分次跑、看用量；停下時存 DONE 表並 commit。
+- 四階段做法（uro-a3）的實測與各角色的花費占比見 `workflows/README.md`「代理數與費用」「角色與強度」。
 - 先用小階段（藍圖 10 個代理）量出每個代理的平均花費，再估整門課。
 - 扣款順序：雲端 session 先扣雲端 session 額度（2026-09 送的一次性額度，會過期）→ 用完改吃方案用量（與本機共用）→ 使用者打開「usage credits」開關時才扣買的 credits。本機 session 不會用到雲端額度，所以方案每週用量吃緊時，把重的工作流放雲端。
 - 雲端 VM 閒置會被回收，正在跑的代理與沒 push 的檔案會不見；每個階段結束就 commit＋push。
 - 詳見 `docs/cloud_session_教學.md` 第 9 節。
+
+## 12. 強度會繼承主 session（2026-10-14）
+
+- **發生什麼**：uro-a3 撰寫第一次開跑（12:44）用的是沒寫 effort 的舊腳本，代理全部繼承主 session 當時的 medium；原本以為會是 xhigh，因為研究那天的 session 剛好是 xhigh，62 個代理都繼承到 xhigh。12:49 教師說「現在請在既有workflow 請開ultracode」時一併發現，停掉（只跑到第 1 個代理、約 5 分鐘），腳本改成每個 `agent()` 明寫 effort，12:52 重開。
+- **現在怎麼做**：
+  - 用 Claude 時每個代理寫死 `model: 'opus'`（其他工具照硬規則 8），並明寫 effort，各角色的等級照 `workflows/README.md`「角色與強度」。
+  - kit 的六支通用工作流只吃一個 `args.effort`：叫它們時一定要給。
+  - 課程自寫的腳本：用 grep 確認每個 `agent()` 都有 effort；kit 的通用工作流：確認 args 有 `effort`（`wf_check_mac.js` 目前不印 effort）。
+
+## 13. 多輪反駁會讓費用失控（2026-10-14）
+
+- **發生什麼**：教師說，之前費用失控最嚴重的那門課（lung），錢幾乎都花在用比 opus 更貴的型號跑的多輪反駁。uro-a3 初稿 57 個代理的反駁只跑一輪、每份批評檔 2 位、全部用 opus，沒有那種反駁循環；但它的牌價換算下限約 $268（不含 output），不比 immune 省，事實複查與事實反駁仍占 Workflow 回報的 subagent_tokens 的 22%（11.7%＋10.5%），複查兩輪也都看整批。10/15 凌晨充實版和另一個工作流一起跑，還是用完了一次方案額度。
+- **現在怎麼做**：硬規則 16 的上限（反駁一輪、每份批評檔 2 位、不反駁反駁者；複查最多 2 輪、第 2 輪只看改過的張、第 1 輪沒有事實問題就停）；模型一律 opus，不換成更貴的型號；開跑前空跑拿代理數上限再報價（`workflows/README.md`「反駁與複查的上限」）。

@@ -96,7 +96,7 @@ FIRST_RATE_WARN = 0.70   # TERM-07：首見率門檻
 
 
 def bilingual_mode(course):
-    """course.yaml 的 bilingual；沒寫就是 first_per_deck（指南的一般規則，不外推某課的明令）。"""
+    """course.yaml 的 bilingual；沒寫就是 first_per_deck（程式的預設；2026-10-14 起課程一律寫 per_slide）。"""
     m = str(course.get("bilingual") or "first_per_deck").strip()
     if m not in BILINGUAL_MODES:
         raise ValueError(f"course.yaml bilingual 只能是 {'／'.join(BILINGUAL_MODES)}，現在是 {m!r}")

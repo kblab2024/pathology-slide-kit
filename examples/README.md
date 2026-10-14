@@ -12,7 +12,7 @@
 ## 怎麼用
 
 - **當範本看**：開新課時從 `templates/course.template.yaml`、`templates/brief.template.md` 複製（範本有逐欄註解）；這裡的兩個檔讓你看到填好的樣子。
-- **注意課程明令不外推**：immune 的字級（標題 36、內文 28、學生要讀的字 ≥20、出處 14）、每張專有名詞中英對照（`bilingual: per_slide`）、牙醫師國考題，是老師只對這門課下的裁決。新課程沒有同樣的明令時，字級用 `templates/course.template.yaml` 註解裡「沒有明令時的預設」，`bilingual` 刪掉（預設 `first_per_deck`），不要照抄這裡的數字。
+- **注意課程明令不外推**：immune 的字級（標題 36、內文 28、學生要讀的字 ≥20、出處 14）與牙醫師國考題，是老師只對這門課下的裁決；新課程沒有同樣的明令時，字級用 `templates/course.template.yaml` 註解裡「沒有明令時的預設」，不要照抄這裡的數字。每張專有名詞中英對照（`bilingual: per_slide`）原本也是這門課的明令，2026-10-14 起所有課都照做，新課程一律寫這一行。
 - **路徑**：`course.yaml` 裡的路徑都相對於課程資料夾。真正的課程資料夾在私人 repo `pathology-slide-materials/courses/immune/`，`textbook.pages_dir` 的 `../../textbook/robbins11e_ch06_immune/pages` 是從那裡算的；這裡的副本只當範例，在 kit 裡這個路徑不存在。
 
 ## 與工具的關係

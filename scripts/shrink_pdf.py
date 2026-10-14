@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """把成品 PDF 的 JPEG 圖縮小（長邊 900 px、品質 72），給 OneDrive 用。
 
-教師 Mac 上的 OneDrive（商務版）傳不上約 15 MB 以上的非 Office 檔：會一直重試、卡住整個上傳佇列
-（2026-10-02：21.5 MB 的 PDF 失敗 6 萬多次，11 MB 的半份可以；PPTX 25 MB 走 Office 上傳路徑，可以）。
-所以 OneDrive 放壓縮版，repo 的 成品/ 留原解析度。字是向量，不受影響。
-卡住時：OneDrive 選單列圖示 → 結束 OneDrive，再打開；卡住的那個檔名換一個新檔名重新放。
+教師 Mac 上的 OneDrive（商務版）常傳不上大檔：會一直重試、卡住整個上傳佇列
+（2026-10-02：21.5 MB 的 PDF 失敗 6 萬多次，11 MB 的半份可以；2026-10-14 晚：8.9–21 MB 的 PPTX 也卡住，小的 md、docx 正常）。
+所以 OneDrive 放壓縮版，repo 的 成品/ 留原解析度。字是向量，不受影響。壓了還傳不上的，改用 git 交件。
+卡住時：把那個檔移出 OneDrive（不要刪、不要同名放回），記下檔名，新版本用新檔名（docs/教師偏好與決策.md 第 8 節）。
 
 用法：python shrink_pdf.py <in.pdf> <out.pdf> [長邊px=900] [品質=72]
 """

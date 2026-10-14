@@ -1,6 +1,6 @@
 # Claude Code 雲端 session 入門（給老師）
 
-寫給在 Windows 上用 Claude 桌面 app 的使用者。內容依 2026-09-25 查閱的官方文件整理；介面上的按鈕名稱會改版，標「請以官方說明為準」的地方是官方文件沒寫清楚、或我沒有親自確認的部分。
+寫給用 Claude 桌面 app（Windows 或 Mac）的使用者。內容依 2026-09-25 查閱的官方文件整理；介面上的按鈕名稱會改版，標「請以官方說明為準」的地方是官方文件沒寫清楚、或我沒有親自確認的部分。
 
 官方文件：
 
@@ -14,7 +14,7 @@
 - Claude 在 Anthropic 的雲端電腦（Ubuntu Linux 虛擬機）上工作，不佔用您的電腦。關掉 app、闔上筆電，它照樣跑；可以從桌面 app、瀏覽器（claude.ai/code）或手機 Claude app 的 Code 分頁看進度、插話、回答它的問題。
 - 雲端電腦每次都從 GitHub 複製（clone）repo 開始，做完把改動推（push）成一個新分支。您從 GitHub 拿回檔案。
 - 它看不到您電腦上的任何東西：本機的 Claude 記憶檔、雲端硬碟同步資料夾裡的檔案、PowerPoint、微軟正黑體都沒有。所以要用的資料都要先在 GitHub 的兩個 repo 裡：
-  - `kblab2024/pathology-slide-kit`（公開）：工具、工作流、風格指南、題庫、文件；
+  - `kblab2024/pathology-slide-kit`（公開）：工具、工作流、風格指南、題庫、文件（維護者有私人的工作版；有權限時做課用工作版，repo 名見私人 repo 的 `AGENTS.md` 第 2 節，下文的 `pathology-slide-kit` 都換成它）；
   - `kblab2024/pathology-slide-materials`（私人）：課程資料、教科書頁圖、您的投影片語料、成品。
 - 有雲端 session 額度（cloud session credits）時先扣它；用完或過期後算進您的 Claude 方案用量。雲端電腦本身不另收運算費（見第 9 節）。
 
@@ -28,7 +28,7 @@
 ### 3.1 連 GitHub、安裝 Claude GitHub App
 
 1. 瀏覽器開 <https://claude.ai/code>，登入 Claude，照提示按 **Sign in with GitHub** 授權。
-2. 安裝 Claude GitHub App：開 <https://github.com/apps/claude/installations/new> → 選 **kblab2024** → **Only select repositories** → 勾 `pathology-slide-materials`（私人 repo 一定要裝，否則雲端看不到）和 `pathology-slide-kit` → **Install**。kblab2024 是組織時，可能要組織擁有者核准。
+2. 安裝 Claude GitHub App：開 <https://github.com/apps/claude/installations/new> → 選 **kblab2024** → **Only select repositories** → 勾 `pathology-slide-materials`（私人 repo 一定要裝，否則雲端看不到）和 `pathology-slide-kit`（有私人工作版就勾工作版）→ **Install**。kblab2024 是組織時，可能要組織擁有者核准。
 3. 之後開 session 時，repo 清單裡若沒有私人 repo，多半是 App 沒裝到那個 repo，回到這一步檢查。
 
 ### 3.2 建立雲端環境（environment）
@@ -55,7 +55,7 @@
 補充：
 
 - Setup script 以 root 身分在第一次開 session 時執行（官方要求 5 分鐘內跑完；非 0 結束碼會讓 session 開不起來），結果存成檔案系統快照，約 7 天內的新 session 直接用快照、不再重跑；改了 Setup script 或網路設定會重建快照。用上面的啟動腳本時，kit 的 `cloud-setup.sh` 更新會在下次重建快照時自動生效（最慢約 7 天）；要立刻生效，就在環境設定裡隨便改一下 Setup script 的註解再存檔。
-- 環境本身不綁 repo：每次開 session 都要在 repository selector 同時加 `pathology-slide-materials` 與 `pathology-slide-kit`（兩個都選 `main`）。多 repo 的 session 從兩個 clone 的上一層開始，工具會自動找到同層的素材庫。
+- 環境本身不綁 repo：每次開 session 都要在 repository selector 同時加 `pathology-slide-materials` 與 kit（有權限用私人工作版，否則 `pathology-slide-kit`；兩個都選 `main`）。多 repo 的 session 從兩個 clone 的上一層開始，工具會自動找到同層的素材庫。
 - 蒐集階段要連 PubMed／NCBI 查文獻、從 Wikimedia Commons、CDC PHIL、PMC 下載開放授權圖，或從考選部下載新一年的考題時，這些網站不在 Trusted 名單。可以把 Network access 改成 **Custom**，勾 **Also include default list of common package managers**，在 Allowed domains 加：
 
   ```text
@@ -78,7 +78,7 @@
 ### 用桌面 app
 
 1. 開新 session，在輸入框的環境下拉選 **Cloud**，選 `pathology-slides` 環境。
-2. 選 repo `kblab2024/pathology-slide-materials`，再按旁邊的 **+** 加 `kblab2024/pathology-slide-kit`。兩個 repo 各有分支選單，都選 `main`（接續舊工作時選上次 session 推上去的分支）。
+2. 選 repo `kblab2024/pathology-slide-materials`，再按旁邊的 **+** 加 kit（有權限用私人工作版，否則 `kblab2024/pathology-slide-kit`）。兩個 repo 各有分支選單，都選 `main`（接續舊工作時選上次 session 推上去的分支）。
 3. 模型選 **Opus**。
 4. 權限模式選 **Accept edits**（Claude 改檔不逐一問您）；想先看計畫再動手就選 **Plan**。雲端沒有逐項核准的 Manual 模式。
 5. 貼上第 5 節的第一句話，按 Enter。
@@ -93,11 +93,13 @@ Claude app 的 **Code** 分頁可以看進度、回答問題，不適合開新�
 
 ## 5. 第一句話（複製後改角括號內容）
 
-```text
-請先讀 pathology-slide-kit/CLAUDE.md 與 pathology-slide-materials/CLAUDE.md，
-再讀 pathology-slide-kit/docs/教師偏好與決策.md 與 docs/SOP_新教案流程.md。
+開一門新課（第一個 session 只做階段 0；四個階段、一個階段一個 session，見 kit 的 `docs/多session做法.md`）：
 
-任務：做一份新教案。
+```text
+請先讀 pathology-slide-kit/AGENTS.md 與 pathology-slide-materials/AGENTS.md（kit 加的是私人工作版時，換成它的資料夾名），
+再讀 kit 的 docs/教師偏好與決策.md、docs/多session做法.md 與 docs/SOP_新教案流程.md。
+
+任務：開一門新課。這個 session 只做階段 0（腳本與工具，不開工作流）。
 - 主題：<例：呼吸系統病理>
 - 課程代碼與對象：<例：A1，醫學系與中醫甲>
 - 上課日期與節數：<例：2026-11-05，兩節，每節 50 分鐘講完>
@@ -108,18 +110,25 @@ Claude app 的 **Code** 分頁可以看進度、回答問題，不適合開新�
 做法：
 1. 先照 style/guide/50_檢查/51_撰寫前檢查清單.md A 段列出要問我的問題，一次問完。
    我沒回答的照預設做，並記進待教師裁決清單。
-2. 課程資料夾叫 courses/<英文名>，照 SOP 第 0 步建立。
-3. 每個工作流開始前，先告訴我預計派幾個代理、做哪些事、以 API 牌價估計約多少錢（kit 的 docs/cloud_session_教學.md 第 9 節），等我回「好」再跑。代理一律用 Opus。
-4. 每完成一個階段，就在 pathology-slide-materials 的 session 分支 commit 並 push。
-5. 做完後把成品 PPTX 用 git add -f 加入並 push，
+2. 課程資料夾叫 courses/<英文名>，照 SOP 第 0 步建立（含 _archive/handoff.md）。
+3. 階段 0 做完：更新 handoff（下一個 session 的第一句、下一階段的工作流與代理數上限），
+   在 pathology-slide-materials 的 session 分支 commit 並 push。之後每個階段開一個新 session。
+4. 每個工作流開始前，先空跑數出代理數上限，告訴我預計派幾個代理、每個角色的強度、做哪些事、以 API 牌價估計約多少錢（kit 的 docs/cloud_session_教學.md 第 9 節），等我回「好」再跑。代理一律用 Opus，每個代理都明寫 effort。
+5. 交件時把成品 PPTX 用 git add -f 加入並 push，
    告訴我分支名稱、檔案路徑、張數、檢查結果、待我裁決的項目數。
 ```
 
-之後接續舊工作的第一句話：
+之後每個階段、或接續舊工作的第一句話（第二行就是該課 handoff 最上面那一句；2026-10-14 以前開的課沒有 handoff，改讀該課 CLAUDE.md 的「待辦」）：
 
 ```text
-請先讀兩個 repo 的 CLAUDE.md 與 courses/<英文名>/CLAUDE.md。
-接續 <課程> 的 <階段，例：撰寫>：用 kit 的 workflows/tools/done_from_journal.py 重建 DONE 表
+請先讀兩個 repo 的 AGENTS.md。然後：
+先讀 pathology-slide-materials/courses/<英文名>/_archive/handoff.md 與 pathology-slide-materials/courses/<英文名>/CLAUDE.md，驗環境，然後做階段 <N>。
+```
+
+工作流做到一半中斷時，再加：
+
+```text
+用 kit 的 workflows/tools/done_from_journal.py 重建 DONE 表
 （courses/<英文名>/_archive/journals/ 有 journal 就用它，沒有就用 --scan 掃已有的輸出檔），
 只跑還沒完成的代理；開跑前先告訴我剩幾個代理。
 ```
@@ -142,7 +151,7 @@ Session 做到一個段落會把分支推上 GitHub（名稱通常以 `claude/` 
 2. **本機 git**：已經 clone 過的話，在私人 repo 資料夾執行 `git fetch` 再 `git switch <分支名稱>`（或用 GitHub Desktop 切分支），檔案就在 `courses/<課程>/成品/`。
 3. **Create PR**：在 session 的 diff 檢視（顯示 `+數字 -數字` 的地方）按 **Create PR**，到 GitHub 檢查後按 Merge，成品與中間檔就進 `main`。建議等您確認成品再 merge。
 
-注意：成品 PPTX 預設被 `.gitignore` 排除（檔案大、可重產），所以要 Claude 用 `git add -f` 加入交件的那一個檔。GitHub 單檔上限 100 MB（50 MB 以上會警告）；immune 的 184 張約 58 MB。每提交一版 PPTX，repo 歷史就多約 60 MB，所以同一門課只提交最後交件的那一版；中途要看的版本看 PDF（小很多）。要保留多個版本時，請 Claude 把 PPTX 放到 GitHub Release 的附件。
+注意：成品 PPTX 預設被 `.gitignore` 排除（檔案大、可重產），所以要代理用 `git add -f` 加入交件的那一個檔。GitHub 單檔上限 100 MB（50 MB 以上會警告）；immune 的 184 張約 58 MB。每提交一版 PPTX，repo 歷史就多約 60 MB，所以只提交交給您的版本（毛胚、草稿），中途重產的不提交；新版本推同一路徑（見 kit 的 SOP 第 10 步）。中途要看的版本看 PDF（小很多）。要保留多個版本時，請 Claude 把 PPTX 放到 GitHub Release 的附件。
 
 ## 8. 之後繼續，或拉回自己的電腦
 
@@ -157,7 +166,7 @@ Session 做到一個段落會把分支推上 GitHub（名稱通常以 `claude/` 
 
 **扣款順序**（依 2026-09-25 claude.ai 用量頁的說明文字）：
 
-1. **雲端 session 額度（Cloud session credits）**：2026-09 雲端 session 正式推出時送的一次性額度（Pro $100、Max $250；須在 2026-10-07 前到 <https://claude.ai/code/claim-credit/10> 或在 CLI 打 `/claim-credit` 領取，要先連 GitHub）。用量頁原文：「Applies automatically to cloud sessions. After it's used or expires, your plan's regular usage applies.」所以**雲端 session 先扣這筆**，不必另外設定。到期時間寫在用量頁（2026-09 領取的約在 11 月初到期）。只用在雲端 session；本機 session（桌面 app 選 Local、終端機）不會用到它。
+1. **雲端 session 額度（Cloud session credits）**：2026-09 雲端 session 正式推出時送的一次性額度（Pro $100、Max $250；須在 2026-10-07 前到 <https://claude.ai/code/claim-credit/10> 或在 CLI 打 `/claim-credit` 領取，要先連 GitHub）。用量頁原文：「Applies automatically to cloud sessions. After it's used or expires, your plan's regular usage applies.」所以**雲端 session 先扣這筆**，不必另外設定。到期時間寫在用量頁（2026-09 領取的約在 11 月初到期）。只用在雲端 session；本機 session（桌面 app 選 Local、終端機）不會用到它。（以上是 2026-09-25 查閱時的情況；領取期限 2026-10-07 已過。）
 2. **方案用量（5 小時與每週上限）**：雲端額度用完或過期後，雲端 session 改算進方案用量，與 claude.ai 聊天、本機 Claude Code 共用。雲端電腦本身不另收運算費。
 3. **Usage credits（自己買的額外用量）**：只有在用量頁把「Turn on usage credits to keep using Claude if you hit a plan limit」打開時，方案上限用完後才會扣。**這個開關關著，買的 credits 就一毛都不會動**；方案上限用完時 session 會停下來等重置。要保護買的 credits，就讓它維持關閉，碰到上限時跳出的「開啟 usage credits」提示也不要按。
 
@@ -182,46 +191,46 @@ Session 做到一個段落會把分支推上 GitHub（名稱通常以 `claude/` 
 | 風格挖掘 `style-mining.js` 全跑 | 約 89 | 約 $750–850 | **已完成，不必重跑** |
 | 風格指南 `style-guide.js` | 約 49 | $408 | **已完成，不必重跑** |
 
-一門約 180 張的新課，從蒐集到兩輪審查約 $950–1,200；只做一輪審查約 $830–990。
+一門約 180 張的新課，從蒐集到兩輪審查約 $950–1,200；只做一輪審查約 $830–990。四階段做法（uro-a3，2026-10-14）的代理數與 token 實測見 kit 的 `workflows/README.md`「代理數與費用」。
 
 **$250 能做到哪裡**（以 API 牌價換算；雲端 session 一開始就從這筆扣）：
 
 - 不夠做完一門約 180 張的新課，約差 3–5 倍。
-- 大約是其中一段：藍圖（$150–190）加撰寫的 3–5 批；或撰寫全部（約 $230）；或一輪審查（約 $150）加第二輪只審 2 個面向、1 位反駁（約 $50–80）；或蒐集只做教科書事實、1 位反駁（13 段 × 3 個代理，約 $80–200）。
-- 全部用下面的省錢設定（反駁者 1 位、文獻題目減半、藍圖 2 個視角 2 位評審、撰寫每批 20 張、審查一輪），整門課依上表單價推估仍約 $550–800（未實測）。
+- 大約是其中一段：藍圖（$150–190）加撰寫的 3–5 批；或撰寫全部（約 $230）；或一輪審查（約 $150）加第二輪只審 2 個非事實面向、1 位反駁（約 $50–80）；或蒐集只做教科書事實（13 段 × 4 個代理，事實類固定 2 位反駁，約 $100–260）。
+- 全部用下面的省錢設定（審查的非事實面向反駁者 1 位、文獻題目減半、藍圖 2 個視角 2 位評審、撰寫每批 20 張、審查一輪），整門課依上表單價推估仍約 $580–870（未實測；舊估算把蒐集的反駁也減成 1 位，是 $550–800）。
 - $250 用完後，雲端 session 接著吃方案用量（和本機共用），不會自動動到買的 usage credits（見上面扣款順序第 3 點）。額度有到期日，過期作廢，所以到期前把最重的階段排進雲端最划算。
 
-**先量再估**：第一次在雲端做新課時，開跑藍圖（10 個代理）前後各看一次 Usage 頁的 Cloud session credits 剩餘金額，就能算出一個代理實際扣多少，再乘上後面各階段的代理數。每個工作流開跑前，Claude 會先報代理數與上表的估計金額，等您同意。
+**先量再估**：第一次在雲端做新課時，開跑藍圖（10 個代理）前後各看一次 Usage 頁的 Cloud session credits 剩餘金額，就能算出一個代理實際扣多少，再乘上後面各階段的代理數。每個工作流開跑前，Claude 會先空跑數出代理數上限，照上限報代理數與估計金額，等您同意。
 
 **省錢設定**：
 
 1. **不重跑風格研究。** 風格挖掘與風格指南已經完成（合計約 140 個代理）。您有新的改稿時，照 `style/guide/00_README.md`「版本與更新規則」局部更新，不必開工作流。新課程只需要 1 個代理產撰寫 brief（kit `workflows/README.md`「新課程的撰寫 brief」）。
 2. **審查只做一輪。** immune 第二輪的修正數明顯少於第一輪；需要第二輪時只審問題多的面向，例如參數加 `lenses: ["layout","facts"]`（6 個面向減成 2 個，19 個代理減成 7 個）。
 3. **蒐集階段縮小範圍。** 課程的 `gather.json` 裡，文獻題目只留真的會上的（每題 3 個代理；不需要圖的題目設 `"images": false`，每題 2 個）；題庫已有就維持 `exam.update_bank: false`（不下載）；完全不要選國考題的課才用參數 `parts: ["facts","literature"]`（拿掉整個國考部分）；教科書分段不要切太細（每段 4 個代理）。
-4. **反駁者從兩位減成一位。** 蒐集與審查都有 `refuters` 參數（預設 2）；設 `refuters: 1`，教科書每段從 4 個代理減成 3 個、審查每個面向從 3 個減成 2 個。藍圖的評審數用 `judges`（預設 3）、視角數用 `lenses`（預設 3）。這會降低查核強度，事實類的部分（教科書事實帳、facts 面向）建議保留兩位。
+4. **審查的非事實面向，反駁者可以從兩位減成一位。** 審查有 `refuters` 參數（預設 2），但它套到這次跑的每個面向；facts 面向固定兩位，所以要減就把非事實面向另跑一次（例 `lenses: ["terms","layout"]`、`refuters: 1`），每個面向從 3 個代理減成 2 個。蒐集的 `refuters` 只用在教科書事實帳，不要減（kit 的 `AGENTS.md` 硬規則 16：每份批評檔 2 位、只做一輪）。審查的非事實面向減成一位是 2026-10-14 以前就有的省錢選項，那一位推翻就丟，所以只用在非事實面向，報價時寫明。藍圖的評審數用 `judges`（預設 3）、視角數用 `lenses`（預設 3）。
 5. **撰寫批次大一點。** `make_batches.py --size 20` 可以減少批數（每批 5 個代理）；一批太大，撰寫者一次要顧的張數變多，品質可能下降，建議 16–20。
 6. **分次跑。** 一次只給工作流幾批，看過用量再給下一批。中途停下時用 DONE 表續跑，已完成的代理一個都不重跑。
 7. **絕不整批重跑。** `resumeFromRunId` 只在同一台電腦、紀錄還在時可用，而且改過工作流腳本或參數之後，從第一個改動的代理起全部重跑；跨 session、本機與雲端互換時一律用 DONE 表。
-8. **對話保持精簡。** 一個 session 做一個階段；階段做完先 push，再開新 session 接下一個階段。看投影片 PNG 時先看縮圖拼板，只放大有問題的張。
+8. **對話保持精簡。** 一個 session 做一個階段（四個階段見 kit 的 `docs/多session做法.md`）；階段做完先 push，再開新 session 接下一個階段。看投影片 PNG 時先看縮圖拼板，只放大有問題的張。
 9. **不需要 AI 的步驟**（產 PPTX、轉 PDF、PDF 轉頁圖）本身不花額度，只有 Claude 下指令、讀結果那一小部分算用量。
-10. **模型一律 Opus 是既定規則。** 要省錢先減少代理數量，不要換模型。`effort: "medium"` 也能省，但品質差多少還沒實測，先在一批上比較。
+10. **模型一律 Opus 是既定規則**，反駁與複查也一樣。要省錢先減少代理數量，再照 kit 的 `workflows/README.md`「角色與強度」把機械性的角色降到 high；不要換模型，也不要整支降到 medium。每個代理都要明寫 effort：不寫會繼承主 session 當時的強度。
 
 **額度用完時**：代理回傳空結果，工作流會自動停止派新代理；Claude 會把完成清單記成 DONE 表、連同 journal 存進 `courses/<課程>/_archive/journals/` 並 push。等方案用量重置後再說「續跑」（除非您自己打開 usage credits 開關，否則不會動用買的 credits）。
 
 ## 10. 常見陷阱
 
-1. **本機記憶不在雲端。** 您在本機告訴 Claude 的偏好，雲端看不到。重要決定要寫進 repo：課程的 `brief.md`、`course.yaml`、`CLAUDE.md`，一般偏好寫進 kit 的 `docs/教師偏好與決策.md`。每個 session 結束前請 Claude 把新決定寫進去並 push。
+1. **本機記憶不在雲端。** 您在本機告訴 Claude 的偏好，雲端看不到。重要決定要寫進 repo：課程的 `brief.md`、`course.yaml`、`CLAUDE.md`、`_archive/handoff.md`，一般偏好寫進 kit 的 `docs/教師偏好與決策.md`。每個 session 結束前請 Claude 把新決定寫進去並 push。
 2. **沒有 PowerPoint 和微軟正黑體。** 雲端的 PDF 預覽用 LibreOffice＋Noto 字型，斷行、字距可能和您電腦上的 PowerPoint 略有不同。PPTX 內指定的字型仍是微軟正黑體；上課前在自己電腦用 PowerPoint 打開看一次。
 3. **檔案大小。** GitHub 單檔上限 100 MB（50 MB 以上警告），網頁上傳限 25 MB。教科書 PDF 不放 repo，只放頁圖。
 4. **著作權與隱私。** Robbins 的頁圖、切圖、事實帳，以及同事的講義，只放私人 repo。公開的 kit 不放任何課程檔案；kit 有改動時，請 Claude 先跑 `python check_public.py`（FAIL 要是 0），按 Create PR 前也看一下 kit 改了哪些檔。
 5. **只能推到 session 自己的分支。** 不要請 Claude 直接推 `main`；用 Create PR 或手動 merge。
-6. **兩個 repo 的 session** 不會讀各 repo 的 `.claude/settings.json`（hooks、權限規則）；各 repo 的 CLAUDE.md 什麼時候載入，官方沒有寫清楚，所以第一句話一定要叫 Claude 先讀兩份 CLAUDE.md。
-7. **Workflow 工具**（多代理腳本）在雲端 session 能不能用、能同時跑幾個代理，還沒有實測，請以官方說明為準；雲端電腦的 CPU 數可能比您的電腦少，同時跑的代理數跟著變少，整體會比較慢。第一次請 Claude 先用小範圍試（例：蒐集只跑一段）。不能用時，請 Claude 照 kit 的 `AGENTS.md` 一步一步循序做（較慢，產出的檔案相同）。
-8. **Setup 快取約 7 天**；`cloud-setup.sh` 更新後要重新貼進環境設定。
+6. **兩個 repo 的 session** 不會讀各 repo 的 `.claude/settings.json`（hooks、權限規則）；session 從兩個 clone 的上一層開始，子資料夾裡的 CLAUDE.md 要等 Claude 讀到那個資料夾的檔才載入（官方文件，2026-10 查），所以第一句話一定要叫 Claude 先讀兩個 repo 的 `AGENTS.md`（兩邊的 CLAUDE.md 都只是匯入它）。
+7. **Workflow 工具**（多代理腳本）在雲端 session 能不能用、能同時跑幾個代理，還沒有實測，請以官方說明為準；雲端電腦的 CPU 數可能比您的電腦少，同時跑的代理數跟著變少，整體會比較慢。第一次請 Claude 先用小範圍試（例：蒐集只跑一段）。不能用時，請 Claude 照 kit 的 `AGENTS.md` 第 4.0 節（沒有 Workflow 工具時的做法）與 `docs/跨工具做法.md` 一步一步做（較慢，產出的檔案相同）。
+8. **Setup 快照約 7 天**；用第 3.2 節的啟動腳本時，`cloud-setup.sh` 更新會在快照重建時自動生效（最慢約 7 天）；整份貼 `cloud-setup.sh` 的做法才要在更新後重貼。
 9. **閒置回收。** 見第 6 節；每個階段都要 push。
 10. **在自己電腦上跑、用網頁或手機遙控（Remote Control）時**，關掉遙控或本機的 Claude Code 結束後，網頁會顯示「This session's environment was deleted」，那個網頁 session 就不能再打字。但檔案、本機 commit 和對話紀錄都還在您的電腦上，沒有遺失。會真正中斷的是正在跑的工作流。
     - 工作流在跑時，不要關遙控，也不要關本機終端機；只是不想看的話，關瀏覽器分頁或手機 app 就好。
     - 電腦不要睡著：另開一個終端機視窗執行 `caffeinate -i`；闔上筆電要接電源。
     - 要接回來：在本機終端機進到同一個資料夾，執行 `claude --continue`（接最近一次對話）或 `claude --resume`（從清單選），再重新開遙控。
-    - 工作流被中斷時，照 CLAUDE.md 規則 9 用 DONE 表（`args.done`）重跑剩下的代理，不要用 `resumeFromRunId`。
+    - 工作流被中斷時，照 kit `AGENTS.md` 硬規則 9 用 DONE 表（`args.done`）重跑剩下的代理，不要用 `resumeFromRunId`。
     - 每個階段照樣 commit＋push，GitHub 是電腦本身出事時的最後一道備份。

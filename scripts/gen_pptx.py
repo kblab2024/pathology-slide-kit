@@ -43,6 +43,11 @@ os.makedirs(_TMP, exist_ok=True)
 _PREP = {}
 CN_NUM = {1: "一", 2: "二", 3: "三", 4: "四"}
 NL = chr(10)
+# 2026-10-15 依 uro-a3 118 張的 PowerPoint 實排校正：表格每行實際高度是估算的 0.98–1.18 倍（中英對照的長詞換行比量字多），
+# 中位數 1.06；表格原本也沒扣掉資料來源行。乘 1.10 並扣出處行後，16 張實際壓到出處行的表格全部抓得到（誤報 1 張，都是很滿的表）。
+TABLE_LINE_K = 1.10
+# 標題與分隔張標題量字時多留的寬度（in）：uro-a3 有標題估 2 行、實排 3 行，壓到第一條。
+TITLE_MARGIN = 0.30
 
 
 class G:
@@ -379,10 +384,10 @@ def content_title(slide, s, size=None):
     t = s["title"]
     w = G.SW - 2 * G.M - 0.26
     size = size or G.S["title"]
-    lines = n_lines(t, size, w, bold=True)
+    lines = n_lines(t, size, w - TITLE_MARGIN, bold=True)
     if lines > 2 and size == G.S["title"]:
         size = G.S["title_small"]
-        lines = n_lines(t, size, w, bold=True)
+        lines = n_lines(t, size, w - TITLE_MARGIN, bold=True)
     h = lines * line_h(size, 1.1)
     vbar(slide, G.M, 0.36, h - 0.04)
     _, tf = textbox(slide, G.M + 0.26, 0.30, w, h + 0.1)
@@ -409,10 +414,18 @@ def L_divider(slide, s, sec_label=""):
         _, ef = textbox(slide, G.M + 0.62, 1.95, G.SW - 2 * G.M, 0.5)
         para(ef, sec_label, G.S["divider_sub"], color=DARK_TEXT["low"], bold=True, first=True)
     vbar(slide, G.M + 0.32, 2.55, 1.8, hexc=G.D["terra"], w=0.10)
-    _, tf = textbox(slide, G.M + 0.62, 2.5, G.SW - 2 * G.M - 0.7, 3.0)
-    para(tf, s["title"], G.S["divider"], color="FFFFFF", bold=True, first=True, line=1.2)
+    tw = G.SW - 2 * G.M - 0.7
+    tsize = G.S["divider"]
+    t_need = n_lines(s["title"], tsize, tw - TITLE_MARGIN, bold=True) * line_h(tsize, 1.2)
+    if t_need > 2.7:   # 標題超過約 3 行：縮字，免得壓到副標
+        tsize = max(G.S["title"], int(tsize * 0.8))
+        t_need = n_lines(s["title"], tsize, tw - TITLE_MARGIN, bold=True) * line_h(tsize, 1.2)
+    _, tf = textbox(slide, G.M + 0.62, 2.5, tw, max(3.0, t_need + 0.1))
+    para(tf, s["title"], tsize, color="FFFFFF", bold=True, first=True, line=1.2)
     if s["bullets"]:
-        _, bf = textbox(slide, G.M + 0.62, 5.3, G.SW - 2 * G.M - 0.7, 1.6)
+        sub_y = max(5.3, 2.5 + t_need + 0.25)
+        note_fit(s, sub_y + 1.0, G.SH - 0.2, "分隔張標題＋副標")
+        _, bf = textbox(slide, G.M + 0.62, sub_y, tw, 1.6)
         for i, b in enumerate(s["bullets"][:2]):
             para(bf, bullet_level(b)[1], G.S["divider_sub"], color=DARK_TEXT["mid"], first=(i == 0), line=1.2)
 
@@ -597,12 +610,12 @@ def L_table3(slide, s):
     widths = [max(1.3, x) for x in widths]
     scale = tw / sum(widths)
     widths = [x * scale for x in widths]
-    avail = G.SH - y0 - 0.45
+    avail = G.SH - y0 - 0.45 - getattr(G, "src_h", 0.0)
     size = G.S["table"]
     for cand in (G.S["table"], G.S["table_min"]):
         size = cand
         need = sum(max(n_lines(r[j], cand, widths[j] - 0.2, bold=(i == 0 or j == 0)) for j in range(ncol))
-                   * line_h(cand, 1.1) + 0.14 for i, r in enumerate(rows))   # 0.14＝儲存格上下邊界＋框線
+                   * line_h(cand, 1.1) * TABLE_LINE_K + 0.14 for i, r in enumerate(rows))   # 0.14＝儲存格上下邊界＋框線
         if need <= avail:
             break
     note_fit(s, need, avail, "表格")

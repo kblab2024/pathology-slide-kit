@@ -170,7 +170,10 @@ def main(course, pptx_path, deck, section=None):
         for sid, v in rep["slides"].items():
             for f in v["fits"]:
                 if f["overflow"]:
-                    (reds if f["need_in"] > f["avail_in"] * 1.15 else warns).append(
+                    # 表格、分隔張的估算已含 PowerPoint 實排校正（gen_pptx TABLE_LINE_K、TITLE_MARGIN，2026-10-15），超出就是 RED；
+                    # 其他版型沿用 15% 容差。
+                    strict = f["what"] in ("表格", "分隔張標題＋副標")
+                    (reds if strict or f["need_in"] > f["avail_in"] * 1.15 else warns).append(
                         f"#{v['num']} {sid} {f['what']} 估算需 {f['need_in']}in > 可用 {f['avail_in']}in")
     for m in warns:
         print("[WARN] " + m)

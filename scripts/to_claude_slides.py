@@ -140,7 +140,7 @@ class R:
             if not q:
                 return self.section(s, self.title(s) + f'<p style="font-size:56px">（題庫查無 {esc(s["quiz"])}）</p>', note=note)
             tpl = self.c.deck(s["deck"]).get("quiz_label", "{年度}-{第幾次} 第{題號}題")
-            label = tpl.format(年度=q["年度"], 第幾次=CN_NUM.get(int(q["第幾次"]), q["第幾次"]), 題號=q["題號"])
+            label = tpl.format(年度=q["年度"], 第幾次=CN_NUM.get(int(q["第幾次"]), q["第幾次"]), 次=q["第幾次"], 題號=q["題號"])
             ans = [a.strip() for a in str(q["answer"]).split(",")]
             opts = "".join(
                 f'<p style="font-size:{self.pt("quiz")}px; line-height:1.3; color:'

@@ -128,7 +128,7 @@ IMG 路徑一律寫相對於課程資料夾的路徑（`assets/images/…`），
 | pair | 兩圖並排（可加標籤） | 說明 ≤2 行 |
 | robbins | 整張教科書圖 | 說明 ≤1 行 |
 | table3 | 表格（≥20pt；超過 table_max_rows 自動拆成同標題連張） | 每格短語 |
-| quiz | 國考題：course.yaml `decks.<deck>.quiz_style` 乙（預設；年次標題＋題幹選項 24–28pt，正解整段藍）或 甲（1 列 3 欄表「正解字母粗體｜題號．題幹＋選項｜年度-次」，不放標題） | 官方原文 |
+| quiz | 國考題：course.yaml `decks.<deck>.quiz_style` 乙（預設；年次標題＋題幹選項 24–28pt，正解整段藍；標題格式 `quiz_label`，佔位 {年度} {第幾次}（一、二） {次}（1、2） {題號}；題幹色 `design.quiz_stem`，不寫＝deep）或 甲（1 列 3 欄表「正解字母粗體｜題號．題幹＋選項｜年度-次」，不放標題） | 官方原文 |
 | stats | 大數字卡片（`數字｜說明`） | 2–4 張卡 |
 | diagram | 框架圖（course.yaml diagrams） | 格子 ≥20pt；4 欄時每行約 7 個中文字，每格最多兩行（約 14 字，含英文） |
 

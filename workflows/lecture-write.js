@@ -60,7 +60,7 @@ if (!BATCHES) {
 
 TASK (mechanical; do not create or change any file): return the content of the batches file ${BF} (written by scripts/make_batches.py).
 Run: PYTHONIOENCODING=utf-8 python -c "import json,sys; print(json.dumps(json.load(open(sys.argv[1], encoding='utf-8')), ensure_ascii=False))" "${BF}"
-Return ok=true and json_text = the printed line, copied exactly. If the file is missing or is not valid JSON, return ok=false, json_text="" and explain in notes (e.g. run ${RUN} make_batches.py "${BP}" "${BF}" first).`, { label: 'load:batches', phase: 'Load', schema: JTXT, model: 'opus', effort: 'low' })
+Return ok=true and json_text = the printed line, copied exactly. If the file is missing or is not valid JSON, return ok=false, json_text="" and explain in notes (e.g. run ${RUN} make_batches.py "${BP}" "${BF}" first).`, { label: 'load:batches', phase: 'Load', schema: JTXT, model: 'opus' })
   if (!lj || !lj.ok) { log('could not load batches from ' + BF + ': ' + (lj ? lj.notes : 'agent returned null')); return { error: 'no batches', notes: lj ? lj.notes : null } }
   try { const d = JSON.parse(lj.json_text); BATCHES = Array.isArray(d) ? d : d.batches } catch (e) { log('batches file is not valid JSON: ' + e); return { error: 'bad batches json' } }
 }

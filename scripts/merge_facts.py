@@ -62,7 +62,7 @@ def main():
     if X["conflicts"] or R["contradictions"]:
         L += ["", "## 衝突與矛盾（交教師裁決）", ""]
         L += [f"- Robbins 自身：{x}" for x in R["contradictions"]]
-        L += [f"- 文獻 vs Robbins（{x.get('topic')}）：Robbins「{x.get('robbins')}」／文獻「{x.get('paper')}」" for x in X["conflicts"]]
+        L += [f"- 文獻 vs Robbins（{x.get('topic')}）：Robbins「{x.get('robbins') or x.get('textbook')}」／文獻「{x.get('paper')}」" for x in X["conflicts"]]
     open(os.path.join(c["dir"], "facts", "facts.md"), "w", encoding="utf-8", newline="\n").write("\n".join(L) + "\n")
     print(f"R {len(R['facts'])}（重複 id {len(dup)}）、figures {len(R['figures'])}、tables {len(R['tables'])}、"
           f"X {len(X['claims'])}／剔除 {len(X['rejected'])}／衝突 {len(X['conflicts'])}；segments {len(R['segments'])}")

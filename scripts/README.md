@@ -1,7 +1,7 @@
 # scripts/：共用教案工具（只有一份，所有課程共用）
 
 讀課程設定的工具用 `--course <課程>` 指定課程；`<課程>` 是課程資料夾名（例 `immune`），或直接給 course.yaml（或含它的資料夾）的路徑。
-收 `--course` 的：gen_pptx、check_deck、style_check、img_todo、fit_capacity、assemble、merge_facts、merge_written、validate_blueprint、check_written、render_pdf_pages、robbins_crop、to_claude_slides。
+收 `--course` 的：gen_pptx、check_deck、style_check、img_todo、fit_capacity、assemble、merge_facts、merge_written、validate_blueprint、check_written、render_pdf_pages、robbins_crop、to_claude_slides、html_deck。
 不收 `--course` 的（照下方各自的用法）：make_batches、export_pdf、extract_deck_images、dump_pptx、diff_decks、gen_lab_pptx、verify_quotes、check_public、fetch_moex_dent_exam、parse_moex_exam。每支都有 `--help`。
 所有路徑、字級、色票、選單、國考題庫、框架圖都在 course.yaml；**換課程不改程式，只改 course.yaml**。
 安裝見 `../setup/windows.md`、`../setup/mac.md`（本機）與 `../setup/cloud-setup.sh`（雲端或其他 Linux，Ubuntu）。
@@ -86,6 +86,7 @@ gen_pptx 每次會印出「量字字型：…」，也寫進 `_layout.json` 的 
 - `check_written.py --course <課程> --blueprint <bp.json> <batch.json…>`：撰寫批次的自我檢查（rules.yaml、glossary（`bilingual: per_slide` 時逐張中英，其他模式只查禁用變體）、字數條數）。
 - `merge_written.py --course <課程> --dir <written> --blueprint <bp.json>`：各批合併成 written.json，glossary_additions 併進 glossary.md，issues 彙整成 issues.md。
 - `to_claude_slides.py --course <課程> …`：把素材池轉成 Claude Slides（網頁投影片）的檔案，見該檔 docstring。
+- `html_deck.py --course <課程> [--max-side 1200] [--quality 75]`：產一個圖片內嵌的 HTML 檔（`成品/…(HTML)_日期.html`），不需上傳，手機或任何瀏覽器直接開；←／→ 換張。教師 2026-10-14「成品要有 html 版」。
 
 Mac、任務 B 與交件工具（不收 `--course`，除了 draw_flow 的 `--course` 只讀配色）：
 - `ppt_pdf_mac.sh <課程>/成品/<in.pptx> [out.pdf] [png資料夾] [縮圖資料夾]`：Mac 用 PowerPoint for Mac 存 PDF，再用 export_pdf.py 的函式出拼板與逐張 PNG（預設放 `<課程>/_archive/render/{png,sheets}`）。只接受課程 `成品/` 底下的檔、拒絕 OneDrive 路徑；PowerPoint 開著別的簡報就停（結束碼 3），只開、只存、只關自己那一份。第一次跑會跳 macOS 自動化授權，要教師在電腦前按允許。

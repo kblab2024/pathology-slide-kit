@@ -176,7 +176,7 @@ Mac 的 PDF 與 PNG 改用 `bash scripts/ppt_pdf_mac.sh "<成品>/<檔名>.pptx"
 ## 5. 產出放哪、怎麼交回
 
 - 中間檔：`<materials>/courses/<course>/_archive/{gather,blueprint,written,review,render,journals}/`；交接檔 `_archive/handoff.md`。
-- 成品：`<materials>/courses/<course>/成品/`：PPTX、PDF、同名 `_layout.json`（每張的 slug 與張號，回灌用）、`待教師裁決清單.md`、`待補圖清單.md`、HTML 版（`scripts/to_claude_slides.py` 從素材池產生；見教師偏好第 8 節）。檔名寫課程代碼不寫系名：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`，PDF 同名改 `(PDF)`（`course.yaml` 的 `decks.<deck>.filename`）。
+- 成品：`<materials>/courses/<course>/成品/`：PPTX、PDF、同名 `_layout.json`（每張的 slug 與張號，回灌用）、`待教師裁決清單.md`、`待補圖清單.md`、HTML 版（`scripts/html_deck.py` 從素材池產生一個圖片內嵌的 HTML 檔，手機與任何瀏覽器直接開；見教師偏好第 8 節）。檔名寫課程代碼不寫系名：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`，PDF 同名改 `(PDF)`（`course.yaml` 的 `decks.<deck>.filename`）。
 - **交給教師的一律是草稿**：檔名、資料夾、一起交的檔、交件管道（OneDrive、git、Dropbox）照 `docs/教師偏好與決策.md` 第 8 節。放進他的 OneDrive 的步驟與禁用檔名只在他那台 Mac 的工作區 `AGENTS.md`；讀不到那份檔的環境不要寫 OneDrive。用 git 交件的指令見 `docs/SOP_新教案流程.md` 第 10 步。
 - 每跑完一個階段（蒐集、藍圖、撰寫、充實、每一輪審查）就 commit＋push 一次 `_archive/`（含 `journals/`）與來源檔：雲端 VM 閒置會被回收，沒 push 的檔案與正在跑的工作流不會回來。雲端 session 只能 push 到 session 目前的工作分支。commit 並 push 到這門課的工作分支（雲端是 session 的分支）不必問；開 PR、合併進 main、直接 push 到 main 照教師當次的指示，沒有指示先問（kit 的工作版同步到公開版，是教師 2026-10-14 已說好的）。
 - 最後告訴使用者：分支名稱、成品路徑、張數、檢查結果、待他裁決的項目數。

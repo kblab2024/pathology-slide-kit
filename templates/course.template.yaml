@@ -88,6 +88,9 @@ sizes:
   table_max_rows: 5       # 表格超過就自動拆成同標題連張（含表頭）
   # 頁碼：gen_pptx 從不放頁碼（他的 deck 不放；靜態頁碼 check_deck 判 RED），不必設定
 
+layout:                   # 選填：版型微調
+  left_min_frac: 0.47     # left 版型文字欄最窄比例；條列都很短（每條一行）時可設 0.30，圖放大（預設 0.47＝不縮）
+
 design:                   # 選填：覆寫 scripts/common.py 的 DESIGN 色票（藍×赤陶）
   cobaltd: "333F50"       # 此例：說明句底色改中性藍灰，讓 [[藍:]] 與國考正解才是藍
   # quiz_stem: "1E2A35"   # 選填：乙式國考題題幹色（不寫＝deep，和標題同色）；正解色是 emphasis.藍

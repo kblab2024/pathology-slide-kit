@@ -34,7 +34,7 @@ from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import (DARK_TEXT, FONT, build_deck, bullet_level, deck_filename, load_course,  # noqa: E402
+from common import (DARK_TEXT, FONT, SOFT_BREAK, build_deck, bullet_level, deck_filename, load_course,  # noqa: E402
                     notes_map, parse_markup, parse_pool, parse_script, strip_markup)
 
 Image.MAX_IMAGE_PIXELS = None
@@ -151,12 +151,21 @@ def para(tf, text, size, color=None, bold=False, align=PP_ALIGN.LEFT, space_afte
     text = unicodedata.normalize("NFC", text or "")
     segs = parse_markup(text, G.EMPH) if markup else [(text, None)]
     for t, col in segs:
-        if not t:
-            continue
-        r = p.add_run()
-        r.text = t
-        _font(r, size, col or color, bold)
+        for k, piece in enumerate(t.split(SOFT_BREAK)):
+            if k:
+                p.add_line_break()                      # 「⏎」＝段內換行
+            for part in _URL.split(piece):
+                if not part:
+                    continue
+                r = p.add_run()
+                r.text = part
+                _font(r, size, col or color, bold)
+                if _URL.fullmatch(part):
+                    r.hyperlink.address = part          # 網址可點（教師原檔的下載網址是超連結）
     return p
+
+
+_URL = re.compile(r"(https?://[^\s，。、；）」]+)")
 
 
 def rect(slide, x, y, w, h, hexc=None, line_hex=None, line_w=1.0, rounded=False, radius=0.06, alpha=None):
@@ -197,9 +206,12 @@ _FONTS = {}
 _TOK = re.compile(r"[A-Za-z0-9\-\.,;:%/()\[\]'’&+=<>µ·~_]+|\s+|.")
 _WINFONTS = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts")
 # 量字用的字型（名稱, Regular, Bold），依序取第一個存在的。PPTX 內的字型名稱一律是 common.FONT（微軟正黑體），
-# 這裡只影響換行估算：Windows 用微軟正黑體本身；Ubuntu（雲端）用 fonts-noto-cjk 的 Noto Sans CJK TC（中文字寬相同，英文略寬）。
+# 這裡只影響換行估算：Windows 用微軟正黑體本身；Mac 用 PowerPoint for Mac 內建的同一套字型；Ubuntu（雲端）用 fonts-noto-cjk 的 Noto Sans CJK TC（中文字寬相同，英文略寬）。
 MEASURE_FONTS = [
     ("Microsoft JhengHei", os.path.join(_WINFONTS, "msjh.ttc"), os.path.join(_WINFONTS, "msjhbd.ttc")),
+    # Mac：PowerPoint for Mac 內建的微軟正黑體（和 Windows 同一套字寬；不必再設 SLIDEKIT_MEASURE_FONT）
+    ("Microsoft JhengHei", "/Applications/Microsoft PowerPoint.app/Contents/Resources/DFonts/MSJH.ttf",
+     "/Applications/Microsoft PowerPoint.app/Contents/Resources/DFonts/MSJHBD.ttf"),
     ("Noto Sans CJK TC", "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
      "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"),
     ("Noto Sans CJK TC", "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
@@ -272,7 +284,9 @@ def _w(tok, bold):
 
 
 def n_lines(text, size, width_in, bold=False):
-    """以實際字型量測模擬換行：中文逐字可斷，英文單字（含相連括號、標點）不斷。"""
+    """以實際字型量測模擬換行：中文逐字可斷，英文單字（含相連括號、標點）不斷。「⏎」段內換行分段相加。"""
+    if SOFT_BREAK in (text or ""):
+        return sum(n_lines(t, size, width_in, bold) for t in text.split(SOFT_BREAK))
     cap = max(1.0, width_in * 72.0 / size)
     lines, cur = 1, 0.0
     for tok in _TOK.findall(strip_markup(text or "")):
@@ -284,9 +298,11 @@ def n_lines(text, size, width_in, bold=False):
         if cur + w <= cap:
             cur += w
         elif w > cap:
-            total = cur + w
-            lines += int(total // cap)
-            cur = total % cap
+            # 比一整行還長的詞（例：長網址）：PowerPoint 先把它移到新的一行再斷
+            if cur > 0:
+                lines += 1
+            lines += int(w // cap)
+            cur = w % cap
         else:
             lines += 1
             cur = w
@@ -332,7 +348,7 @@ def place_image(slide, img, x, y, w, h, shadow=True):
     if cred:
         cw = cw_of(dw)
         credit(slide, cred, x + (w - cw) / 2 if cw > dw else dx, cw, dy + dh + 0.04)
-    return pic, dx, dy, dw, dh
+    return pic, dx, dy, dw, dh, (ch if cred else 0.0)   # 最後一項＝圖下出處行的高度
 
 
 def credit(slide, text, x, w, y):
@@ -435,9 +451,17 @@ def L_left(slide, s):
         return
     tw = (G.SW - 2 * G.M) * 0.47
     if s["bullets"]:
-        # 文字放不下就把文字欄加寬（47%→65%），圖讓位；仍放不下則由 note_fit 報出
-        for frac in (0.47, 0.52, 0.57, 0.62, 0.65):
+        # 文字放不下就把文字欄加寬（47%→65%），圖讓位；仍放不下則由 note_fit 報出。
+        # course.yaml layout.left_min_frac（預設 0.47）可讓條列都短（每條一行）的張把文字欄縮窄、圖放大
+        lo = float((G.course.get("layout") or {}).get("left_min_frac", 0.47))
+        fracs = [f for f in (0.30, 0.35, 0.40, 0.45) if f >= lo and f < 0.47] + [0.47, 0.52, 0.57, 0.62, 0.65]
+        for frac in fracs:
             tw = (G.SW - 2 * G.M) * frac
+            # 縮窄時留足餘裕（圓點、字距、替代字型），每條都要確定排成一行才採用
+            if frac < 0.47 and any(n_lines("• " + bullet_level(b)[1], G.S["body"],
+                                           tw - (0.32 + 0.38 * bullet_level(b)[0]) - 0.35) > 1
+                                   for b in s["bullets"]):
+                continue
             if bullets_need(s["bullets"], G.S["body"], tw) <= avail:
                 break
         render_bullets(slide, s, s["bullets"], G.M + 0.05, y0, tw, avail, G.S["body"])
@@ -470,12 +494,33 @@ def L_flash(slide, s):
     note_fit(s, y, G.SH - 2.0 if imgs else G.SH - 0.4, "說明句")
 
 
+def _big_need(bullets, w):
+    return sum(n_lines(bullet_level(b)[1], G.S["big"], w) * line_h(G.S["big"], 1.15) + 10 / 72.0 for b in bullets[:3])
+
+
 def L_big(slide, s):
-    """單句大字：教師常用 36–50pt 一句話（「炎 = 火 + 火」）。"""
+    """單句大字：教師常用 36–50pt 一句話（「炎 = 火 + 火」）。
+    空標題時：有圖且素材池寫 <!-- order: img-first --> → 圖在上、句子在圖下（教師實驗課「圖＋圖下說明句」的排法）；
+    沒有圖 → 句子垂直置中。"""
     set_bg(slide, G.BG)
-    y0 = content_title(slide, s) if s["title"].strip() else 0.8
     imgs = real_imgs(s)
     w = G.SW - 2 * G.M - 0.26
+    if not s["title"].strip() and s["bullets"] and (not imgs or s.get("order") == "img-first"):
+        need = _big_need(s["bullets"], w)
+        if imgs:
+            top = 0.3
+            r = place_image(slide, imgs[0], G.M, top, G.SW - 2 * G.M, G.SH - top - need - 0.35)
+            ty = (r[2] + r[4] + max(0.12, r[5] + 0.06)) if r else top   # 句子放在圖下出處行的下面，不壓字
+            _, tf = textbox(slide, G.M + 0.26, ty, w, need + 0.2)
+            note_fit(s, ty + need, G.SH - 0.15, "圖下說明句")
+        else:
+            _, tf = textbox(slide, G.M + 0.26, 0.3, w, G.SH - 0.6, anchor=MSO_ANCHOR.MIDDLE)
+            note_fit(s, need, G.SH - 0.6, "大字")
+        for i, b in enumerate(s["bullets"][:3]):
+            para(tf, bullet_level(b)[1], G.S["big"], color=G.D["deep"], bold=False, first=(i == 0), line=1.15,
+                 space_after=10)
+        return
+    y0 = content_title(slide, s) if s["title"].strip() else 0.8
     _, tf = textbox(slide, G.M + 0.26, y0 + 0.1, w, 3.0)
     need = 0.0
     for i, b in enumerate(s["bullets"][:3]):

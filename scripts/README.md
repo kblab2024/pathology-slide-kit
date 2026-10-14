@@ -84,6 +84,12 @@ gen_pptx 每次會印出「量字字型：…」，也寫進 `_layout.json` 的 
 - `merge_written.py --course <課程> --dir <written> --blueprint <bp.json>`：各批合併成 written.json，glossary_additions 併進 glossary.md，issues 彙整成 issues.md。
 - `to_claude_slides.py --course <課程> …`：把素材池轉成 Claude Slides（網頁投影片）的檔案，見該檔 docstring。
 
+Mac、任務 B 與交件工具（不收 `--course`，除了 draw_flow 的 `--course` 只讀配色）：
+- `ppt_pdf_mac.sh <課程>/成品/<in.pptx> [out.pdf] [png資料夾] [縮圖資料夾]`：Mac 用 PowerPoint for Mac 存 PDF，再用 export_pdf.py 的函式出拼板與逐張 PNG（預設放 `<課程>/_archive/render/{png,sheets}`）。只接受課程 `成品/` 底下的檔、拒絕 OneDrive 路徑；PowerPoint 開著別的簡報就停（結束碼 3），只開、只存、只關自己那一份。第一次跑會跳 macOS 自動化授權，要教師在電腦前按允許。
+- `shrink_pdf.py <in.pdf> <out.pdf> [長邊px=900] [品質=72]`：把 PDF 裡的 JPEG 縮小，給 OneDrive（約 15 MB 以上的非 Office 檔會卡住上傳）。交件檔名用 `(PDF壓縮)`。
+- `compose_from_pdf.py <in.pptx> <in.pdf> <代號> <輸出資料夾> [--config cfg.json] [--only 張號…]`：任務 B，從教師的 PDF 原樣切出每張的圖區；設定檔寫要留的標籤（文字開頭或 shape 名）與要丟的圖形。輸出 `<代號>_sNNN.png|jpg` 與 `<代號>_compose.json`。
+- `draw_flow.py <規格.json> <輸出資料夾> [--course <課程>] [--only 圖名…]`：程式畫的中英對照流程圖（機轉、病程、治療流程），印出放進版位後的實際 pt，最小 < 24pt 或超出畫布時結束碼 1。規格格式見該檔 docstring。
+
 風格研究與回灌工具（不收 `--course`）：
 - `dump_pptx.py <in.pptx> <out_base>` 或 `dump_pptx.py --batch <list.tsv> <out_dir>`：逐張傾印成 `.json`＋`.txt`（字級取實際值、主題色解析）；語料一律寫到 `<materials>/corpus/decks/`。
 - `diff_decks.py <mine.json> <his.json> <out.md> [--range a-b] [--layout <交件檔>_layout.json]`：我的毛胚 → 教師改稿逐張比對；`--layout` 在每個「原#N」標出素材池 slug，並多一張「新#→原#→slug」對照表（回灌用）。
@@ -102,6 +108,7 @@ gen_pptx 每次會印出「量字字型：…」，也寫進 `_layout.json` 的 
 <!-- diagram: hyper | 亮:第一型,媒介 -->                          ← type: diagram 用
 <!-- build: s1-typeI-mech -->                                    ← 同標題連張組
 <!-- img_wanted: 肥大細胞 Giemsa 染色 -->                         ← 沒圖時；進待補圖清單，不畫框
+<!-- order: img-first -->                                      ← 選填：big 版型空標題＋有圖時，圖在上、句子在圖下（實驗課「圖＋圖下說明句」）
 <!-- facts: S04-012 S04-013 hae_dental-2 -->                   ← 這張依據的事實 id（assemble.py 寫入；審查工作流靠它查核）
 <!-- robbins: p.185 -->                                         ← 選填：這張對應的教科書頁碼（人讀與審查用）
 <!-- title:dent: 牙醫系版的標題 -->                              ← 選填：某一套 deck 用不同的標題
@@ -116,6 +123,9 @@ IMG 註解的欄位用「｜」分隔：路徑（必填）、`出處：`（圖�
 IMG 路徑一律寫相對於課程資料夾的路徑（`assets/images/…`），不寫絕對路徑，雲端與本機才都找得到。
 `aud` 只有一門課有多套 deck 時才寫；沒寫的張屬於 course.yaml `deck_order` 的全部 deck。註解裡不要出現 `>`（例如 `=>`），會把註解截斷。
 
+標題與條列裡寫「⏎」＝同一段內換行（用在斷行位置要照原句語氣斷的地方）；量字、字數與風格檢查都當它不存在。文字裡的 `http://`、`https://` 網址會自動做成超連結。
+course.yaml 選填 `layout: {left_min_frac: 0.30}`：left 版型的條列都很短、每條一行排得下時，文字欄可從 47% 縮到這個比例，圖放大（預設 0.47＝不縮）。
+
 ## 版型（type）
 
 | type | 用途 | 文字上限（4:3、28pt） |
@@ -124,7 +134,7 @@ IMG 路徑一律寫相對於課程資料夾的路徑（`assets/images/…`），
 | divider | 節／段落分隔（深色底） | 名詞短語標題＋最多 2 行副標 |
 | left | 條列＋右圖（無圖則全寬條列） | 有圖：每行約 10 字、共約 8 行；無圖：每行約 17 字、共約 9 行 |
 | flash | 標題＋1–2 句＋全寬大圖 | 說明 ≤2 行 |
-| big | 單句大字（44pt），可附圖 | 1–3 短句 |
+| big | 單句大字（sizes.big），可附圖；空標題沒圖時句子垂直置中；空標題有圖加 `<!-- order: img-first -->` 則圖上句下 | 1–3 短句 |
 | pair | 兩圖並排（可加標籤） | 說明 ≤2 行 |
 | robbins | 整張教科書圖 | 說明 ≤1 行 |
 | table3 | 表格（≥20pt；超過 table_max_rows 自動拆成同標題連張） | 每格短語 |

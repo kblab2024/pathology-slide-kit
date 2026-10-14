@@ -4,6 +4,12 @@
 > 通則（硬規則、環境、工作流、交件）在 kit 的 `CLAUDE.md`；風格在 kit 的 `style/guide/`；工具用法在 kit 的 `scripts/README.md`。
 > 不寫本機絕對路徑、學生資料、教學評量資料；路徑一律寫 `<kit>`、`<materials>` 或相對於本課程資料夾。
 
+## 開工（每個 session）
+- 一個階段一個 session（`<kit>/docs/多session做法.md`）。第一句：「先讀 courses/<課程>/_archive/handoff.md 與 courses/<課程>/CLAUDE.md，驗環境，然後做階段 N。」
+- 交接狀態只寫在 `_archive/handoff.md`（範本 `<kit>/templates/handoff.template.md`），每個 session 收尾更新並 commit。
+- 驗環境：`python -c 'import fitz,yaml,pptx'`；`cd <kit>/scripts && python -c "import common; print(common.ROOT); print(common.find_materials())"`；kit 在哪個分支（寫在這裡）。
+- 工作流開跑前：更新 handoff、請教師 `/compact`、確認筆電不闔蓋帶走、報代理數與約略費用並附 `/usage`，他說好才跑。
+
 ## 課程
 - <系級>（課程代碼 <碼>），<上課日 YYYY-MM-DD>，<節數> 節。
 - 成品：`成品/<course.yaml decks.<deck>.filename 代入日期>.pptx`＋同名 PDF（<畫幅>，<張數> 張：<各節張數>）。
@@ -32,6 +38,8 @@ SLIDEKIT_MATERIALS="$MAT" PYTHONIOENCODING=utf-8 python style_check.py --course 
 SLIDEKIT_MATERIALS="$MAT" PYTHONIOENCODING=utf-8 python export_pdf.py "$CD/成品/<PPTX 檔名>.pptx" --pdf "$CD/成品/<PDF 檔名>.pdf" \
     --sheets "$CD/_archive/render/sheets" --pngs "$CD/_archive/render/png"
 SLIDEKIT_MATERIALS="$MAT" PYTHONIOENCODING=utf-8 python img_todo.py --course $C
+# Mac：export_pdf.py 那一行改成（第一次會跳 macOS 授權，教師要在電腦前）
+bash "$KIT/scripts/ppt_pdf_mac.sh" "$CD/成品/<PPTX 檔名>.pptx"
 ```
 
 ## 素材

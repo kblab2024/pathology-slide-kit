@@ -21,6 +21,13 @@
 
 一門三節約 180 張的課，工作流合計約 200 個代理（兩輪審查）；以 API 牌價換算約 $950–1,200，只做一輪審查約 $830–990。各階段的單價與「這些金額和方案用量、usage credits 的關係」見 `docs/cloud_session_教學.md` 第 9 節，公式見 `workflows/README.md`。風格挖掘（`style-mining.js`，約 89 個）與重寫風格指南（`style-guide.js`，約 49 個）已經做完，新教案不必重跑（只有新課程的撰寫 brief 要跑 1 個代理，見第 6 步）。
 
+**分 session 做**：上表的步驟分成幾個階段，一個階段一個 session，靠該課的 `_archive/handoff.md` 交接。做法與範例（2026-10 A3 泌尿 L1）見 `docs/多session做法.md`，handoff 的格式見 `templates/handoff.template.md`。教師 2026-10-14 指定以後都這樣做。
+
+**在他的 deck 上改版（任務 B）時多用到的工具**：
+- `compose_from_pdf.py`：從他自己用 PowerPoint 匯出的 PDF，原樣切出每張的圖區（保留箭頭、標籤、SmartArt）。
+- `draw_flow.py`：把英文機轉圖改畫成中英對照的流程圖。
+- Mac 上算圖用 `ppt_pdf_mac.sh`，交 OneDrive 的大 PDF 用 `shrink_pdf.py` 壓。
+
 ## 指令寫法
 
 先設定三個變數（每開一個新 shell 都要設）：

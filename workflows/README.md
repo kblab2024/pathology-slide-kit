@@ -13,6 +13,7 @@
 
 其他檔案：
 - `tools/done_from_journal.py`：從執行紀錄重建 DONE 表（見「續跑」）。
+- `tools/wf_check_mac.js`：沒有 node 的 Mac 用這支代替 check_workflows.js：`osascript -l JavaScript workflows/tools/wf_check_mac.js <腳本.js> <args.json> [load_mock.json]`。用 macOS 內建的 JavaScriptCore 查語法，再用假代理空跑，印出代理數、每個代理的 label 與 model（不是 opus 的會列在 `not_opus`）。有讀設定代理（`load:*`）的工作流，第三個參數給它要回傳的內容。另外用 grep 查沒有 `\r`、沒有 effort。
 - `tools/check_workflows.js`：改完腳本後跑 `node workflows/tools/check_workflows.js`，檢查 CR 字元、禁用字、本機絕對路徑、meta 是否為純字面值、語法（照 Workflow 執行環境包起來編譯），並用假代理把每支工作流空跑一遍、核對代理數。
 - `reference/`：2026-09 免疫課程的三支原版腳本（已去除本機路徑），只供對照；新課程用上面的通用版。
 - 範本在 `../templates/`：`course.template.yaml`、`brief.template.md`、`gather.template.json`、`blueprint.schema.json`、`written.schema.json`。

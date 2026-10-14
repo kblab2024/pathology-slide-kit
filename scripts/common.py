@@ -15,6 +15,7 @@
   script.md  講稿：「### 投影片 {slug}｜標題」＋【講稿】／【講稿:系別】／【講義補充】
   decks/*.md 選單：「## 節｜標題」→「### 段落」→「- slug」，渲染時依序編號
 行內強調標記：[[藍:文字]]、[[紅:文字]]、[[橘:文字]]、[[青:文字]]、[[灰:文字]]，色票在 course.yaml 的 emphasis。
+段內換行：標題或條列裡寫「⏎」＝同一段內強制換行（不另起一段）；量字、字數與風格檢查都當它不存在。
 """
 import glob
 import json
@@ -168,8 +169,11 @@ def parse_markup(text, emphasis):
     return out or [("", None)]
 
 
+SOFT_BREAK = "⏎"
+
+
 def strip_markup(text):
-    return _MARK.sub(lambda m: m.group(2), text or "")
+    return _MARK.sub(lambda m: m.group(2), text or "").replace(SOFT_BREAK, "")
 
 
 # ---------------- 國考題庫 ----------------
@@ -272,6 +276,7 @@ def parse_pool(course):
             "src": [x.strip() for x in re.split(r'[｜|]', src) if x.strip()] if src else [],
             "img_wanted": _field(body, "img_wanted"),
             "robbins": _field(body, "robbins"),
+            "order": _field(body, "order"),
             "title_ov": {m.group(1): m.group(2).strip()
                          for m in re.finditer(r'<!--\s*title:([a-z]+):\s*([^>]*?)\s*-->', body)},
             "imgs": imgs,

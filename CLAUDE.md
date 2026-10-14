@@ -9,14 +9,15 @@ echo "remote=$CLAUDE_CODE_REMOTE os=$(uname -s 2>/dev/null)"   # 雲端 session 
 cd "<kit>/scripts" && PYTHONIOENCODING=utf-8 python -c "import common; print(common.ROOT); print(common.find_materials())"
 ```
 
-| | Windows 本機 | Claude Code 雲端 session |
-|---|---|---|
-| 判別 | `os.name == "nt"`；Git Bash 或 PowerShell | `CLAUDE_CODE_REMOTE=true`；Ubuntu |
-| PDF 匯出 | `export_pdf.py` 用 PowerPoint | 沒有 PowerPoint，改用 LibreOffice（`soffice`）；`SLIDEKIT_PDF_ENGINE=auto｜powerpoint｜libreoffice` 可強制指定 |
-| 換行量測字型 | 微軟正黑體（Microsoft JhengHei） | Noto Sans CJK TC；PPTX 內仍指定微軟正黑體 |
-| 套件 | `pip install -r requirements.txt` | 由環境的 Setup script（`setup/cloud-setup.sh`）裝好；缺了就 `bash setup/cloud-setup.sh`（本次 session 有效） |
-| `python` 指令 | python.org 或 Store 版的 `python` | cloud-setup.sh 會建 `python` 連結；還是找不到就用 `python3` |
-| 編碼 | 一律 `PYTHONIOENCODING=utf-8`，否則 cp950 報錯 | 同左（無害） |
+| | Windows 本機 | Mac 本機 | Claude Code 雲端 session |
+|---|---|---|---|
+| 判別 | `os.name == "nt"`；Git Bash 或 PowerShell | `uname -s` 是 Darwin；zsh | `CLAUDE_CODE_REMOTE=true`；Ubuntu |
+| PDF 匯出 | `export_pdf.py` 用 PowerPoint | `bash scripts/ppt_pdf_mac.sh <課>/成品/<檔>.pptx`（PowerPoint for Mac；第一次會跳 macOS 自動化授權，教師要在電腦前；PowerPoint 開著別的簡報就停，不動他的檔） | 沒有 PowerPoint，改用 LibreOffice（`soffice`）；`SLIDEKIT_PDF_ENGINE=auto｜powerpoint｜libreoffice` 可強制指定 |
+| 換行量測字型 | 微軟正黑體（Microsoft JhengHei） | PowerPoint for Mac 內建的微軟正黑體（gen_pptx 自動找） | Noto Sans CJK TC；PPTX 內仍指定微軟正黑體 |
+| 套件 | `pip install -r requirements.txt` | 同左（例 anaconda 的 `python`） | 由環境的 Setup script（`setup/cloud-setup.sh`）裝好；缺了就 `bash setup/cloud-setup.sh`（本次 session 有效） |
+| `python` 指令 | python.org 或 Store 版的 `python` | `python`（找不到用 `python3`） | cloud-setup.sh 會建 `python` 連結；還是找不到就用 `python3` |
+| 工作流腳本檢查 | `node workflows/tools/check_workflows.js` | 沒有 node 時：`osascript -l JavaScript workflows/tools/wf_check_mac.js <腳本> <args.json>`（語法＋假代理空跑＋代理數） | 同 Windows |
+| 編碼 | 一律 `PYTHONIOENCODING=utf-8`，否則 cp950 報錯 | 同左（無害） | 同左（無害） |
 
 找不到私人 repo（`find_materials()` 回 None）時：本機就 `git clone` 到 kit 旁邊；雲端要請使用者在 repository selector 把 `pathology-slide-materials` 加進 session（雲端的 GitHub proxy 可能只放行加進 session 的 repo），或設 `SLIDEKIT_MATERIALS`。語料位置：`SLIDEKIT_CORPUS`，否則 `<materials>/corpus`，否則 `<kit>/style/corpus`。
 
@@ -43,6 +44,7 @@ cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 py
 | 只改一張、一句或一個標題 | `00_README.md` 任務 E |
 | 改工具、檢查器、rules.yaml | `scripts/README.md`、`00_README.md` 任務 F |
 | 跑或續跑工作流 | `workflows/README.md`、`docs/lessons_learned.md` |
+| 一門課分好幾個 session 做（每個階段一個 session） | `docs/多session做法.md`（教師 2026-10-14 指定的範例做法）、該課 `_archive/handoff.md`、範本 `templates/handoff.template.md` |
 | 雲端 session、費用 | `docs/cloud_session_教學.md`（第 9 節是費用與額度） |
 
 指南規則衝突照 `01_權威順序.md`；指南以外的舊說法（舊 ENT 專案的 CLAUDE.md「硬規則 v3」、舊記憶檔、v0 rules.yaml）一律以指南為準。指南裡寫的「CLAUDE.md」若指「硬規則 v3」「國考題節」，指的是那份舊 ENT 專案的 CLAUDE.md，不是本檔。
@@ -74,6 +76,10 @@ Workflow({
 ```
 
 各工作流的參數、代理數、費用與續跑方法見 `workflows/README.md`。從前一次 run 重建 DONE 表用 `workflows/tools/done_from_journal.py`（讀 journal，或 journal 不見時用 `--scan` 從輸出檔推回 label），不要手動拼。每跑完一個工作流，把 run 的 `journal.jsonl` 與當次 args 複製到 `<materials>/courses/<course>/_archive/journals/`（雲端 VM 回收後 journal 就不見了），重建的 DONE 表也存在那裡。沒有 Workflow 工具時照 `AGENTS.md` 循序做。
+
+**一門課分成好幾個 session 做**（`docs/多session做法.md`，教師 2026-10-14：「這種多 session 的做法我覺得很棒」）：一個階段一個 session，第一句固定「先讀 courses/<課>/_archive/handoff.md 與 courses/<課>/CLAUDE.md，驗環境，然後做階段 N」；工作流開跑前更新 handoff、請他 `/compact`、確認筆電不闔蓋帶走、報代理數與費用並附 `/usage`，他說好才跑；跑的同時主 session 做不需代理的事；收尾更新 handoff 並 commit。
+
+**常用程式放 kit，不要每門課各抄一份**（教師 2026-10-14）：Mac 算圖 `scripts/ppt_pdf_mac.sh`、OneDrive 用的 PDF 壓縮 `scripts/shrink_pdf.py`、從他的 PDF 切圖區 `scripts/compose_from_pdf.py`、中英對照流程圖 `scripts/draw_flow.py`、沒有 node 時的工作流檢查 `workflows/tools/wf_check_mac.js`。課程只放設定檔（例 `_archive/build/compose_config.json`、`flow_specs.json`）。
 
 ## 5. 產出放哪、怎麼交回
 

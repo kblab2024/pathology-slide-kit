@@ -2,7 +2,7 @@
 
 讀課程設定的工具用 `--course <課程>` 指定課程；`<課程>` 是課程資料夾名（例 `immune`），或直接給 course.yaml（或含它的資料夾）的路徑。
 收 `--course` 的：gen_pptx、check_deck、style_check、img_todo、assemble、merge_facts、merge_written、validate_blueprint、check_written、render_pdf_pages、robbins_crop、to_claude_slides。
-不收 `--course` 的（照下方各自的用法）：make_batches、export_pdf、extract_deck_images、dump_pptx、diff_decks、verify_quotes、check_public、fetch_moex_dent_exam、parse_moex_exam。每支都有 `--help`。
+不收 `--course` 的（照下方各自的用法）：make_batches、export_pdf、extract_deck_images、dump_pptx、diff_decks、gen_lab_pptx、verify_quotes、check_public、fetch_moex_dent_exam、parse_moex_exam。每支都有 `--help`。
 所有路徑、字級、色票、選單、國考題庫、框架圖都在 course.yaml；**換課程不改程式，只改 course.yaml**。
 安裝見 `../setup/windows.md`（本機）與 `../setup/cloud-setup.sh`（Claude Code 雲端，Ubuntu）。
 
@@ -89,6 +89,7 @@ Mac、任務 B 與交件工具（不收 `--course`，除了 draw_flow 的 `--cou
 - `shrink_pdf.py <in.pdf> <out.pdf> [長邊px=900] [品質=72]`：把 PDF 裡的 JPEG 縮小，給 OneDrive（約 15 MB 以上的非 Office 檔會卡住上傳）。交件檔名用 `(PDF壓縮)`。
 - `compose_from_pdf.py <in.pptx> <in.pdf> <代號> <輸出資料夾> [--config cfg.json] [--only 張號…]`：任務 B，從教師的 PDF 原樣切出每張的圖區；設定檔寫要留的標籤（文字開頭或 shape 名）與要丟的圖形。輸出 `<代號>_sNNN.png|jpg` 與 `<代號>_compose.json`。
 - `label_image.py <規格.json> [--preview 縮圖.png]`：示意圖加標籤（標準做法：Runway 只產沒有字的母圖，標籤由 Claude 設計、用這支疊上）。每個標籤兩行「中文」「(English)」，引線＋圓點指到構造（母圖座標比例），標籤放白邊（margins 加寬）或白色圓角底；字級以版位寬換算，預設 24pt／標題 28pt；標籤重疊、超出畫布、引線交叉、低於 24pt 時結束碼 1。規格格式見該檔 docstring。
+- `gen_lab_pptx.py <deck.json> --out <輸出.pptx> [--report 報告.json] [--no-notes]`：實驗講義版型（教師 2026 自製實驗講義：封面 54pt、藍底 143F9C 分隔張、內容張 30pt 標題＋6.14×5.32 吋圖框＋20.2pt 說明句）。每個圖框放不含字的淡灰空圖，教師用「變更圖片」換截圖；截圖說明與來源寫進備註欄。用 gen_pptx 的字型量字，說明句放不下、分隔張超過一行時結束碼 1，標題超過一行、說明句超過 6 行列為版型提醒。
 - `draw_flow.py <規格.json> <輸出資料夾> [--course <課程>] [--only 圖名…]`：程式畫的中英對照流程圖（機轉、病程、治療流程），印出放進版位後的實際 pt，最小 < 24pt 或超出畫布時結束碼 1。規格格式見該檔 docstring。
 
 風格研究與回灌工具（不收 `--course`）：

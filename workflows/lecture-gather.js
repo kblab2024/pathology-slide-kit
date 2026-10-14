@@ -60,7 +60,7 @@ const ld = await agent(`${ENV}
 TASK (mechanical; do not create or change any file). Run the two commands below and return their printed output exactly (one JSON line each).
 1. Gather settings${A0.gather ? ' (not needed: they were passed inline; return gather_json = "{}")' : ''}: PYTHONIOENCODING=utf-8 python -c "import json,sys; print(json.dumps(json.load(open(sys.argv[1], encoding='utf-8')), ensure_ascii=False))" "${GF}"
 2. Textbook page folder: ${RUN} -c "${INFO_PY}"
-Return ok=true, gather_json = output of 1, pages_json = output of 2. If a command fails (missing file, invalid JSON, course.yaml without textbook.pages_dir), return ok=false with the error in notes and whatever output you did get (use "{}" for a missing one).`, { label: 'load:gather', phase: 'Load', schema: LOADED, model: 'opus', effort: 'low' })
+Return ok=true, gather_json = output of 1, pages_json = output of 2. If a command fails (missing file, invalid JSON, course.yaml without textbook.pages_dir), return ok=false with the error in notes and whatever output you did get (use "{}" for a missing one).`, { label: 'load:gather', phase: 'Load', schema: LOADED, model: 'opus' })
 if (!ld) { log('loader returned null'); return { error: 'loader failed' } }
 let G = A0.gather || null
 let PG = {}

@@ -576,8 +576,9 @@ def L_table3(slide, s):
 
 
 def quiz_title(course, deck, q):
+    """quiz_label 的佔位：{年度}、{第幾次}（中文數字：一、二）、{次}（阿拉伯數字：1、2）、{題號}。"""
     tpl = course.deck(deck).get("quiz_label", "{年度}-{第幾次} 第{題號}題")
-    return tpl.format(年度=q["年度"], 第幾次=CN_NUM.get(int(q["第幾次"]), q["第幾次"]), 題號=q["題號"])
+    return tpl.format(年度=q["年度"], 第幾次=CN_NUM.get(int(q["第幾次"]), q["第幾次"]), 次=q["第幾次"], 題號=q["題號"])
 
 
 def quiz_style(course, deck):
@@ -651,7 +652,7 @@ def L_quiz(slide, s, qs):
             break
     note_fit(s, need, avail, "國考題")
     _, tf = textbox(slide, G.M + 0.05, y0, w, avail)
-    para(tf, f"{q['題號']}. {q['question']}", size, color=G.D["deep"], first=True, line=1.15, space_after=10,
+    para(tf, f"{q['題號']}. {q['question']}", size, color=G.D.get("quiz_stem", G.D["deep"]), first=True, line=1.15, space_after=10,
          markup=False)
     for k, v in opts:
         is_ans = k in ans

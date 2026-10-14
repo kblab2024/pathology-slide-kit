@@ -51,7 +51,7 @@ cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 py
 
 1. **事實以 Robbins 11e 為唯一正典。** 每一句都要對得到事實帳（facts_R.json）或已查核的文獻（facts_X.json）。文獻只補充、句內或標題括號附出處、不得蓋過 Robbins。Robbins、文獻、老師舊投影片三者衝突時，選一個做法做進成品，並列進「待教師裁決清單」；不靜默改，也不靜默沿用。他的錯字照 `24_術語與中英對照.md` TERM-18 處理。
 2. **不寫 LLM 語。** 全形雙破折號（U+2014 連寫兩個）、套語（值得注意的是、讓我們、總而言之、扮演…角色、關鍵在於、不僅…更…）、舞台指示、打氣句、戲劇化第二人稱、貫穿全套的比喻一律不寫。他自己的「其實」「不是 X，而是 Y」「因此」「=>」照用（份量見指南 23、25）。清單以 `20_文字/23_禁用語與LLM語.md` 為準。
-3. **字級、中英對照、國考題版式照該課的明令。** 課程有明令（例：immune 的標題 36、內文 28、學生要讀的字 ≥20、出處 14、每張專有名詞「中文(English)」）就照做，寫在該課 course.yaml（`sizes`、`bilingual: per_slide`、`decks.<deck>.quiz_style`）與 brief.md；沒有明令時照指南（`12_字級.md`；中英對照 `bilingual` 不寫＝`first_per_deck`，每套首見一次），不要把某一課的明令套到別的課。`templates/course.template.yaml` 的註解列了沒有明令時的預設字級。
+3. **字級、中英對照、國考題版式照該課的明令。** 課程有明令（例：immune 的標題 36、內文 28、學生要讀的字 ≥20、出處 14、每張專有名詞「中文(English)」）就照做，寫在該課 course.yaml（`sizes`、`bilingual: per_slide`、`decks.<deck>.quiz_style`）與 brief.md；沒有明令時照指南（`12_字級.md`），不要把某一課的明令套到別的課。**中英對照例外：2026-10-14 起所有課、所有內容（文字、圖上的標籤、表格、流程圖）每一張的專有名詞都寫「中文(English)」，course.yaml 一律寫 `bilingual: per_slide`；放不下就拆張，不拿掉英文**（`docs/教師偏好與決策.md` 第 4 節）。`templates/course.template.yaml` 的註解列了沒有明令時的預設字級。
 4. **一張講一件事、字少、圖大。** 放不下就拆同標題連張，不縮字；不做學習目標、大綱、總結、謝謝張；不產「圖片待補」佔位張或佔位框，缺圖寫 `<!-- img_wanted: … -->` 進待補圖清單。
 5. **只改來源檔，不手改 PPTX。** 來源檔：`sources/*-pool.md`、`*-script.md`、`sources/decks/*.md`、`course.yaml`、`glossary.md`。藍圖與撰寫 JSON 被審查修改超越後，不要再拿它們重跑 `assemble.py`（會蓋掉 pool.md）。
 6. **不覆蓋老師親手改過的檔。** 他改過的 PPTX 要先用 `dump_pptx.py`＋`diff_decks.py` 回灌 pool.md，才能重產；產檔前看 `成品/` 有沒有同名檔（gen_pptx 覆寫既有檔時會印「[注意] 覆寫既有檔」），有就換日期或用 `--name`。只是確認環境時用 `--name _smoketest`。

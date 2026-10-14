@@ -104,10 +104,10 @@ cover:                    # 封面文字：工具不讀；lecture-blueprint 代�
   # 用到他人（例：其他老師的舊投影片）圖片時，依 brief.md 在封面加致謝行
 
 # 中英對照的範圍（style_check.py、check_written.py 與撰寫、審查工作流都讀這一鍵）：
-#   first_per_deck＝每套第一次出現時寫「中文(English)」，之後可只寫中文（指南 TERM-07；沒寫這一鍵時的預設）
-#   per_slide＝每一張的專有名詞都寫「中文(English)」（immune 的教師明令，TERM-34；只有老師對該課明令才用）
+#   per_slide＝每一張的專有名詞都寫「中文(English)」，圖上的標籤、表格、流程圖也一樣（教師 2026-10-14 明令：所有課都用這個）
+#   first_per_deck＝每套第一次出現時寫「中文(English)」，之後可只寫中文（指南 TERM-07；沒寫這一鍵時程式的預設，2026-10-14 起不用）
 #   off＝不檢查（禁用變體仍檢查）
-bilingual: per_slide      # 此例＝immune 的明令；新課程沒有明令時刪掉這一行或寫 first_per_deck
+bilingual: per_slide      # 2026-10-14 起所有課都寫這一行（教師明令，docs/教師偏好與決策.md 第 4 節）
 
 # 中英對照白名單：這些可以只寫英文或符號（染色名、分子符號、CD／IL／Ig／補體片段）。
 # 疾病縮寫（SLE、AIDS、HIV…）不放這裡，必須附中文。

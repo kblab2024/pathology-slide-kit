@@ -83,7 +83,7 @@ cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 py
 13. **修稿取捨順序**：事實 ＞ 術語 ＞ 版面 ＞ 文風；圖片與國考題的修正讓位（`01_權威順序.md` AUTH-07）。
 14. **Traditional Chinese（台灣用語）**：投影片、講稿、文件都用繁體中文；dysplasia 寫「分化不良」。
 15. **示意圖：影像模型只產沒有字的母圖，標籤由做投影片的代理（或人）加。** Runway 或其他影像模型出母圖；設計標籤位置與引線，用 `scripts/label_image.py` 以微軟正黑體疊上中英對照標籤（至少 24pt）；不讓模型寫字（教師 2026-10-14 明令：「字最清晰」，`docs/教師偏好與決策.md` 第 4 節）。
-16. **反駁與複查有上限**（教師 2026-10-14 採用）。反駁只做一輪：每份批評檔 2 位反駁者（不是每條意見各派一組）。兩位都推翻就丟，一推一留由修訂者回原始資料查過再決定；不反駁反駁者。只有「找新問題」的複查可以重來，最多 2 輪，第 2 輪只看第 1 輪改過的張；第 1 輪沒有事實問題就不跑第 2 輪。理由與實測見 `workflows/README.md`「反駁與複查的上限」。審查（`lecture-review.js`）的第 2 輪也算這裡的第 2 輪：要跑時只跑問題多的面向，另外報價。審查非事實面向減成 1 位是舊有的省錢選項，不屬於上限（那 1 位推翻就丟；用時報價寫明）。
+16. **反駁與複查有上限**（教師 2026-10-14 採用）。反駁只做一輪：每份批評檔 2 位反駁者（不是每條意見各派一組）。兩位都推翻就丟，一推一留由修訂者回原始資料查過再決定；不反駁反駁者。只有「找新問題」的複查可以重來，最多 2 輪，第 2 輪只看第 1 輪改過的張；第 1 輪沒有事實問題就不跑第 2 輪。理由與實測見 `workflows/README.md`「反駁與複查的上限」。審查（`lecture-review.js`）的第 2 輪也算這裡的第 2 輪：要跑時只跑問題多的面向，另外報價。審查非事實面向減成 1 位是舊有的省錢選項，不屬於上限（那 1 位推翻就丟；用時報價寫明）。 **不重複審查**（2026-10-15）：審查前先列已查過的面向與之後的改動，只跑有變或需新證據的（例：充實後只跑版面、圖片）；`workflows/README.md` 上限第 5 條。
 
 ## 4. 工作流：多代理的步驟怎麼做
 
@@ -163,7 +163,7 @@ Mac 的 PDF 與 PNG 改用 `bash scripts/ppt_pdf_mac.sh "<成品>/<檔名>.pptx"
 
 ### 4.5 審查（`lecture-review.js`，一到兩輪）
 
-六個面向：facts、voice、terms、layout、exam、images。每個面向：審查 → 兩個獨立反駁 → 最後一個修正者：兩位反駁者都推翻的不套用，都確認的套用，一推一留的回原始資料（教科書頁圖、事實帳、glossary、PNG）查過再決定；改來源檔、重產、修到 check_deck 無 RED 且 style_check RED 0。輸出在 `_archive/review/round<N>/`：`review_<面向>.json`、`verify_<面向>_1.json`、`verify_<面向>_2.json`、`fix_report.md`。第 2 輪是另一次工作流：第 1 輪沒有事實問題就不跑（硬規則 16）；要跑只跑問題多的面向，另外報價。
+六個面向：facts、voice、terms、layout、exam、images。每個面向：審查 → 兩個獨立反駁 → 最後一個修正者：兩位反駁者都推翻的不套用，都確認的套用，一推一留的回原始資料（教科書頁圖、事實帳、glossary、PNG）查過再決定；改來源檔、重產、修到 check_deck 無 RED 且 style_check RED 0。輸出在 `_archive/review/round<N>/`：`review_<面向>.json`、`verify_<面向>_1.json`、`verify_<面向>_2.json`、`fix_report.md`。第 2 輪是另一次工作流：第 1 輪沒有事實問題就不跑（硬規則 16）；要跑只跑問題多的面向，另外報價。充實後的審查只跑 layout、images（硬規則 16）。
 
 ### 4.6 交付與回灌
 
@@ -176,7 +176,7 @@ Mac 的 PDF 與 PNG 改用 `bash scripts/ppt_pdf_mac.sh "<成品>/<檔名>.pptx"
 ## 5. 產出放哪、怎麼交回
 
 - 中間檔：`<materials>/courses/<course>/_archive/{gather,blueprint,written,review,render,journals}/`；交接檔 `_archive/handoff.md`。
-- 成品：`<materials>/courses/<course>/成品/`：PPTX、PDF、同名 `_layout.json`（每張的 slug 與張號，回灌用）、`待教師裁決清單.md`、`待補圖清單.md`、HTML 版（`scripts/html_deck.py` 從素材池產生一個圖片內嵌的 HTML 檔，手機與任何瀏覽器直接開；見教師偏好第 8 節）。檔名寫課程代碼不寫系名：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`，PDF 同名改 `(PDF)`（`course.yaml` 的 `decks.<deck>.filename`）。
+- 成品：`<materials>/courses/<course>/成品/`：PPTX、PDF、同名 `_layout.json`（每張的 slug 與張號，回灌用）、`待教師裁決清單.md`、`待補圖清單.md`、HTML 版（`scripts/html_deck.py`，圖片內嵌的單一檔；教師偏好第 8 節）。檔名寫課程代碼不寫系名：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`，PDF 同名改 `(PDF)`（`course.yaml` 的 `decks.<deck>.filename`）。
 - **交給教師的一律是草稿**：檔名、資料夾、一起交的檔、交件管道（OneDrive、git、Dropbox）照 `docs/教師偏好與決策.md` 第 8 節。放進他的 OneDrive 的步驟與禁用檔名只在他那台 Mac 的工作區 `AGENTS.md`；讀不到那份檔的環境不要寫 OneDrive。用 git 交件的指令見 `docs/SOP_新教案流程.md` 第 10 步。
 - 每跑完一個階段（蒐集、藍圖、撰寫、充實、每一輪審查）就 commit＋push 一次 `_archive/`（含 `journals/`）與來源檔：雲端 VM 閒置會被回收，沒 push 的檔案與正在跑的工作流不會回來。雲端 session 只能 push 到 session 目前的工作分支。commit 並 push 到這門課的工作分支（雲端是 session 的分支）不必問；開 PR、合併進 main、直接 push 到 main 照教師當次的指示，沒有指示先問（kit 的工作版同步到公開版，是教師 2026-10-14 已說好的）。
 - 最後告訴使用者：分支名稱、成品路徑、張數、檢查結果、待他裁決的項目數。

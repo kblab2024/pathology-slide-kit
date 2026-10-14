@@ -20,7 +20,7 @@
 - **每個階段用哪一支工作流**（範本都在私人 repo `courses/uro-a3/_archive/journals/`；kit 還沒有通用版，拿不到私人 repo 時照上表的角色自己排，`AGENTS.md` 第 4.7 節）：
   - 階段 1：kit 的 `lecture-gather.js`；示意圖說明等課程專用的部分用課程自寫的腳本（範本 `uro-runway.js`）。
   - 階段 2：課程自寫的撰寫工作流，一支做完 SOP 第 5、6 步（上表第 2 列的結構），範本 `uro-write.js`。kit 的 `lecture-blueprint.js`（三視角草稿 → 三位評審 → 綜合 → 批評 → 修訂）與 `lecture-write.js`（每批 3 位查核，沒有反駁與複查）是 2026-09 immune 的結構，不是上表的做法；要用它們省錢，先在報價寫明、教師說好。
-  - 階段 3：課程自寫的充實工作流（範本 `uro-deepen.js`），算圖後審查（範本 `uro-review.js`，跑之前先改成硬規則 16 的寫法；也可以用 kit 的 `lecture-review.js`）。
+  - 階段 3：課程自寫的充實工作流（範本 `uro-deepen.js`），算圖後審查（範本 `uro-review.js`，跑之前先改成硬規則 16 的寫法；也可以用 kit 的 `lecture-review.js`）。（2026-10-15：充實已做過的面向不再審；算圖後只跑版面與圖片，見硬規則 16「不重複審查」）
 - **舊說法**：本檔 2026-10-14 上午的版本與 uro-a3 的 handoff 把「階段 3」寫成「回灌、換 Runway 圖、第二輪審查」；以本節為準。
 
 ## 為什麼這樣做

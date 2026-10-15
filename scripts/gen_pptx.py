@@ -614,12 +614,18 @@ def L_table3(slide, s):
     size = G.S["table"]
     for cand in (G.S["table"], G.S["table_min"]):
         size = cand
-        need = sum(max(n_lines(r[j], cand, widths[j] - 0.2, bold=(i == 0 or j == 0)) for j in range(ncol))
-                   * line_h(cand, 1.1) * TABLE_LINE_K + 0.14 for i, r in enumerate(rows))   # 0.14＝儲存格上下邊界＋框線
+        row_h = [max(n_lines(r[j], cand, widths[j] - 0.2, bold=(i == 0 or j == 0)) for j in range(ncol))
+                 * line_h(cand, 1.1) * TABLE_LINE_K + 0.14 for i, r in enumerate(rows)]   # 0.14＝儲存格上下邊界＋框線
+        need = sum(row_h)
         if need <= avail:
             break
     note_fit(s, need, avail, "表格")
     t = slide.shapes.add_table(len(rows), ncol, Inches(G.M), Inches(y0), Inches(tw), Inches(min(avail, need))).table
+    # 2026-10-15：每列照自己的估算設高度。原本整張表高度平均分給各列，PowerPoint 只會把放不下的列撐高、不會把空的列縮小，
+    # 實排就比估算高（uro-a3 表格溢出的原因之一）。表格放不下時按比例縮，仍由 check_deck 報 RED。
+    k = min(1.0, avail / need) if need > 0 else 1.0
+    for i, h in enumerate(row_h):
+        t.rows[i].height = Inches(max(0.3, h * k))
     t.first_row = False
     t.horz_banding = False
     for j in range(ncol):

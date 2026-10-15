@@ -32,20 +32,27 @@ KIT="${SLIDEKIT_KIT:-$(cd "$(dirname "$0")/.." && pwd)}"   # 預設＝本腳本�
 # 2. PowerPoint 若在跑，而且開著任何簡報，就停
 if pgrep -xq "Microsoft PowerPoint"; then
   OPENED="$(osascript -e 'tell application "Microsoft PowerPoint" to get name of every presentation' 2>/dev/null || true)"
-  if [ -n "$OPENED" ]; then
+  # 「missing value」＝PowerPoint 開著、但沒有真的簡報（2026-10-16 實測），不算開著
+  if [ -n "$OPENED" ] && [ "$OPENED" != "missing value" ]; then
     echo "PowerPoint 現在開著這些簡報：$OPENED" >&2
     echo "為了不動到您的檔案，先停下來。請自己存檔並關掉這些簡報（可以不關 PowerPoint），再重跑。" >&2
     exit 3
   fi
 fi
 
-# 3. 獨一無二的暫存檔名（放在 PowerPoint 沙盒容器內，免授權對話框）
-BOX="$HOME/Library/Containers/com.microsoft.Powerpoint/Data/slidekit_export"
-mkdir -p "$BOX"
+# 3. 獨一無二的暫存檔名（先放 PowerPoint 沙盒容器內，免授權對話框）
+#    2026-10-16：新版 macOS 不讓 Claude Code 這類程式寫別的 App 的容器（Operation not permitted，沙箱外也一樣）。
+#    寫不進去就改放課程的 _archive/render/_ppt_tmp（OneDrive 外）；PowerPoint 第一次開那裡的檔可能跳「授予檔案存取權」，請教師按允許。
 TAG="slidekit_$$_$(date +%s)"
+BOX="$HOME/Library/Containers/com.microsoft.Powerpoint/Data/slidekit_export"
+if ! { mkdir -p "$BOX" 2>/dev/null && cp "$IN" "$BOX/$TAG.pptx" 2>/dev/null; }; then
+  BOX="$CDIR/_archive/render/_ppt_tmp"
+  mkdir -p "$BOX"
+  cp "$IN" "$BOX/$TAG.pptx"
+  echo "（PowerPoint 容器寫不進去，改用 $BOX）"
+fi
 TMPIN="$BOX/$TAG.pptx"; TMPOUT="$BOX/$TAG.pdf"
 trap 'rm -f "$TMPIN" "$TMPOUT"' EXIT
-cp "$IN" "$TMPIN"
 
 osascript <<EOF
 with timeout of 1200 seconds
@@ -53,8 +60,11 @@ tell application "Microsoft PowerPoint"
   open POSIX file "$TMPIN"
   set target to missing value
   repeat 120 times
-    repeat with p in presentations
-      if (name of p) is "$TAG.pptx" then set target to contents of p
+    repeat with i from 1 to (count of presentations)
+      try
+        set p to presentation i
+        if (name of p) is "$TAG.pptx" then set target to p
+      end try
     end repeat
     if target is not missing value then exit repeat
     delay 1

@@ -2,7 +2,7 @@
 
 讀課程設定的工具用 `--course <課程>` 指定課程；`<課程>` 是課程資料夾名（例 `immune`），或直接給 course.yaml（或含它的資料夾）的路徑。
 收 `--course` 的：gen_pptx、check_deck、style_check、img_todo、fit_capacity、assemble、merge_facts、merge_written、validate_blueprint、check_written、render_pdf_pages、robbins_crop、to_claude_slides、html_deck。
-不收 `--course` 的（照下方各自的用法）：make_batches、export_pdf、extract_deck_images、dump_pptx、diff_decks、gen_lab_pptx、verify_quotes、check_public、fetch_moex_dent_exam、parse_moex_exam。每支都有 `--help`。
+不收 `--course` 的（照下方各自的用法）：make_batches、export_pdf、extract_deck_images、dump_pptx、diff_decks、gen_lab_pptx、html_lab_deck、verify_quotes、check_public、fetch_moex_dent_exam、parse_moex_exam。每支都有 `--help`。
 所有路徑、字級、色票、選單、國考題庫、框架圖都在 course.yaml；**換課程不改程式，只改 course.yaml**。
 安裝見 `../setup/windows.md`、`../setup/mac.md`（本機）與 `../setup/cloud-setup.sh`（雲端或其他 Linux，Ubuntu）。
 
@@ -89,11 +89,12 @@ gen_pptx 每次會印出「量字字型：…」，也寫進 `_layout.json` 的 
 - `html_deck.py --course <課程> [--max-side 1200] [--quality 75]`：產一個圖片內嵌的 HTML 檔（`成品/…(HTML)_日期.html`），不需上傳，手機或任何瀏覽器直接開；←／→ 換張。教師 2026-10-14「成品要有 html 版」。
 
 Mac、任務 B 與交件工具（不收 `--course`，除了 draw_flow 的 `--course` 只讀配色）：
-- `ppt_pdf_mac.sh <課程>/成品/<in.pptx> [out.pdf] [png資料夾] [縮圖資料夾]`：Mac 用 PowerPoint for Mac 存 PDF，再用 export_pdf.py 的函式出拼板與逐張 PNG（預設放 `<課程>/_archive/render/{png,sheets}`）。只接受課程 `成品/` 底下的檔、拒絕 OneDrive 路徑；PowerPoint 開著別的簡報就停（結束碼 3），只開、只存、只關自己那一份。第一次跑會跳 macOS 自動化授權，要教師在電腦前按允許。
+- `ppt_pdf_mac.sh <課程>/成品/<in.pptx> [out.pdf] [png資料夾] [縮圖資料夾]`：Mac 用 PowerPoint for Mac 存 PDF，再用 export_pdf.py 的函式出拼板與逐張 PNG（預設放 `<課程>/_archive/render/{png,sheets}`）。只接受課程 `成品/` 底下的檔、拒絕 OneDrive 路徑；PowerPoint 開著別的簡報就停（結束碼 3），只開、只存、只關自己那一份。第一次跑會跳 macOS 自動化授權，要教師在電腦前按允許。PowerPoint 的沙盒容器寫不進去時（新版 macOS，2026-10-16 起這台 Mac 的 Claude Code 是這樣），自動改把暫存檔放課程 `_archive/render/_ppt_tmp`，PowerPoint 第一次開那裡的檔可能跳「授予檔案存取權」，請教師按允許。
 - `shrink_pdf.py <in.pdf> <out.pdf> [長邊px=900] [品質=72]`：把 PDF 裡的 JPEG 縮小，給 OneDrive 放壓縮版（大檔可能整個傳不上：2026-10-02 是 21.5 MB 的 PDF，2026-10-14 晚 8.9–21 MB 的 PPTX 也卡住，同時段的小 md、docx 正常；大小與檔案類型都不是可靠的門檻，見 `../docs/教師偏好與決策.md` 第 8 節）。交件檔名用 `(PDF壓縮)`。
 - `compose_from_pdf.py <in.pptx> <in.pdf> <代號> <輸出資料夾> [--config cfg.json] [--only 張號…]`：任務 B，從教師的 PDF 原樣切出每張的圖區；設定檔寫要留的標籤（文字開頭或 shape 名）與要丟的圖形。輸出 `<代號>_sNNN.png|jpg` 與 `<代號>_compose.json`。
 - `label_image.py <規格.json> [--preview 縮圖.png]`：示意圖加標籤（標準做法：Runway 只產沒有字的母圖，標籤由做投影片的代理設計、用這支疊上）。每個標籤兩行「中文」「(English)」，引線＋圓點指到構造（母圖座標比例），標籤放白邊（margins 加寬）或白色圓角底；字級以版位寬換算，預設 24pt／標題 28pt；標籤重疊、超出畫布、引線交叉、低於 24pt 時結束碼 1。規格格式見該檔 docstring。
-- `gen_lab_pptx.py <deck.json> --out <輸出.pptx> [--report 報告.json] [--no-notes]`：實驗講義版型（教師 2026 自製實驗講義：封面 54pt、藍底 143F9C 分隔張、內容張 30pt 標題＋6.14×5.32 吋圖框＋20.2pt 說明句）。每個圖框放不含字的淡灰空圖，教師用「變更圖片」換截圖；截圖說明與來源寫進備註欄。用 gen_pptx 的字型量字，說明句放不下、分隔張超過一行時結束碼 1，標題超過一行、說明句超過 6 行列為版型提醒。
+- `gen_lab_pptx.py <deck.json> --out <輸出.pptx> [--report 報告.json] [--no-notes] [--bg-pt 24]`：實驗講義版型（教師 2026 自製實驗講義：封面 54pt、藍底 143F9C 分隔張、內容張 30pt 標題＋6.14×5.32 吋圖框＋20.2pt 說明句）。每張內容張有 `kind`（沒寫＝`shot`）：`shot` 截圖張，圖框放不含字的淡灰空圖（形狀名「截圖待補 <id>」），教師用「變更圖片」換截圖，倍率與視野寫進備註；`bg` 背景知識張，標題下全寬條列（`--bg-pt`，預設 24），可加 `table`（第一列表頭，放不下接續一張、重複表頭）；`gx` 大體／影像張，`img.path`（相對 deck.json）的圖等比置中、`img.credit` 出處行放圖下不壓圖，沒有圖檔放淡灰空圖（「圖待補 <id>」）；`sc` 形態學示意圖張，有 `img.path` 就放圖，沒有就放淡灰空圖（「示意圖待換 <id>」）。教師 2026-10-15：實驗講義不可以只有截圖，要有背景知識跟形態學示意圖。用 gen_pptx 的字型量字，放不下時結束碼 1；報告另寫 `ids`（id → 張號）與各種圖位的格數。`--fit <deck.json 或節檔>` 只量字不產檔（撰寫代理自查）。
+- `html_lab_deck.py <deck.json> --out <檔案.html> [--max-side 760] [--quality 60]`：實驗講義的 HTML 版（deck.json → 一個圖片內嵌的 HTML，幾何同 gen_lab_pptx，淡灰圖位照畫）；放 OneDrive 的版本壓到 4 MB 以下。
 - `draw_flow.py <規格.json> <輸出資料夾> [--course <課程>] [--only 圖名…]`：程式畫的中英對照流程圖（機轉、病程、治療流程），印出放進版位後的實際 pt，最小 < 24pt 或超出畫布時結束碼 1。規格格式見該檔 docstring。
 
 風格研究與回灌工具（不收 `--course`）：

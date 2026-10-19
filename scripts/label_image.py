@@ -17,6 +17,7 @@
 {"image": "<母圖>", "out": "<輸出.png>", "slot_w": 9.0,
  "margins": {"left": 0.22, "right": 0.22, "top": 0.10, "bottom": 0.0},   白邊，各為母圖寬（左右）或高（上下）的比例
  "label_pt": 24, "title_pt": 28,
+ "halo": false,                                                          true：引線與圓點底下墊白邊（壓在深色組織上、例如骨髓，引線才看得清楚）
  "titles": [{"text": "帽狀期(cap stage)", "x": 0.25, "y": -0.05}],      x、y：母圖座標比例（y 負值＝上方白邊），文字置中
  "labels": [
    {"zh": "琺瑯器", "en": "enamel organ", "point": [0.31, 0.52], "side": "left", "y": 0.50},
@@ -70,6 +71,7 @@ LINE = round(f_lab.size * 1.18)
 PAD = round(f_lab.size * 0.35)
 LW = max(2, round(f_lab.size * 0.06))
 DOT = max(4, round(f_lab.size * 0.16))
+HALO = max(2, round(LW * 1.2)) if S.get("halo") else 0      # 白邊寬（每側）
 
 to_px = lambda x, y: (L + x * w0, T + y * h0)                # 母圖比例 → 畫布像素
 
@@ -136,6 +138,9 @@ for lb in S.get("labels", []):
         if (side == "left" and ex > start[0]) or (side == "right" and ex < start[0]):
             pts.append((ex, start[1]))
     pts.append((px, py))
+    if HALO:
+        d.line(pts, fill="white", width=LW + 2 * HALO, joint="curve")
+        d.ellipse((px - DOT - HALO, py - DOT - HALO, px + DOT + HALO, py + DOT + HALO), fill="white")
     d.line(pts, fill=INK, width=LW, joint="curve")
     d.ellipse((px - DOT, py - DOT, px + DOT, py + DOT), fill=INK)
     for a, b in zip(pts, pts[1:]):

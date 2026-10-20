@@ -587,12 +587,61 @@ def set_cell(cell, text, size, color=None, bold=False, fill=None, align=PP_ALIGN
     para(tf, text, size, color=color, bold=bold, align=align, first=True, line=1.1, space_after=0)
 
 
+NO_GRID_STYLE = "{2D5ABB26-0587-4C30-8999-92F81FD0307C}"   # PowerPoint 內建「無樣式、無格線」
+_LN_TAGS = ("a:lnL", "a:lnR", "a:lnT", "a:lnB")
+
+
+def cell_borders(cell, **sides):
+    """儲存格框線：sides 的鍵 L/R/T/B，值 (粗細 pt, "RRGGBB") 或 None（無線）。
+    框線元素依 schema 順序（lnL、lnR、lnT、lnB）放在 tcPr 最前面、填色之前，PowerPoint 開檔才不會要求修復。"""
+    from lxml import etree
+    tcPr = cell._tc.get_or_add_tcPr()
+    for tag in _LN_TAGS:
+        for e in tcPr.findall(qn(tag)):
+            tcPr.remove(e)
+    for k, tag in reversed(list(zip("LRTB", _LN_TAGS))):
+        if k not in sides:
+            continue
+        v = sides[k]
+        ln = etree.Element(qn(tag), w=str(int((v[0] if v else 0) * 12700)), cap="flat", cmpd="sng", algn="ctr")
+        if v:
+            sf = etree.SubElement(ln, qn("a:solidFill"))
+            etree.SubElement(sf, qn("a:srgbClr"), val=v[1])
+            etree.SubElement(ln, qn("a:prstDash"), val="solid")
+        else:
+            etree.SubElement(ln, qn("a:noFill"))
+        tcPr.insert(0, ln)
+
+
+def _tint(hexc, k=0.86):
+    """把主色往白色調淡（k＝白色比例），當底色。"""
+    r, g, b = (int(hexc[i:i + 2], 16) for i in (0, 2, 4))
+    return "%02X%02X%02X" % tuple(round(c + (255 - c) * k) for c in (r, g, b))
+
+
+def tbl_opts(s):
+    """<!-- tbl: style=clean; col_w=2,4,4; colors=3D8168,BF5B3C; align=center; fill=on -->（分號或｜隔開）。"""
+    o = {}
+    for part in re.split(r"[;；｜|]", s.get("tbl") or ""):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            o[k.strip().lower()] = v.strip()
+    return o
+
+
 def L_table3(slide, s):
+    """表格。<!-- tbl: --> 可選（2026-10-20 教師：「表格要做得漂亮」「字要少」）：
+      style=band（預設：深色表頭、斑馬紋、首欄粗體赭色）｜clean（表頭只有深色粗字與底下一條粗線、列與列之間細線、白底）
+            ｜accent（clean 加上每列首欄左側一條色帶、首欄淡色底，色依 colors）
+      col_w=2,4,4（各欄相對寬度；不寫就依字數分）；colors=主色1,主色2,…（資料列依序；accent 的色帶與首欄字色）
+      align=center（首欄以外置中）；fill=on/off（表格比可用高度矮時把多的高度平均加給各列，clean／accent 預設 on）"""
     set_bg(slide, G.BG)
     y0 = content_title(slide, s)
     tbl = s.get("table") or []
     if not tbl:
         return L_left(slide, s)
+    opt = tbl_opts(s)
+    style = opt.get("style", "band")
     if s["bullets"]:   # 全部說明句都畫（不再只畫第一條）
         lw = G.SW - 2 * G.M - 0.26
         need = sum(n_lines(bullet_level(b)[1], G.S["lead"], lw) * line_h(G.S["lead"]) + 4 / 72.0 for b in s["bullets"])
@@ -603,24 +652,32 @@ def L_table3(slide, s):
     ncol = len(tbl[0])
     rows = [(r + [""] * ncol)[:ncol] for r in tbl]
     tw = G.SW - 2 * G.M
-    w0 = max(em(r[0]) for r in rows)
     wr = [max(em(r[j]) for r in rows) for j in range(ncol)]
     tot = sum(max(4, x) for x in wr)
     widths = [tw * max(4, x) / tot for x in wr]
     widths = [max(1.3, x) for x in widths]
+    cw = [float(x) for x in re.split(r"[,，\s]+", opt.get("col_w", "")) if x]
+    if len(cw) == ncol and all(x > 0 for x in cw):
+        widths = cw
     scale = tw / sum(widths)
     widths = [x * scale for x in widths]
     avail = G.SH - y0 - 0.45 - getattr(G, "src_h", 0.0)
     size = G.S["table"]
+    pad = 0.14 if style == "band" else 0.22   # 儲存格上下邊界＋框線；clean／accent 多留一點呼吸
     for cand in (G.S["table"], G.S["table_min"]):
         size = cand
         row_h = [max(n_lines(r[j], cand, widths[j] - 0.2, bold=(i == 0 or j == 0)) for j in range(ncol))
-                 * line_h(cand, 1.1) * TABLE_LINE_K + 0.14 for i, r in enumerate(rows)]   # 0.14＝儲存格上下邊界＋框線
+                 * line_h(cand, 1.1) * TABLE_LINE_K + pad for i, r in enumerate(rows)]
         need = sum(row_h)
         if need <= avail:
             break
     note_fit(s, need, avail, "表格")
-    t = slide.shapes.add_table(len(rows), ncol, Inches(G.M), Inches(y0), Inches(tw), Inches(min(avail, need))).table
+    if opt.get("fill", "off" if style == "band" else "on") == "on" and need < avail and len(rows) > 1:
+        extra = min((avail - need) * 0.7 / (len(rows) - 1), 0.45)   # 只加給資料列，每列最多 0.45 in
+        row_h = [row_h[0]] + [h + extra for h in row_h[1:]]
+        need = sum(row_h)
+    gf = slide.shapes.add_table(len(rows), ncol, Inches(G.M), Inches(y0), Inches(tw), Inches(min(avail, need)))
+    t = gf.table
     # 2026-10-15：每列照自己的估算設高度。原本整張表高度平均分給各列，PowerPoint 只會把放不下的列撐高、不會把空的列縮小，
     # 實排就比估算高（uro-a3 表格溢出的原因之一）。表格放不下時按比例縮，仍由 check_deck 報 RED。
     k = min(1.0, avail / need) if need > 0 else 1.0
@@ -630,13 +687,42 @@ def L_table3(slide, s):
     t.horz_banding = False
     for j in range(ncol):
         t.columns[j].width = Inches(widths[j])
+    center = opt.get("align", "") == "center"
+    al = lambda j: (PP_ALIGN.CENTER if center and j > 0 else PP_ALIGN.LEFT)
+    if style == "band":
+        for i, r in enumerate(rows):
+            for j, c in enumerate(r):
+                if i == 0:
+                    set_cell(t.cell(i, j), c, size, color="FFFFFF", bold=True, fill=G.D["cobaltd"], align=al(j))
+                else:
+                    set_cell(t.cell(i, j), c, size, color=(G.D["terrad"] if j == 0 else G.D["ink"]), bold=(j == 0),
+                             fill=("FFFFFF" if i % 2 else G.D["tint"]), align=al(j))
+        return
+    sid = t._tbl.tblPr.find(qn("a:tableStyleId"))
+    if sid is not None:
+        sid.text = NO_GRID_STYLE
+    colors = [x.strip().lstrip("#").upper() for x in re.split(r"[,，\s]+", opt.get("colors", "")) if x.strip()]
+    rule, thin = G.D["cobaltd"], "C9D3DD"
     for i, r in enumerate(rows):
+        main = colors[(i - 1) % len(colors)] if (colors and i > 0) else None
         for j, c in enumerate(r):
+            cell = t.cell(i, j)
+            last = i == len(rows) - 1
             if i == 0:
-                set_cell(t.cell(i, j), c, size, color="FFFFFF", bold=True, fill=G.D["cobaltd"])
-            else:
-                set_cell(t.cell(i, j), c, size, color=(G.D["terrad"] if j == 0 else G.D["ink"]), bold=(j == 0),
-                         fill=("FFFFFF" if i % 2 else G.D["tint"]))
+                set_cell(cell, c, size, color=G.D["cobaltd"], bold=True, fill=G.BG, align=al(j))
+                cell_borders(cell, L=None, R=None, T=None, B=(2.25, rule))
+                continue
+            first = j == 0
+            fill = "FFFFFF"
+            col = G.D["ink"]
+            if first:
+                col = main or G.D["terrad"]
+                if style == "accent" and main:
+                    fill = _tint(main)
+            set_cell(cell, c, size, color=col, bold=first, fill=fill, align=al(j))
+            sides = {"T": None, "R": None, "B": ((1.5, rule) if last else (0.75, thin))}
+            sides["L"] = (6.0, main) if (style == "accent" and first and main) else None
+            cell_borders(cell, **sides)
 
 
 def quiz_title(course, deck, q):
@@ -760,8 +846,11 @@ def _cell_text(tf, text, size, color, bold=False, align=PP_ALIGN.CENTER):
         para(tf, part, size, color=color, bold=bold, align=align, first=(k == 0), line=1.0, space_after=0)
 
 
-def _cell_need(text, size, w):
-    return sum(n_lines(part, size, w) for part in str(text).split(NL)) * line_h(size, 1.0) + 0.18
+def _cell_need(text, size, w, bold=False):
+    """格子要的高度（in）。節點格是粗體，要用粗體量（2026-10-20：用一般字重量，粗體節點格少估一兩行、實排溢出）。
+    行距 100% 的微軟正黑體實排每行 1.2 × 字級（2026-10-20 量 PowerPoint for Mac 存的 headneck-dent PDF 與 LibreOffice
+    都是 20pt → 24pt）；line_h 的 1.12 係數是照條列（行距 110%）校正的，拿來算格子每行少 7%，7 行的格子就少一行。"""
+    return sum(n_lines(part, size, w, bold) for part in str(text).split(NL)) * size * 1.2 / 72.0 + 0.18
 
 
 def L_diagram(slide, s):
@@ -783,7 +872,9 @@ def L_diagram(slide, s):
     cs = G.S["min"]
     lab = G.S["label"]
     gap = 0.10
-    avail = G.SH - y0 - 0.4
+    # 資料來源行的頂端在 SH − 0.07 − src_h（src_line）；框架圖底下留 0.08 in。
+    # 2026-10-20 以前固定扣 0.4：一行出處只剩 0.03 in，兩行出處會壓到框架圖。
+    avail = G.SH - y0 - max(0.40, 0.15 + getattr(G, "src_h", 0.0))
     W = G.SW - 2 * G.M
 
     def box(x, y, w, h, text, size, on, g, bold=False, head=False):
@@ -794,7 +885,7 @@ def L_diagram(slide, s):
         _, tf = textbox(slide, x + 0.07, y + 0.03, w - 0.14, h - 0.06, anchor=MSO_ANCHOR.MIDDLE)
         col = (G.D["deep"] if head else G.D["ink"]) if on else ("8AA0B5" if head else "BCCBD8")
         _cell_text(tf, text, size, col, bold=(bold and on))
-        need = _cell_need(text, size, w - 0.14)
+        need = _cell_need(text, size, w - 0.14, bold=(bold and on))
         if need > h + 0.05:
             note_fit(s, need, h, f"框架圖格子「{str(text)[:10]}」")
 
@@ -822,7 +913,7 @@ def L_diagram(slide, s):
         y = y0 + hh + 0.05
         space = avail - hh - 0.05 - gap * (len(nodes) - 1)
         for labsz in (lab, cs):
-            need = [max([_cell_need(nd["label"], labsz, w0 - 0.14)] +
+            need = [max([_cell_need(nd["label"], labsz, w0 - 0.14, bold=True)] +
                         [_cell_need(r["cells"][i], cs, cw[j] - 0.14) for j, r in enumerate(rows)])
                     for i, nd in enumerate(nodes)]
             if sum(need) <= space:
@@ -841,7 +932,7 @@ def L_diagram(slide, s):
     n = len(nodes)
     nw = (W - lbl_w - (n - 1) * gap) / n
     x0 = G.M + lbl_w
-    nh = max(0.8, max(_cell_need(nd["label"], lab, nw - 0.14) for nd in nodes))
+    nh = max(0.8, max(_cell_need(nd["label"], lab, nw - 0.14, bold=True) for nd in nodes))
     for i, nd in enumerate(nodes):
         box(x0 + i * (nw + gap), y0, nw, nh, nd["label"], lab, lit(nd), gcol(nd), bold=True, head=True)
     y = y0 + nh + 0.12

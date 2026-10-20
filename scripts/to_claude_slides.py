@@ -21,7 +21,7 @@ import sys
 import unicodedata
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import build_deck, bullet_level, load_course, notes_map, parse_markup, parse_script  # noqa: E402
+from common import SOFT_BREAK, build_deck, bullet_level, load_course, notes_map, parse_markup, parse_script  # noqa: E402
 
 PX = 2  # 1pt → 2px
 FONT = "'Noto Sans TC', Arial, sans-serif"
@@ -32,12 +32,17 @@ def esc(t):
     return html.escape(unicodedata.normalize("NFC", t or ""), quote=False)
 
 
+def brk(t):
+    """esc＋素材池的段內換行「⏎」換成 <br>（2026-10-20 之前網頁版會把 ⏎ 原樣印出來）。"""
+    return esc(t).replace(SOFT_BREAK, "<br>")
+
+
 def rich(text, emph):
     out = []
     for t, col in parse_markup(text or "", emph):
         if not t:
             continue
-        out.append(f'<span style="color:#{col}">{esc(t)}</span>' if col else esc(t))
+        out.append(f'<span style="color:#{col}">{brk(t)}</span>' if col else brk(t))
     return "".join(out)
 
 
@@ -113,9 +118,71 @@ class R:
         bg = self.D["deep"] if dark else self.c["slide"].get("background", self.D["snow"])
         col = "#FFFFFF" if dark else f"#{self.D['ink']}"
         aside = f"<aside>{esc(note)[:3900]}</aside>" if note else ""
+        pb = 96
+        if s.get("src"):                        # 出處行是絕對定位在底部；兩行時預留空間，內容才不會壓到它（2026-10-20）
+            n = lines("資料來源：" + "；".join(s["src"]), self.pt("credit"), 1728)
+            pb = max(96, int(36 + n * self.pt("credit") * 1.3 + 16))
         return (f'<section id="{s["id"]}" style="background:#{bg}; color:{col}; font-family:{FONT}; '
-                f'padding:72px 96px 96px; display:flex; flex-direction:column; gap:32px">'
+                f'padding:72px 96px {pb}px; display:flex; flex-direction:column; gap:32px">'
                 f'{body}{self.src_line(s)}{aside}</section>')
+
+    def diagram(self, s):
+        """框架圖（course.yaml diagrams.<名>），版面照 gen_pptx.L_diagram：orient rows＝節點直排、屬性為欄（node_w、col_w 單位 in），
+        預設 cols＝節點橫排、屬性為列。格子裡的換行字元分行；未點亮的畫淺灰。2026-10-20 補：之前網頁版的框架圖張只有標題。"""
+        spec = (self.c.get("diagrams") or {}).get(s.get("diagram"))
+        if not spec:
+            return f'<p style="font-size:{self.pt("body")}px; color:#{self.D["terrad"]}">（course.yaml 沒有框架圖 {esc(s.get("diagram"))}）</p>'
+        bright = set(s.get("diagram_bright") or ["全部"])
+        allon = "全部" in bright
+        nodes, rows, groups = spec["nodes"], spec.get("rows", []), spec.get("groups", {})
+        lit = lambda nd: allon or nd["label"].replace("\n", "") in bright or nd["label"] in bright or nd.get("group") in bright
+        gcol = lambda nd: groups.get(nd.get("group"), {"main": self.D["cobalt"], "light": "E3EDF8"})
+        cs, lab, gap = self.pt("min"), self.pt("label"), 12
+        sw, m = self.c["slide"]["width"], self.c["slide"].get("margin", 0.5)
+        W = 1920 - 2 * 72                       # 框架圖左右各借 24px，寬度對到 PPTX 的 0.5 in 邊界（144 px／in）
+        scale = W / (sw - 2 * m)
+
+        def txt(x):                             # 換行字元先換成「⏎」再上色，標記內的換行也不會把 [[橘:…]] 拆壞
+            return f'<div>{rich(str(x).replace(chr(10), SOFT_BREAK), self.E)}</div>'
+
+        def box(x, size, on, g, head=False):
+            fill = g["light"] if on else "FFFFFF"
+            line = g["main"] if on else ("C3D3E0" if head else "E2EAF1")
+            col = (self.D["deep"] if head else self.D["ink"]) if on else ("8AA0B5" if head else "BCCBD8")
+            return (f'<div style="background:#{fill}; border:{4 if head else 2}px solid #{line}; '
+                    f'border-radius:{20 if head else 14}px; padding:4px 10px; display:flex; align-items:center; '
+                    f'justify-content:center; text-align:center; font-size:{size}px; line-height:1.12; color:#{col}; '
+                    f'font-weight:{700 if head and on else 400}">{txt(x)}</div>')
+
+        def name(x, align="center", on=True):
+            return (f'<div style="display:flex; align-items:center; justify-content:{align}; text-align:{align}; '
+                    f'font-size:{cs}px; font-weight:700; line-height:1.1; color:#{self.D["deep"] if on else "A8BACA"}">'
+                    f'{txt(x)}</div>')
+
+        if spec.get("orient") == "rows":
+            nc = len(rows)
+            w0 = spec.get("node_w", 3.0) * scale
+            cw = spec.get("col_w") or [1.0] * nc
+            rest = W - w0 - nc * gap
+            cols = [w0] + [rest * x / sum(cw) for x in cw]
+            cells = ['<div></div>'] + [name(r["name"]) for r in rows]
+            for i, nd in enumerate(nodes):
+                on = lit(nd)
+                cells.append(box(nd["label"], lab, on, gcol(nd), head=True))
+                cells += [box(r["cells"][i], cs, on and (allon or r["name"] in bright), gcol(nd)) for r in rows]
+            tmpl_r = f"auto repeat({len(nodes)}, minmax(min-content, 1fr))"
+        else:
+            lw = spec.get("label_w", 0.95) * scale if rows else 0
+            nw = (W - lw - (len(nodes) - 1) * gap - (gap if rows else 0)) / len(nodes)
+            cols = ([lw] if rows else []) + [nw] * len(nodes)
+            cells = (['<div></div>'] if rows else []) + [box(nd["label"], lab, lit(nd), gcol(nd), head=True) for nd in nodes]
+            for r in rows:
+                on_row = allon or r["name"] in bright
+                cells.append(name(r["name"], align="flex-end", on=on_row))
+                cells += [box(x, cs, on_row and lit(nodes[i]), gcol(nodes[i])) for i, x in enumerate(r["cells"])]
+            tmpl_r = f"auto repeat({len(rows)}, minmax(min-content, 1fr))"
+        return (f'<div style="display:grid; grid-template-columns:{" ".join(f"{x:.0f}px" for x in cols)}; '
+                f'grid-template-rows:{tmpl_r}; gap:{gap}px; flex:1; min-height:0; margin:0 -24px">{"".join(cells)}</div>')
 
     def render(self, s, qs, note):
         t, imgs = s["type"], [i for i in s["imgs"] if i.get("exists")]
@@ -124,7 +191,7 @@ class R:
                           f'{esc(bullet_level(b)[1])}</p>' for i, b in enumerate(s["bullets"][:4]))
             body = (f'<div style="flex:1"></div><div style="display:flex; flex-direction:column; gap:24px; '
                     f'border-left:14px solid #{self.D["terra"]}; padding:0px 0px 0px 40px">'
-                    f'<h1 style="font-size:{self.pt("cover")}px; font-weight:700; color:#FFFFFF">{esc(s["title"])}</h1>'
+                    f'<h1 style="font-size:{self.pt("cover")}px; font-weight:700; color:#FFFFFF">{brk(s["title"])}</h1>'
                     f'{sub}</div><div style="flex:1"></div>')
             return self.section(s, body, dark=True, note=note)
         if t == "divider":
@@ -132,7 +199,7 @@ class R:
                           for b in s["bullets"][:2])
             body = (f'<div style="flex:1"></div><div style="display:flex; flex-direction:column; gap:24px; '
                     f'border-left:14px solid #{self.D["terra"]}; padding:0px 0px 0px 40px">'
-                    f'<h1 style="font-size:{self.pt("divider")}px; font-weight:700; color:#FFFFFF">{esc(s["title"])}</h1>'
+                    f'<h1 style="font-size:{self.pt("divider")}px; font-weight:700; color:#FFFFFF">{brk(s["title"])}</h1>'
                     f'{sub}</div><div style="flex:1"></div>')
             return self.section(s, body, dark=True, note=note)
         if t == "quiz":
@@ -175,6 +242,8 @@ class R:
             figs = "".join(self.figure(im, 820, int(max(300, INNER_H - used)), label=im.get("label")) for im in imgs[:2])
             return self.section(s, self.title(s) + self.lead(s["bullets"])
                                 + f'<div style="display:flex; gap:48px">{figs}</div>', note=note)
+        if t == "diagram":
+            return self.section(s, self.title(s) + self.diagram(s), note=note)
         if t == "table3" and s.get("table"):
             rows = s["table"]
             n = len(rows[0])

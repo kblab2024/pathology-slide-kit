@@ -38,8 +38,9 @@ SLIDEKIT_MATERIALS="$MAT" PYTHONIOENCODING=utf-8 python style_check.py --course 
 SLIDEKIT_MATERIALS="$MAT" PYTHONIOENCODING=utf-8 python export_pdf.py "$CD/成品/<PPTX 檔名>.pptx" --pdf "$CD/成品/<PDF 檔名>.pdf" \
     --sheets "$CD/_archive/render/sheets" --pngs "$CD/_archive/render/png"
 SLIDEKIT_MATERIALS="$MAT" PYTHONIOENCODING=utf-8 python img_todo.py --course $C
-# Mac：export_pdf.py 那一行改成（第一次會跳 macOS 授權，教師要在電腦前）
-bash "$KIT/scripts/ppt_pdf_mac.sh" "$CD/成品/<PPTX 檔名>.pptx"
+# Mac 也用 export_pdf.py（LibreOffice；先跑一次 bash "$KIT/scripts/lo_fonts_mac.sh"），再量實排：
+PYTHONIOENCODING=utf-8 python check_render.py "$CD/成品/<PPTX 檔名>.pptx" "$CD/成品/<PDF 檔名>.pdf" --warn-pt 4
+# 要 PowerPoint 本身定稿才用（第一次會跳 macOS 授權，教師要在電腦前）：bash "$KIT/scripts/ppt_pdf_mac.sh" "$CD/成品/<PPTX 檔名>.pptx"
 ```
 
 ## 素材

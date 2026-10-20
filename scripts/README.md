@@ -54,7 +54,7 @@ Linux 沒有 `python` 指令時用 `python3`（雲端的 `setup/cloud-setup.sh` 
 | OCR | Tesseract（UB Mannheim 版，預設路徑自動找） | `apt-get install tesseract-ocr` |
 | 教科書 PDF | 可有可無 | 通常沒有：`robbins_crop.py` 直接裁 200dpi 頁圖 |
 
-Mac：量字用 PowerPoint for Mac 內建的微軟正黑體（gen_pptx 自動找）、PDF 與逐張 PNG 用 `ppt_pdf_mac.sh`（`export_pdf.py` 在 Mac 存不了 PDF）、OCR 用 Homebrew 的 tesseract；見 `../setup/mac.md`。
+Mac：量字用 PowerPoint for Mac 內建的微軟正黑體（gen_pptx 自動找）、PDF 與逐張 PNG 用 `export_pdf.py`（LibreOffice；先跑一次 `lo_fonts_mac.sh`）、要 PowerPoint 本身定稿才用 `ppt_pdf_mac.sh`、OCR 用 Homebrew 的 tesseract；見 `../setup/mac.md`。
 
 gen_pptx 每次會印出「量字字型：…」，也寫進 `_layout.json` 的 `measure_font`，方便對照雲端與本機的估算差異。
 
@@ -89,6 +89,8 @@ gen_pptx 每次會印出「量字字型：…」，也寫進 `_layout.json` 的 
 - `html_deck.py --course <課程> [--max-side 1200] [--quality 75]`：產一個圖片內嵌的 HTML 檔（`成品/…(HTML)_日期.html`），不需上傳，手機或任何瀏覽器直接開；←／→ 換張。教師 2026-10-14「成品要有 html 版」。
 
 Mac、任務 B 與交件工具（不收 `--course`，除了 draw_flow 的 `--course` 只讀配色）：
+- `lo_fonts_mac.sh`：Mac 上把 PowerPoint for Mac 內建的微軟正黑體（與 Arial、Calibri、Times）放進 LibreOffice.app 的字型資料夾，`export_pdf.py --engine libreoffice` 就用和 PowerPoint 相同的字型排版（2026-10-20）。LibreOffice 更新後再跑一次。
+- `check_render.py <in.pptx> <in.pdf> [--json 輸出] [--warn-pt 2]`：量 PDF 的實排（PowerPoint 或 LibreOffice 算的都可以）。RED：框架圖格子的字超出圓角框、兩段字互相壓到（例：條列壓到資料來源行）、字超出投影片；WARN：格子的字離邊不到 warn-pt、字超出自己的文字框但沒壓到別的字。check_deck 是估算，這支量實排；表格的格子只用來配對，不查溢出（LibreOffice 表格列高略高）。
 - `ppt_pdf_mac.sh <課程>/成品/<in.pptx> [out.pdf] [png資料夾] [縮圖資料夾]`：Mac 用 PowerPoint for Mac 存 PDF，再用 export_pdf.py 的函式出拼板與逐張 PNG（預設放 `<課程>/_archive/render/{png,sheets}`）。只接受課程 `成品/` 底下的檔、拒絕 OneDrive 路徑；PowerPoint 開著別的簡報就停（結束碼 3），只開、只存、只關自己那一份。第一次跑會跳 macOS 自動化授權，要教師在電腦前按允許。PowerPoint 的沙盒容器寫不進去時（新版 macOS，2026-10-16 起這台 Mac 的 Claude Code 是這樣），自動改把暫存檔放課程 `_archive/render/_ppt_tmp`，PowerPoint 第一次開那裡的檔可能跳「授予檔案存取權」，請教師按允許。
 - `shrink_pdf.py <in.pdf> <out.pdf> [長邊px=900] [品質=72]`：把 PDF 裡的 JPEG 縮小，給 OneDrive 放壓縮版（大檔可能整個傳不上：2026-10-02 是 21.5 MB 的 PDF，2026-10-14 晚 8.9–21 MB 的 PPTX 也卡住，同時段的小 md、docx 正常；大小與檔案類型都不是可靠的門檻，見 `../docs/教師偏好與決策.md` 第 8 節）。交件檔名用 `(PDF壓縮)`。
 - `compose_from_pdf.py <in.pptx> <in.pdf> <代號> <輸出資料夾> [--config cfg.json] [--only 張號…]`：任務 B，從教師的 PDF 原樣切出每張的圖區；設定檔寫要留的標籤（文字開頭或 shape 名）與要丟的圖形。輸出 `<代號>_sNNN.png|jpg` 與 `<代號>_compose.json`。
@@ -144,7 +146,7 @@ course.yaml 選填 `layout: {left_min_frac: 0.30}`：left 版型的條列都很�
 | big | 單句大字（sizes.big），可附圖；空標題沒圖時句子垂直置中；空標題有圖加 `<!-- order: img-first -->` 則圖上句下 | 1–3 短句 |
 | pair | 兩圖並排（可加標籤） | 說明 ≤2 行 |
 | robbins | 整張教科書圖 | 說明 ≤1 行 |
-| table3 | 表格（≥20pt；超過 table_max_rows 自動拆成同標題連張） | 每格短語 |
+| table3 | 表格（≥20pt；超過 table_max_rows 自動拆成同標題連張）。可加 `<!-- tbl: style=clean; col_w=3,4,4; colors=3D8168,BF5B3C; align=center; fill=on -->`：style＝band（預設，深色表頭＋斑馬紋）／clean（只有表頭下粗線與列間細線）／accent（clean＋每列首欄左側色帶與淡色底，色依 colors）；col_w 各欄相對寬度；align=center 首欄以外置中；fill 把多的高度分給各列（clean／accent 預設 on）。2026-10-20 教師：「表格要做得漂亮」「字要少」 | 每格短語 |
 | quiz | 國考題：course.yaml `decks.<deck>.quiz_style` 乙（預設；年次標題＋題幹選項 24–28pt，正解整段藍；標題格式 `quiz_label`，佔位 {年度} {第幾次}（一、二） {次}（1、2） {題號}；題幹色 `design.quiz_stem`，不寫＝deep）或 甲（1 列 3 欄表「正解字母粗體｜題號．題幹＋選項｜年度-次」，不放標題） | 官方原文 |
 | stats | 大數字卡片（`數字｜說明`） | 2–4 張卡 |
 | diagram | 框架圖（course.yaml diagrams） | 格子 ≥20pt；4 欄時每行約 7 個中文字，每格最多兩行（約 14 字，含英文） |

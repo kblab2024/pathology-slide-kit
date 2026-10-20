@@ -13,7 +13,7 @@
 | 4 | 蒐集事實、選題、文獻 | `lecture-gather.js` → `merge_facts.py` | 97（更新題庫時 98） | 衝突清單（不擋進度） | 1 研究 |
 | 5 | 藍圖 | `lecture-blueprint.js` → `validate_blueprint.py`（新課的階段 2 改用課程自寫的撰寫工作流，一支做完第 5、6 步，見表下） | 10 | 【老師決定】大綱（建議） | 2 初稿 |
 | 6 | 撰寫與組裝 | `make_batches.py` → `lecture-write.js` → `merge_written.py` → `assemble.py` | 57（11 批 × 5＋連貫性 1＋讀檔 1） | | 2 |
-| 7 | 產檔、檢查、看 PNG | `gen_pptx.py`、`style_check.py`、`export_pdf.py`（Mac：`ppt_pdf_mac.sh`）、`img_todo.py` | 0 | | 2（毛胚）、3 |
+| 7 | 產檔、檢查、看 PNG | `gen_pptx.py`、`style_check.py`、`export_pdf.py`（Mac 也一樣，LibreOffice）、`check_render.py`、`img_todo.py` | 0 | | 2（毛胚）、3 |
 | 7b | 照老師對毛胚的評語充實 | 課程自寫的充實工作流（範本見第 7b 步） | uro-a3 空跑最多 34 | 【老師決定】看毛胚給評語 | 3 充實 |
 | 8 | 審查 | `lecture-review.js`（每輪） | 19／輪（沒給 pngs 時 20） | | 3 |
 | 9 | 交付前檢查、裁決清單 | `52_交付前檢查清單.md` | 0 | | 2（毛胚）、3（草稿） |
@@ -30,7 +30,7 @@
 - `compose_from_pdf.py`：從他自己用 PowerPoint 匯出的 PDF，原樣切出每張的圖區（保留箭頭、標籤、SmartArt）。
 - `draw_flow.py`：把英文機轉圖改畫成中英對照的流程圖。
 - `label_image.py`：Runway 重繪的母圖（沒有字）加上中英對照標籤、引線與圓點。這是示意圖的標準做法（教師 2026-10-14）：模型只畫圖，字由做投影片的代理加。
-- Mac 上算圖用 `ppt_pdf_mac.sh`，交 OneDrive 的大 PDF 用 `shrink_pdf.py` 壓（大檔可能整個傳不上，見 `docs/教師偏好與決策.md` 第 8 節）。
+- Mac 上算圖用 `export_pdf.py`（LibreOffice＋微軟正黑體，見 `setup/mac.md`），要 PowerPoint 本身定稿才用 `ppt_pdf_mac.sh`；交 OneDrive 的大 PDF 用 `shrink_pdf.py` 壓（大檔可能整個傳不上，見 `docs/教師偏好與決策.md` 第 8 節）。
 
 ## 指令寫法
 

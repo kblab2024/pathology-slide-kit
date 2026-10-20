@@ -17,7 +17,7 @@ cd "<kit>/scripts" && PYTHONIOENCODING=utf-8 python -c "import common; print(com
 | | Windows 本機 | Mac 本機 | Linux（含雲端 session） |
 |---|---|---|---|
 | 安裝 | `setup/windows.md` | `setup/mac.md` | `bash setup/cloud-setup.sh`（要 root 或 sudo） |
-| PDF 匯出 | `export_pdf.py`（PowerPoint） | `bash scripts/ppt_pdf_mac.sh <課>/成品/<檔>.pptx`（PowerPoint for Mac；第一次的授權與注意事項見 `setup/mac.md`） | 沒有 PowerPoint，用 LibreOffice（`soffice`）；`SLIDEKIT_PDF_ENGINE=auto｜powerpoint｜libreoffice` 可強制指定 |
+| PDF 匯出 | `export_pdf.py`（PowerPoint） | `export_pdf.py`（LibreOffice＋PowerPoint 內建的微軟正黑體，斷行與 PowerPoint 相同；第一次先跑 `bash scripts/lo_fonts_mac.sh`，見 `setup/mac.md`）；要 PowerPoint 本身定稿才用 `bash scripts/ppt_pdf_mac.sh <課>/成品/<檔>.pptx`（第一次會跳授權） | 沒有 PowerPoint，用 LibreOffice（`soffice`）；`SLIDEKIT_PDF_ENGINE=auto｜powerpoint｜libreoffice` 可強制指定 |
 | 換行量測字型 | 微軟正黑體 | PowerPoint for Mac 內建的微軟正黑體（gen_pptx 自動找） | Noto Sans CJK TC（PPTX 內仍指定微軟正黑體，交件前在 PowerPoint 看一次） |
 | `python` 指令 | `python` | `python`（找不到用 `python3`） | `python`（找不到用 `python3`） |
 | 工作流腳本檢查 | `node workflows/tools/check_workflows.js`（只用內建參數空跑 kit 的腳本；這次 args 的代理數上限照 `workflows/README.md` 的公式數） | 沒有 node：`osascript -l JavaScript workflows/tools/wf_check_mac.js <腳本> <args.json>`（語法、假代理空跑、代理數） | 同 Windows |
@@ -71,10 +71,10 @@ cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 py
 1. **事實以 Robbins 11e 為唯一正典。** 每一句都要對得到事實帳（facts_R.json）或已查核的文獻（facts_X.json）。文獻只補充、句內或標題括號附出處、不得蓋過 Robbins。Robbins、文獻、老師舊投影片三者衝突時，選一個做法做進成品，並列進「待教師裁決清單」；不靜默改，也不靜默沿用。他的錯字照 `24_術語與中英對照.md` TERM-18 處理。
 2. **不寫 LLM 語。** 全形雙破折號（U+2014 連寫兩個）、套語（值得注意的是、讓我們、總而言之、扮演…角色、關鍵在於、不僅…更…）、舞台指示、打氣句、戲劇化第二人稱、貫穿全套的比喻一律不寫。他自己的「其實」「不是 X，而是 Y」「因此」「=>」照用（份量見指南 23、25）。清單以 `20_文字/23_禁用語與LLM語.md` 為準。
 3. **字級、中英對照、國考題版式照該課的明令。** 課程有明令（例：immune 的標題 36、內文 28、學生要讀的字 ≥20、出處 14）就照做，寫在該課 course.yaml（`sizes`、`bilingual`、`decks.<deck>.quiz_style`）與 brief.md；不要把某一課的明令套到別的課。兩條適用所有課（`docs/教師偏好與決策.md` 第 4 節）：**每一張的專有名詞都寫「中文(English)」**（2026-10-14；文字、圖上的標籤、表格、流程圖都一樣；course.yaml 一律寫 `bilingual: per_slide`；放不下就拆張，不拿掉英文）；新做的大堂課沒有字級明令時，**內文 24–35pt 依版型選、表格與標籤 24、只有出處行可以更小**（2026-10-14 晚；數值在 `templates/course.template.yaml` 的註解）。
-4. **一張講一個主題，但不要單句張；內容要有深度、統整、連貫。** 2026-10-14 教師看完 uro-a3 毛胚後明令（`docs/教師偏好與決策.md` 第 4 節）：他舊 deck 的單句大字張是他唯一不喜歡的舊風格；每張內容張要有一個以上的重點（封面、分隔張、國考題張除外），照 Robbins 補深度、加比較表與銜接，版面比他的原檔精緻。真的放不下才拆同標題連張；不做學習目標、大綱、總結、謝謝張；不產「圖片待補」佔位張或佔位框，缺圖寫 `<!-- img_wanted: … -->` 進待補圖清單。
+4. **一張講一個主題，但不要單句張；內容要有深度、統整、連貫。** 2026-10-14 教師看完 uro-a3 毛胚後明令（`docs/教師偏好與決策.md` 第 4 節）：他舊 deck 的單句大字張是他唯一不喜歡的舊風格；每張內容張要有一個以上的重點（封面、分隔張、國考題張除外），照 Robbins 補深度、加比較表與銜接，版面比他的原檔精緻。深度不是把文獻細節搬上投影片（2026-10-20）：例數、試驗期別、體外或小鼠、作者推測放講稿，統整表字要少、語調要像上課講話。真的放不下才拆同標題連張；不做學習目標、大綱、總結、謝謝張；不產「圖片待補」佔位張或佔位框，缺圖寫 `<!-- img_wanted: … -->` 進待補圖清單。
 5. **只改來源檔，不手改 PPTX。** 來源檔：`sources/*-pool.md`、`*-script.md`、`sources/decks/*.md`、`course.yaml`、`glossary.md`。藍圖與撰寫 JSON 被審查修改超越後，不要再拿它們重跑 `assemble.py`（會蓋掉 pool.md）。
 6. **不覆蓋老師親手改過的檔。** 他改過的 PPTX 要先用 `dump_pptx.py`＋`diff_decks.py` 回灌 pool.md，才能重產；產檔前看 `成品/` 有沒有同名檔（gen_pptx 覆寫既有檔時會印「[注意] 覆寫既有檔」），有就換日期或用 `--name`。只是確認環境時用 `--name _smoketest`。
-7. **綠燈不算數。** `check_deck.py`、`style_check.py` 全過之後，還要出逐張 PNG（`export_pdf.py`；Mac 用 `ppt_pdf_mac.sh`），一張一張看溢出、孤字、行首標點、被壓小的圖。估算「放得下」的改法要渲染過才算完成。
+7. **綠燈不算數。** `check_deck.py`、`style_check.py` 全過之後，還要出逐張 PNG（`export_pdf.py`，Mac 也一樣），跑 `check_render.py` 量實排（框架圖格子溢出、兩段字互壓），再一張一張看溢出、孤字、行首標點、被壓小的圖。估算「放得下」的改法要渲染過才算完成。
 8. **工作流的每個代理都寫死模型與強度。** 用 Claude 時一律 `model: 'opus'`，反駁與複查也一樣，不換成比 opus 更貴的型號（教師採用的第 2 條上限；lung 的費用失控在用更貴的型號跑多輪反駁）。每個代理明寫 effort：不寫會繼承主 session 當時的強度（2026-10-14 實測繼承到 medium）；各角色用哪一級照 `workflows/README.md`「角色與強度」。用其他公司的工具時，整個階段固定用該家一個主力的推理模型（不用標價更高的頂級型號，反駁與複查也一樣），強度照第 4.0 節的表；交付說明寫出用了什麼模型與設定。同一個階段用同一個工具，要換在階段的邊界換，寫進 handoff（2026-10-14 整理文件時加的，不是教師的上限）。
 9. **做過的步驟不重做。** 續跑一律靠 DONE 表（`args.done = {label: 輸出檔路徑}`，列在裡面的代理直接沿用舊檔；Claude Code 的 `resumeFromRunId` 見 `CLAUDE.md`）；journal、當次 args 與 DONE 表存在 `<課程資料夾>/_archive/journals/`，重建用 `workflows/tools/done_from_journal.py`（journal 不見時加 `--scan`）。沒有 Workflow 工具時，輸出檔已存在且完整就跳過，DONE 表照 `docs/跨工具做法.md` 第 3 節手寫。
 10. **額度保護與開跑前報價。** 任何代理回傳 null（多半是額度用完；沒有 Workflow 工具時，子代理失敗、沒寫出輸出檔、工具回報額度或速率限制，都照 null 處理）就停止派新代理，把完成清單寫成 DONE 表存檔，告訴使用者停在哪裡；額度或時間快用完時停在一個步驟的邊界，不要自行重試。每個工作流開跑前先數出代理數上限（Mac 用 `wf_check_mac.js` 帶這次的 args 空跑；其他環境照 `workflows/README.md` 的公式，沒有 Workflow 工具就列角色表），照上限報代理數、每個角色的強度、約略費用與時間（`workflows/README.md`「代理數與費用」），使用者說好才跑；沒有他同意不自動續跑長工作流。
@@ -159,7 +159,7 @@ python export_pdf.py "<成品>/<檔名>.pptx" --pdf "<成品>/<PDF 檔名>.pdf" 
 python img_todo.py --course <course>
 ```
 
-Mac 的 PDF 與 PNG 改用 `bash scripts/ppt_pdf_mac.sh "<成品>/<檔名>.pptx"`。逐張看 `_archive/render/png/` 的 PNG（或縮圖拼板 sheets）。
+Mac 也用 `export_pdf.py`（LibreOffice；先跑一次 `bash scripts/lo_fonts_mac.sh`）；要 PowerPoint 本身定稿才用 `bash scripts/ppt_pdf_mac.sh "<成品>/<檔名>.pptx"`。然後 `python check_render.py "<成品>/<檔名>.pptx" "<PDF>" --warn-pt 4`（RED 要 0），再逐張看 `_archive/render/png/` 的 PNG（或縮圖拼板 sheets）。
 
 ### 4.5 審查（`lecture-review.js`，一到兩輪）
 

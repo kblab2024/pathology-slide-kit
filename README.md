@@ -92,7 +92,7 @@ python gen_pptx.py --course immune --name _smoketest        # 重產範例課程
 
 ### C. Mac 本機（PowerPoint for Mac）
 
-安裝與 Mac 上要知道的事見 `setup/mac.md`；PDF 與逐張 PNG 用 `bash scripts/ppt_pdf_mac.sh <課>/成品/<檔>.pptx`（第一次會跳 macOS 自動化授權）。
+安裝與 Mac 上要知道的事見 `setup/mac.md`；PDF 與逐張 PNG 用 `export_pdf.py`（LibreOffice＋PowerPoint 內建的微軟正黑體，斷行與 PowerPoint 相同，不必開 PowerPoint；第一次先跑 `bash scripts/lo_fonts_mac.sh`），再用 `check_render.py` 量實排。要用 PowerPoint 本身定稿時才用 `bash scripts/ppt_pdf_mac.sh <課>/成品/<檔>.pptx`（第一次會跳 macOS 自動化授權）。
 
 **費用**：多代理工作流是主要花費。以 API 牌價換算，一門約 180 張的新課從蒐集到兩輪審查約 $950–1,200，只做一輪審查約 $830–990；各階段的單價、省錢設定，以及這些金額和方案用量、usage credits 的關係，見 `docs/cloud_session_教學.md` 第 9 節。四階段做法（uro-a3：研究 62 個代理、初稿 57 個代理）的實測見 `workflows/README.md`「代理數與費用」。
 

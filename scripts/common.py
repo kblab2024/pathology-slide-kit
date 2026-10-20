@@ -276,6 +276,7 @@ def parse_pool(course):
             "src": [x.strip() for x in re.split(r'[｜|]', src) if x.strip()] if src else [],
             "img_wanted": _field(body, "img_wanted"),
             "robbins": _field(body, "robbins"),
+            "tbl": _field(body, "tbl"),
             "order": _field(body, "order"),
             "title_ov": {m.group(1): m.group(2).strip()
                          for m in re.finditer(r'<!--\s*title:([a-z]+):\s*([^>]*?)\s*-->', body)},

@@ -10,14 +10,19 @@ r"""把 pptx 轉成 PDF（Windows：PowerPoint COM；否則 LibreOffice），再
             powerpoint：只用 PowerPoint；libreoffice：只用 LibreOffice（在 Windows 上模擬雲端環境）
 引擎：
   PowerPoint  用 PowerShell 的 COM 驅動（不需 pywin32）。能開檔且匯出成功＝PowerPoint 沒有跳修復提示（修復提示會讓 COM 呼叫失敗）。
-  LibreOffice soffice --headless --convert-to pdf；執行檔找法：環境變數 SOFFICE → PATH 上的 soffice／libreoffice
-              → C:\Program Files\LibreOffice\program\soffice.exe。每次用獨立的暫存設定檔，不會卡在已開啟的 LibreOffice。
-              LibreOffice 沒有微軟正黑體，會用替代字型（雲端是 Noto Sans CJK TC），換行與 PowerPoint 略有差異，只供目視檢查。
+  LibreOffice soffice --headless：pptx → odp → pdf。中間把 ODF 的 text-autospace 改成 none：LibreOffice 預設在中文與
+              英文、數字之間自動加空隙，PowerPoint 沒有，不改會多斷行、看起來像溢出。執行檔找法：環境變數 SOFFICE
+              → PATH 上的 soffice／libreoffice → 常見安裝位置（含 /Applications/LibreOffice.app）。每次用獨立的暫存設定檔，
+              不會卡在已開啟的 LibreOffice。
+              字型：有微軟正黑體時（Mac 跑一次 lo_fonts_mac.sh，把 PowerPoint 內建的字型放進 LibreOffice）斷行與 PowerPoint
+              相同，表格列高比 PowerPoint 略高（偏保守）；沒有時用替代字型（雲端是 Noto Sans CJK TC），換行略有差異。
+              2026-10-20 在教師的 Mac 對照 PowerPoint 算過的 lab-bj-a1（103 張）、uro-a3（118 張）、headneck-dent 框架圖。
 兩種都不可用時，錯誤訊息列出每個引擎失敗的原因，結束碼 2。
 """
 import argparse
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -61,26 +66,56 @@ def pdf_powerpoint(pptx, pdf, timeout=900):
         raise RuntimeError("PowerPoint 匯出失敗：" + ((r.stderr or r.stdout).strip()[-800:] or f"結束碼 {r.returncode}"))
 
 
+def _no_autospace(odp):
+    """LibreOffice 預設在中文與英文、數字之間自動加空隙（ODF style:text-autospace="ideograph-alpha"），
+    PowerPoint 沒有這個行為，會讓 LibreOffice 多斷行、看起來像溢出。改成 none 後重新打包。"""
+    import zipfile
+    tmp = odp + ".tmp"
+    n = 0
+    with zipfile.ZipFile(odp) as zi, zipfile.ZipFile(tmp, "w") as zo:
+        names = zi.namelist()
+        order = (["mimetype"] if "mimetype" in names else []) + [x for x in names if x != "mimetype"]
+        for name in order:
+            data = zi.read(name)
+            if name in ("styles.xml", "content.xml"):
+                data, k = re.subn(rb'text-autospace="ideograph-alpha"', b'text-autospace="none"', data)
+                n += k
+            comp = zipfile.ZIP_STORED if name == "mimetype" else zipfile.ZIP_DEFLATED
+            zo.writestr(zi.getinfo(name), data, compress_type=comp)
+    os.replace(tmp, odp)
+    return n
+
+
+def _soffice_convert(exe, profile, fmt, src, outdir, timeout):
+    cmd = [exe, "-env:UserInstallation=" + pathlib.Path(profile).as_uri(), "--headless", "--norestore",
+           "--nolockcheck", "--convert-to", fmt, "--outdir", outdir, os.path.abspath(src)]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                           timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"LibreOffice 超過 {timeout} 秒沒有完成（大檔可加 --timeout）")
+    made = os.path.join(outdir, os.path.splitext(os.path.basename(src))[0] + "." + fmt)
+    if not os.path.exists(made):
+        raise RuntimeError(f"LibreOffice 匯出 {fmt} 失敗（{exe}，結束碼 {r.returncode}）："
+                           + ((r.stderr or r.stdout).strip()[-800:] or "沒有輸出檔"))
+    return made
+
+
 def pdf_libreoffice(pptx, pdf, timeout=900):
-    """soffice --headless --convert-to pdf；輸出先寫到暫存資料夾再搬到 pdf。"""
+    """soffice --headless：pptx → odp（關掉中英文之間自動加空隙）→ pdf；輸出先寫到暫存資料夾再搬到 pdf。"""
     exe = find_soffice()
     if not exe:
         raise RuntimeError("找不到 LibreOffice（soffice）。Ubuntu：apt-get install -y libreoffice-impress；"
+                           "Mac：brew install --cask libreoffice；"
                            "Windows：安裝 LibreOffice，或設環境變數 SOFFICE=<soffice 執行檔>")
     outdir = tempfile.mkdtemp(prefix="slidekit_lo_out_")
     profile = tempfile.mkdtemp(prefix="slidekit_lo_profile_")
     try:
-        cmd = [exe, "-env:UserInstallation=" + pathlib.Path(profile).as_uri(), "--headless", "--norestore",
-               "--nolockcheck", "--convert-to", "pdf", "--outdir", outdir, os.path.abspath(pptx)]
-        try:
-            r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                               timeout=timeout)
-        except subprocess.TimeoutExpired:
-            raise RuntimeError(f"LibreOffice 超過 {timeout} 秒沒有完成（大檔可加 --timeout）")
-        made = os.path.join(outdir, os.path.splitext(os.path.basename(pptx))[0] + ".pdf")
-        if not os.path.exists(made):
-            raise RuntimeError(f"LibreOffice 匯出失敗（{exe}，結束碼 {r.returncode}）："
-                               + ((r.stderr or r.stdout).strip()[-800:] or "沒有輸出檔"))
+        work = os.path.join(outdir, "deck" + os.path.splitext(pptx)[1])
+        shutil.copyfile(pptx, work)  # 檔名改成 ASCII，避免路徑與中文檔名的問題
+        odp = _soffice_convert(exe, profile, "odp", work, outdir, timeout)
+        _no_autospace(odp)
+        made = _soffice_convert(exe, profile, "pdf", odp, outdir, timeout)
         dst = os.path.abspath(pdf)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         if os.path.exists(dst):
@@ -177,7 +212,13 @@ if __name__ == "__main__":
         pass
     print(f"PDF（{used}）:", pdf)
     if used == "libreoffice":
-        print("  註：LibreOffice 以替代字型排版，換行與 PowerPoint 略有差異；版面定稿以 PowerPoint 為準")
+        names = {f[3].split("+")[-1] for p in fitz.open(pdf) for f in p.get_fonts()}
+        if any("JhengHei" in n for n in names):
+            print("  註：LibreOffice 用微軟正黑體排版，斷行與 PowerPoint 相同；表格列高比 PowerPoint 略高（偏保守），"
+                  "表格剛好壓到出處行時以 PowerPoint 為準")
+        else:
+            print("  註：LibreOffice 沒有微軟正黑體，用替代字型排版，換行與 PowerPoint 略有差異；版面定稿以 PowerPoint 為準"
+                  + ("（Mac：先跑 bash lo_fonts_mac.sh）" if sys.platform == "darwin" else ""))
     if a.sheets:
         print("sheets:", sheets(pdf, a.sheets, a.dpi), "pages")
     if a.pngs:

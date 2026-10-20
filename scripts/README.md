@@ -146,7 +146,7 @@ course.yaml 選填 `layout: {left_min_frac: 0.30}`：left 版型的條列都很�
 | big | 單句大字（sizes.big），可附圖；空標題沒圖時句子垂直置中；空標題有圖加 `<!-- order: img-first -->` 則圖上句下 | 1–3 短句 |
 | pair | 兩圖並排（可加標籤） | 說明 ≤2 行 |
 | robbins | 整張教科書圖 | 說明 ≤1 行 |
-| table3 | 表格（≥20pt；超過 table_max_rows 自動拆成同標題連張）。可加 `<!-- tbl: style=clean; col_w=3,4,4; colors=3D8168,BF5B3C; align=center; fill=on -->`：style＝band（預設，深色表頭＋斑馬紋）／clean（只有表頭下粗線與列間細線）／accent（clean＋每列首欄左側色帶與淡色底，色依 colors）；col_w 各欄相對寬度；align=center 首欄以外置中；fill 把多的高度分給各列（clean／accent 預設 on）。2026-10-20 教師：「表格要做得漂亮」「字要少」 | 每格短語 |
+| table3 | 表格（≥20pt；超過 table_max_rows 自動拆成同標題連張）。可加 `<!-- tbl: style=clean; col_w=3,4,4; colors=3D8168,BF5B3C; align=center; fill=on -->`：style＝band（預設，深色表頭＋斑馬紋）／clean（只有表頭下粗線與列間細線）／accent（clean＋每列首欄左側色帶與淡色底，色依 colors）；col_w 各欄相對寬度；align=center 首欄以外置中；fill 把多的高度分給各列（clean／accent 預設 on）；pad=tight 把 clean／accent 的列距收小。2026-10-20 教師：「表格要做得漂亮」「字要少」 | 每格短語 |
 | quiz | 國考題：course.yaml `decks.<deck>.quiz_style` 乙（預設；年次標題＋題幹選項 24–28pt，正解整段藍；標題格式 `quiz_label`，佔位 {年度} {第幾次}（一、二） {次}（1、2） {題號}；題幹色 `design.quiz_stem`，不寫＝deep）或 甲（1 列 3 欄表「正解字母粗體｜題號．題幹＋選項｜年度-次」，不放標題） | 官方原文 |
 | stats | 大數字卡片（`數字｜說明`） | 2–4 張卡 |
 | diagram | 框架圖（course.yaml diagrams） | 格子 ≥20pt；4 欄時每行約 7 個中文字，每格最多兩行（約 14 字，含英文） |

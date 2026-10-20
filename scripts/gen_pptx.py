@@ -634,7 +634,8 @@ def L_table3(slide, s):
       style=band（預設：深色表頭、斑馬紋、首欄粗體赭色）｜clean（表頭只有深色粗字與底下一條粗線、列與列之間細線、白底）
             ｜accent（clean 加上每列首欄左側一條色帶、首欄淡色底，色依 colors）
       col_w=2,4,4（各欄相對寬度；不寫就依字數分）；colors=主色1,主色2,…（資料列依序；accent 的色帶與首欄字色）
-      align=center（首欄以外置中）；fill=on/off（表格比可用高度矮時把多的高度平均加給各列，clean／accent 預設 on）"""
+      align=center（首欄以外置中）；fill=on/off（表格比可用高度矮時把多的高度平均加給各列，clean／accent 預設 on）
+      pad=tight（clean／accent 的列距收回 band 的大小，四列兩行的表才放得下）"""
     set_bg(slide, G.BG)
     y0 = content_title(slide, s)
     tbl = s.get("table") or []
@@ -663,7 +664,7 @@ def L_table3(slide, s):
     widths = [x * scale for x in widths]
     avail = G.SH - y0 - 0.45 - getattr(G, "src_h", 0.0)
     size = G.S["table"]
-    pad = 0.14 if style == "band" else 0.22   # 儲存格上下邊界＋框線；clean／accent 多留一點呼吸
+    pad = 0.14 if (style == "band" or opt.get("pad") == "tight") else 0.22   # 儲存格上下邊界＋框線；clean／accent 多留一點呼吸，pad=tight 收回
     for cand in (G.S["table"], G.S["table_min"]):
         size = cand
         row_h = [max(n_lines(r[j], cand, widths[j] - 0.2, bold=(i == 0 or j == 0)) for j in range(ncol))

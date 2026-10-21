@@ -2,7 +2,7 @@
 """實驗講義 PPTX：讀 deck.json，照教師 2026 自製實驗講義（〈病理學實驗_A1_發炎〉）的版型產 16:9 PPTX。
 
 用法：python gen_lab_pptx.py <deck.json> --out <輸出.pptx> [--report <報告.json>] [--no-notes] [--bg-pt 24]
-      python gen_lab_pptx.py --fit <deck.json 或節檔.json> [--bg-pt 24]
+      python gen_lab_pptx.py --fit <deck.json 或節檔.json> [--bg-pt 24] [--bullets]
         只量字、不產檔：逐張印出需要的高度對可用高度（撰寫代理自查用；量法和正式產檔同一套）
 
 deck.json（實驗講義工作流的輸出）：
@@ -14,8 +14,9 @@ deck.json（實驗講義工作流的輸出）：
                              "sources": ["…"]}]}]}
 
 每張內容張的 kind（沒寫就是 shot；2026-10-15 教師：「實驗講義不可以只有截圖，要有背景知識跟形態學示意圖」）：
-  shot  截圖張：圖框放不含任何字的淡灰空圖（形狀名「截圖待補 <id>」），教師用 PowerPoint「變更圖片」換截圖；
-        備註寫倍率與要拍的視野
+  shot  截圖張：有 img.path 就放那張截圖（wsi_crop.py 從掃描檔切、annotate_shot.py 加註記；2026-10-21 起）；
+        沒有就放不含任何字的淡灰空圖（形狀名「截圖待補 <id>」），教師用 PowerPoint「變更圖片」換截圖；
+        備註寫倍率與視野
   bg    背景知識張：沒有圖，標題下全寬條列（--bg-pt，預設 24pt；「  - 」開頭是第二層）；
         可加 "table": [[表頭…], [列…], …]（第一列是表頭、第一欄粗體），表格放不下就接續一張同標題、重複表頭
   gx    大體／影像張：img.path 的圖等比放進圖框（不拉伸、置中），圖下 14pt 出處行 img.credit；
@@ -23,6 +24,9 @@ deck.json（實驗講義工作流的輸出）：
   sc    形態學示意圖張：img.path 有圖就照 gx 放；沒有就放淡灰空圖（形狀名「示意圖待換 <id>」，
         之後由 lab_swap_images.py 換成加好標籤的圖）
   img.path 相對 deck.json 所在的資料夾。gx、sc、shot 的說明句都放圖框另一邊（20.2pt）。
+deck.json 最上層 "panel": true：圖框與說明句底下各墊一塊淺灰底（EAE9E6，6.14×5.32 吋），照教師發炎講義的原樣；
+  沒寫就不墊（骨與關節實驗講義是不墊的版本）。"bullets": true：說明句每段前加「•」（懸掛縮排 0.27 吋、段距 14pt），
+  也是發炎講義的原樣。--fit 量 deck.json 時照檔裡的 bullets 量；量單張或節檔時用 --bullets。
 
 版型（幾何取自教師的發炎講義，單位吋，投影片 13.33×7.5）：
   封面      一行 54pt，置中
@@ -62,6 +66,9 @@ WHITE = "FFFFFF"
 GREYTXT = "595959"
 TINT = "EEF2FA"
 GREY = (230, 230, 230)
+PANEL = "EAE9E6"   # 教師發炎講義圖框與說明句底下的淺灰底
+BUL_IND, BUL_SPC = 0.266, 14   # 發炎講義說明句的「•」懸掛縮排（吋）與段距（pt）
+STYLE = {"bullets": False}
 SZ = {"cover": 54, "label": 13.5, "theme": 45, "glass": 42, "title": 30, "body": 20.2, "credit": 14}
 IMG_W, IMG_H, IMG_Y = 6.14, 5.32, 1.66
 IMG_X = {"left": 0.52, "right": 6.67}
@@ -109,6 +116,20 @@ def set_bg(slide, color):
     fill.fore_color.rgb = RGBColor.from_string(color)
 
 
+def add_panel(slide, x, y, w, h):
+    from pptx.enum.shapes import MSO_SHAPE
+    sp = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h))
+    sp.fill.solid()
+    sp.fill.fore_color.rgb = RGBColor.from_string(PANEL)
+    sp.line.fill.background()
+    sp.shadow.inherit = False
+    st = sp._element.find("{http://schemas.openxmlformats.org/presentationml/2006/main}style")
+    if st is not None:                       # 拿掉主題樣式（effectRef 會帶陰影；LibreOffice 不管 effectLst）
+        sp._element.remove(st)
+    sp.name = "淺灰底"
+    return sp
+
+
 def grey_png():
     """不含任何字的淡灰空圖（像素比例同教師講義的截圖 590×511）。"""
     buf = io.BytesIO()
@@ -141,8 +162,10 @@ def side_text(c):
 
 
 def side_need(text):
-    lines = sum(n_lines(t, SZ["body"], TXT_W) for t in text)
-    need = lines * line_h(SZ["body"], 1.0) + SPACE_AFTER / 72.0 * max(0, len(text) - 1)
+    w = TXT_W - (BUL_IND if STYLE["bullets"] else 0)
+    gap = BUL_SPC if STYLE["bullets"] else SPACE_AFTER
+    lines = sum(n_lines(t, SZ["body"], w) for t in text)
+    need = lines * line_h(SZ["body"], 1.0) + gap / 72.0 * max(0, len(text) - 1)
     return lines, need
 
 
@@ -226,8 +249,25 @@ def add_title(s, title):
 def add_side_text(s, side, text):
     tside = "left" if side == "right" else "right"
     tf = textbox(s, TXT_X[tside], IMG_Y, TXT_W, IMG_H, MSO_ANCHOR.MIDDLE)
+    bul = STYLE["bullets"]
     for i, t in enumerate(text):
-        add_para(tf, t, SZ["body"], INK, first=(i == 0), space_after=SPACE_AFTER if i < len(text) - 1 else 0)
+        p = add_para(tf, t, SZ["body"], INK, first=(i == 0),
+                     space_after=0 if bul else (SPACE_AFTER if i < len(text) - 1 else 0))
+        if bul:
+            from lxml import etree
+            pPr = p._p.get_or_add_pPr()
+            pPr.set("marL", str(int(BUL_IND * 914400)))
+            pPr.set("indent", str(int(-BUL_IND * 914400)))
+            if i > 0:
+                p.space_before = Pt(BUL_SPC)
+            ns = "http://schemas.openxmlformats.org/drawingml/2006/main"
+            for tag in ("buSzPct", "buChar"):
+                for old in pPr.findall(f"{{{ns}}}{tag}"):
+                    pPr.remove(old)
+            bs = etree.SubElement(pPr, f"{{{ns}}}buSzPct")
+            bs.set("val", "100000")
+            bc = etree.SubElement(pPr, f"{{{ns}}}buChar")
+            bc.set("char", "•")
 
 
 def img_bytes(path):
@@ -320,7 +360,7 @@ def build(deck, out, notes=True, base_dir=".", bg_pt=24):
     png = grey_png()
     rep = Report()
     ids = {}
-    slots = {"shot": 0, "gx_image": 0, "gx_placeholder": 0, "sc_image": 0, "sc_placeholder": 0, "bg": 0}
+    slots = {"shot": 0, "shot_image": 0, "gx_image": 0, "gx_placeholder": 0, "sc_image": 0, "sc_placeholder": 0, "bg": 0}
     n = 0
 
     # 封面
@@ -334,6 +374,8 @@ def build(deck, out, notes=True, base_dir=".", bg_pt=24):
         rep.add("overflow", f"#{n} 封面", "封面超過一行", k, 1, cover)
 
     shots = 0
+    panel = bool(deck.get("panel"))
+    STYLE["bullets"] = bool(deck.get("bullets"))
     for sec in deck.get("sections", []):
         d = sec.get("divider", {})
         s = prs.slides.add_slide(blank)
@@ -391,11 +433,18 @@ def build(deck, out, notes=True, base_dir=".", bg_pt=24):
             side = slot_side(c)
             path = img.get("path")
             apath = os.path.normpath(os.path.join(base_dir, path)) if path else None
-            if kind in ("gx", "sc") and apath and os.path.exists(apath):
+            if panel:
+                add_panel(s, IMG_X[side], IMG_Y, IMG_W, IMG_H)
+                add_panel(s, IMG_X["right" if side == "left" else "left"], IMG_Y, IMG_W, IMG_H)
+            if apath and os.path.exists(apath):
                 add_real_image(s, apath, side, img.get("credit", ""), cid)
-                slots[kind + "_image"] += 1
+                if kind == "shot":
+                    shots += 1
+                    slots["shot_image"] += 1
+                else:
+                    slots[kind + "_image"] += 1
             else:
-                if kind in ("gx", "sc") and path:
+                if path:
                     rep.add("rule", where, "圖檔不存在，先放淡灰空圖", 0, 0, path)
                 pic = s.shapes.add_picture(io.BytesIO(png), Inches(IMG_X[side]), Inches(IMG_Y), Inches(IMG_W), Inches(IMG_H))
                 pic.name = f"{SLOT_NAME[kind]} {cid}"
@@ -433,8 +482,9 @@ def fit_slides(obj):
     return [obj]
 
 
-def fit(path, bg_pt):
+def fit(path, bg_pt, bullets=False):
     obj = json.load(open(path, encoding="utf-8"))
+    STYLE["bullets"] = bool(obj.get("bullets")) if isinstance(obj, dict) and "bullets" in obj else bullets
     rep = Report()
     print(f"量字字型：{measure_font_info()}；背景張 {bg_pt}pt、說明句 {SZ['body']}pt")
     print("id｜kind｜標題行數｜需要高度/可用（吋）｜行數")
@@ -468,9 +518,10 @@ def main():
     ap.add_argument("--no-notes", action="store_true", help="備註欄不寫截圖說明與來源")
     ap.add_argument("--bg-pt", type=float, default=24, help="背景知識張的條列與表格字級（預設 24）")
     ap.add_argument("--fit", metavar="JSON", help="只量字、不產檔（deck.json、節檔或張的清單）")
+    ap.add_argument("--bullets", action="store_true", help="--fit 量單張或節檔時照「•」懸掛縮排量（deck.json 以檔裡的 bullets 為準）")
     a = ap.parse_args()
     if a.fit:
-        return fit(a.fit, a.bg_pt)
+        return fit(a.fit, a.bg_pt, a.bullets)
     if not a.deck or not a.out:
         ap.error("要給 deck.json 與 --out（或用 --fit 只量字）")
     deck = json.load(open(a.deck, encoding="utf-8"))

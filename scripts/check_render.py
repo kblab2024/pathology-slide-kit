@@ -25,7 +25,10 @@ EMU_PT = 12700.0
 
 
 def norm(t):
+    """比對用：NFKC、去空白；拉丁擴充字母（U+0100–U+024F，例 Ś、ł）一律拿掉：微軟正黑體沒有這些字，
+    PDF 會把它們用替代字型另畫成一段，和本行重疊，不拿掉會報假的「兩段字互相壓到」（2026-10-21，出處行的 Ślusarczyk）。"""
     t = unicodedata.normalize("NFKC", t or "")
+    t = re.sub(r"[\u0100-\u024F]", "", t)
     return re.sub(r"\s+", "", t)
 
 

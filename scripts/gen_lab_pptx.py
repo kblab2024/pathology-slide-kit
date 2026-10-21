@@ -2,6 +2,7 @@
 """實驗講義 PPTX：讀 deck.json，照教師 2026 自製實驗講義（〈病理學實驗_A1_發炎〉）的版型產 16:9 PPTX。
 
 用法：python gen_lab_pptx.py <deck.json> --out <輸出.pptx> [--report <報告.json>] [--no-notes] [--bg-pt 24]
+                              [--img-max-side 1600] [--jpeg-quality 82]
       python gen_lab_pptx.py --fit <deck.json 或節檔.json> [--bg-pt 24] [--bullets]
         只量字、不產檔：逐張印出需要的高度對可用高度（撰寫代理自查用；量法和正式產檔同一套）
 
@@ -41,6 +42,7 @@ deck.json 最上層 "panel": true：圖框與說明句底下各墊一塊淺灰�
 報出：
   overflow  放不下（說明句或背景條列總高超過可用高度、表格單列放不下、分隔張主題或玻片行超過一行）
   rule      違反版型規則但仍放得下（標題超過一行、說明句超過 6 行）
+標題裡的「\n」是手動換行（例：「DS22 瀰漫性大 B 細胞淋巴瘤\n(DIFFUSE LARGE B-CELL LYMPHOMA)低倍」），兩行仍算 rule。
 有 overflow 時結束碼 1。報告另寫 ids（id → 張號；背景張接續時寫第一張）與各種圖位的格數。
 """
 import argparse
@@ -169,8 +171,13 @@ def side_need(text):
     return lines, need
 
 
+def title_lines(title):
+    """標題行數；標題裡的「\n」是手動換行（例：長的英文全名自己成一行，不讓「低倍」單獨掉到第二行）。"""
+    return sum(n_lines(seg, SZ["title"], TITLE_W) for seg in str(title).split("\n"))
+
+
 def check_title(rep, where, title):
-    tk = n_lines(title, SZ["title"], TITLE_W)
+    tk = title_lines(title)
     if tk > 1:
         rep.add("rule" if tk == 2 else "overflow", where, "標題超過一行", tk, 1, title)
     return tk
@@ -241,9 +248,16 @@ def plan_bg(c, size, rep, where):
 
 # ---------------- 產檔 ----------------
 def add_title(s, title):
-    tk = n_lines(title, SZ["title"], TITLE_W)
+    tk = title_lines(title)
     tf = textbox(s, (SW - TITLE_W) / 2, TITLE_Y, TITLE_W, 0.47 if tk <= 1 else 0.93)
-    add_para(tf, title, SZ["title"], INK, PP_ALIGN.CENTER, first=True)
+    segs = str(title).split("\n")
+    p = add_para(tf, segs[0], SZ["title"], INK, PP_ALIGN.CENTER, first=True)
+    for seg in segs[1:]:
+        p.add_line_break()
+        r = p.add_run()
+        r.text = seg
+        _font(r, SZ["title"], INK, False)
+        r.font.color.rgb = RGBColor.from_string(INK)
 
 
 def add_side_text(s, side, text):
@@ -270,20 +284,27 @@ def add_side_text(s, side, text):
             bc.set("char", "•")
 
 
+IMG_OPT = {"max_side": IMG_MAX_SIDE, "quality": None}   # --img-max-side、--jpeg-quality
+
+
 def img_bytes(path):
-    """圖檔讀進記憶體；長邊超過 IMG_MAX_SIDE 就縮（照片存 JPEG，有透明或 PNG 示意圖存 PNG）。"""
+    """圖檔讀進記憶體；長邊超過 max_side 就縮（照片存 JPEG，有透明或 PNG 示意圖存 PNG）。
+    給了 --jpeg-quality：沒有透明的圖一律重存 JPEG（截圖多的實驗講義用，150 張從 100 MB 壓到約 35 MB）。"""
     im = Image.open(path)
     im.load()
     w, h = im.size
-    if max(w, h) <= IMG_MAX_SIDE:
+    ms, q = IMG_OPT["max_side"], IMG_OPT["quality"]
+    alpha = im.mode in ("RGBA", "LA", "P") and (im.mode != "P" or "transparency" in im.info)
+    if max(w, h) <= ms and (q is None or alpha):
         return open(path, "rb").read(), (w, h)
-    r = IMG_MAX_SIDE / max(w, h)
-    im = im.resize((max(1, int(w * r)), max(1, int(h * r))), Image.LANCZOS)
+    if max(w, h) > ms:
+        r = ms / max(w, h)
+        im = im.resize((max(1, int(w * r)), max(1, int(h * r))), Image.LANCZOS)
     buf = io.BytesIO()
-    if path.lower().endswith(".png") or im.mode in ("RGBA", "LA", "P"):
+    if alpha or (q is None and path.lower().endswith(".png")):
         im.save(buf, "PNG", optimize=True)
     else:
-        im.convert("RGB").save(buf, "JPEG", quality=88)
+        im.convert("RGB").save(buf, "JPEG", quality=q or 88)
     return buf.getvalue(), im.size
 
 
@@ -519,12 +540,15 @@ def main():
     ap.add_argument("--bg-pt", type=float, default=24, help="背景知識張的條列與表格字級（預設 24）")
     ap.add_argument("--fit", metavar="JSON", help="只量字、不產檔（deck.json、節檔或張的清單）")
     ap.add_argument("--bullets", action="store_true", help="--fit 量單張或節檔時照「•」懸掛縮排量（deck.json 以檔裡的 bullets 為準）")
+    ap.add_argument("--img-max-side", type=int, default=IMG_MAX_SIDE, help=f"放進 PPTX 的圖長邊上限 px（預設 {IMG_MAX_SIDE}）")
+    ap.add_argument("--jpeg-quality", type=int, default=None, help="給了就把沒有透明的圖都重存成這個品質的 JPEG（例 82）")
     a = ap.parse_args()
     if a.fit:
         return fit(a.fit, a.bg_pt, a.bullets)
     if not a.deck or not a.out:
         ap.error("要給 deck.json 與 --out（或用 --fit 只量字）")
     deck = json.load(open(a.deck, encoding="utf-8"))
+    IMG_OPT.update(max_side=a.img_max_side, quality=a.jpeg_quality)
     print("量字字型：" + measure_font_info())
     if os.path.exists(a.out):
         print(f"[注意] 覆寫既有檔：{a.out}")

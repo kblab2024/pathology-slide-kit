@@ -3,7 +3,8 @@
 
 教師 2026-10-14：「成品要有 html 版，去哪裡都好做事」。html_deck.py 只吃大堂課的素材池（pool.md），實驗講義的來源是
 deck.json，所以另寫這支：版面照 gen_lab_pptx.py 的幾何（13.33×7.5 吋 → 1920×1080 畫布，1 吋＝144px、1pt＝2px），
-CSS、鍵盤換張與圖片縮圖沿用 html_deck.py。截圖位、示意圖待換位、圖待補位畫成淡灰框（和 PPTX 一樣不寫字）。
+CSS、鍵盤換張與圖片縮圖沿用 html_deck.py。截圖位、示意圖待換位、圖待補位畫成淡灰框（和 PPTX 一樣不寫字）；
+shot 有 img.path 就放截圖（2026-10-21 起）。deck.json 的 "panel"、"bullets" 照 gen_lab_pptx 畫淺灰底與「•」。
 
 用法：
   python html_lab_deck.py <deck.json> --out <檔案.html> [--max-side 760] [--quality 60] [--title 名稱]
@@ -19,9 +20,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import bullet_level  # noqa: E402
-from gen_lab_pptx import (BG_H, BG_IND, BG_LINE, BG_SPACE, BG_W, BG_X, BG_Y, BLUE, DIV_W, DIV_X, IMG_H, IMG_W,  # noqa: E402
-                          IMG_X, IMG_Y, SH, SPACE_AFTER, SW, SZ, TITLE_W, TITLE_Y, TXT_W, TXT_X, kind_of, plan_bg,
-                          TBL_GAP, Report, bullets_need, n_lines, side_text, slot_side)
+from gen_lab_pptx import (BG_H, BG_IND, BG_LINE, BG_SPACE, BG_W, BG_X, BG_Y, BLUE, BUL_IND, BUL_SPC, DIV_W, DIV_X,  # noqa: E402
+                          IMG_H, IMG_W, IMG_X, IMG_Y, PANEL, SH, SPACE_AFTER, STYLE, SW, SZ, TITLE_W, TITLE_Y, TXT_W, TXT_X,
+                          kind_of, plan_bg, TBL_GAP, Report, bullets_need, n_lines, side_text, slot_side)
 from html_deck import CSS, JS, data_uri  # noqa: E402
 from PIL import Image  # noqa: E402
 
@@ -56,7 +57,10 @@ def ptxt(t, size, extra=""):
 
 
 def title_html(t):
-    return box((SW - TITLE_W) / 2, TITLE_Y, TITLE_W, 0.93, ptxt(t, SZ["title"], "text-align:center"))
+    segs = str(t or "").split("\n")
+    inner = "<br>".join(esc(x) for x in segs)
+    return box((SW - TITLE_W) / 2, TITLE_Y, TITLE_W, 0.93,
+               f'<p style="font-size:{SZ["title"] * PT:.1f}px;line-height:1.12;text-align:center">{inner}</p>')
 
 
 def image_html(c, base, side, max_side, quality):
@@ -64,7 +68,7 @@ def image_html(c, base, side, max_side, quality):
     p = img.get("path")
     ap = os.path.normpath(os.path.join(base, p)) if p else None
     x = IMG_X[side]
-    if kind_of(c) in ("gx", "sc") and ap and os.path.exists(ap):
+    if ap and os.path.exists(ap):
         uri = data_uri(ap, max_side, quality)
         iw, ih = Image.open(ap).size
         cred = img.get("credit") or ""
@@ -82,9 +86,22 @@ def image_html(c, base, side, max_side, quality):
 def side_html(c, side):
     text = side_text(c)
     tside = "left" if side == "right" else "right"
-    inner = "".join(ptxt(t, SZ["body"], f"margin-bottom:{SPACE_AFTER * PT if i < len(text) - 1 else 0:.0f}px")
-                    for i, t in enumerate(text))
+    if STYLE["bullets"]:
+        ind = BUL_IND * PX
+        inner = "".join(
+            f'<p style="font-size:{SZ["body"] * PT:.1f}px;line-height:1.12;padding-left:{ind:.0f}px;text-indent:-{ind:.0f}px;'
+            f'margin-top:{BUL_SPC * PT if i else 0:.0f}px">•<span style="display:inline-block;width:{ind - SZ["body"] * PT * 0.35:.0f}px"></span>{esc(t)}</p>'
+            for i, t in enumerate(text))
+    else:
+        inner = "".join(ptxt(t, SZ["body"], f"margin-bottom:{SPACE_AFTER * PT if i < len(text) - 1 else 0:.0f}px")
+                        for i, t in enumerate(text))
     return box(TXT_X[tside], IMG_Y, TXT_W, IMG_H, inner, cls="bx mid")
+
+
+def panel_html(side):
+    other = "right" if side == "left" else "left"
+    return (box(IMG_X[side], IMG_Y, IMG_W, IMG_H, style=f"background:#{PANEL}")
+            + box(IMG_X[other], IMG_Y, IMG_W, IMG_H, style=f"background:#{PANEL}"))
 
 
 def bg_html(c, bg_pt):
@@ -122,6 +139,8 @@ def bg_html(c, bg_pt):
 
 def build(deck, base, max_side, quality, bg_pt):
     frames = []   # (html, 標籤)
+    STYLE["bullets"] = bool(deck.get("bullets"))
+    panel = bool(deck.get("panel"))
     frames.append((box(0.5, 3.04, SW - 1.0, 0.9, ptxt(deck.get("cover", ""), SZ["cover"], "text-align:center"),
                        cls="bx mid"), "封面"))
     for sec in deck.get("sections", []):
@@ -139,8 +158,8 @@ def build(deck, base, max_side, quality, bg_pt):
                     frames.append((h, c.get("id", "")))
                 continue
             side = slot_side(c)
-            frames.append((title_html(c.get("title", "")) + image_html(c, base, side, max_side, quality)
-                           + side_html(c, side), c.get("id", "")))
+            frames.append((title_html(c.get("title", "")) + (panel_html(side) if panel else "")
+                           + image_html(c, base, side, max_side, quality) + side_html(c, side), c.get("id", "")))
     return frames
 
 

@@ -217,6 +217,19 @@ def table_layout(rows, size):
     widths = [max(1.3, BG_W * max(4, x) / tot) for x in wr]
     k = BG_W / sum(widths)
     widths = [x * k for x in widths]
+    # 每欄至少放得下最長的一個英文字（表頭與第一欄是粗體）：只照字數比例分，粗體的 synaptophysin 會被斷成兩行
+    # （2026-10-27 泌尿實驗講義 CMP67 實排）。不夠寬的欄補足，從其他欄依比例扣回，總寬不變。
+    minw = [max((_w(tok, i == 0 or j == 0) * size / 72.0 + 0.3 for i, r in enumerate(rows)
+                 for tok in _TOK.findall(r[j]) if not tok.isspace()), default=0.0) for j in range(ncol)]
+    short = [j for j in range(ncol) if widths[j] < minw[j]]
+    if short and sum(minw) <= BG_W:
+        extra = sum(minw[j] - widths[j] for j in short)
+        for j in short:
+            widths[j] = minw[j]
+        flex = [j for j in range(ncol) if j not in short]
+        room = sum(widths[j] - minw[j] for j in flex)
+        for j in flex:
+            widths[j] -= extra * (widths[j] - minw[j]) / room if room > 0 else extra / len(flex)
     row_h = [max(n_lines(r[j], size, widths[j] - 0.2, bold=(i == 0 or j == 0)) for j in range(ncol))
              * line_h(size, 1.1) * TABLE_LINE_K + 0.14 for i, r in enumerate(rows)]
     return rows, widths, row_h

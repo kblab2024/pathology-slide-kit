@@ -18,6 +18,9 @@ deck.json（實驗講義工作流的輸出）：
   shot  截圖張：有 img.path 就放那張截圖（wsi_crop.py 從掃描檔切、annotate_shot.py 加註記；2026-10-21 起）；
         沒有就放不含任何字的淡灰空圖（形狀名「截圖待補 <id>」），教師用 PowerPoint「變更圖片」換截圖；
         備註寫倍率與視野
+        img.marks（annotate_shot.py 的格式：circle／arrow／span／line／label，座標是圖寬、圖高的 0–1）疊成 PowerPoint
+        原生圖形：紅色直線箭頭、紅圈、深灰底白字 24pt 標籤，不群組、每個有名字，教師可以點選、拖曳、改字
+        （2026-10-27 教師：箭頭燒進圖裡，錯了他不能改）；img.path 指沒加註記的原始截圖，用 merge_annot.py 從 annot.json 帶入
   bg    背景知識張：沒有圖，標題下全寬條列（--bg-pt，預設 24pt；「  - 」開頭是第二層）；
         可加 "table": [[表頭…], [列…], …]（第一列是表頭、第一欄粗體），表格放不下就接續一張同標題、重複表頭
   gx    大體／影像張：img.path 的圖等比放進圖框（不拉伸、置中），圖下 14pt 出處行 img.credit；
@@ -46,6 +49,7 @@ deck.json 最上層 "panel": true：圖框與說明句底下各墊一塊淺灰�
 有 overflow 時結束碼 1。報告另寫 ids（id → 張號；背景張接續時寫第一張）與各種圖位的格數。
 """
 import argparse
+import copy
 import io
 import json
 import os
@@ -54,12 +58,15 @@ import sys
 from PIL import Image
 from pptx import Presentation
 from pptx.dml.color import RGBColor
-from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+from pptx.enum.dml import MSO_LINE_DASH_STYLE
+from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
+from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
+from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import bullet_level  # noqa: E402
-from gen_pptx import TABLE_LINE_K, _font, em, line_h, measure_font_info, n_lines  # noqa: E402
+from gen_pptx import TABLE_LINE_K, _TOK, _font, _w, em, line_h, measure_font_info, n_lines  # noqa: E402
 
 SW, SH = 13.33, 7.5
 BLUE = "143F9C"
@@ -329,6 +336,153 @@ def add_real_image(s, path, side, credit_text, cid):
     return pic
 
 
+# ---------------- 截圖註記：PowerPoint 原生圖形（2026-10-27） ----------------
+MARK_RED = "E8241A"     # 同 annotate_shot.py
+MARK_BOX = "2B2B2B"
+MARK_BOX_ALPHA = 88     # 標籤底色不透明度 %（annotate_shot 的 225/255）
+MARK_LW = 2.5           # 線寬 pt（annotate_shot 約 0.035 吋）
+MARK_LABEL_PT = 24
+
+
+def text_w_in(text, size):
+    """一行字的寬度（吋），用 gen_pptx 的量字字型。"""
+    return sum(_w(tok, False) for tok in _TOK.findall(str(text))) * size / 72.0
+
+
+def label_lines(m):
+    if m.get("lines"):
+        return [str(x) for x in m["lines"]]
+    if m.get("text"):
+        return [str(m["text"])]
+    return [str(m.get("zh", "")), f"({m.get('en', '')})"]
+
+
+def marks_layout(marks, dx, dy, dw, dh, label_pt=MARK_LABEL_PT):
+    """annotate_shot 格式的 marks（座標是圖寬、圖高的 0–1）→ 投影片上的圖形（吋）。PPTX 與 HTML 版共用。
+    標籤照 annotate_shot：框的中心在 at，超出圖就移進圖內（留 1% 邊）。回傳 (圖形清單, 問題清單)。"""
+    P = lambda p: (dx + float(p[0]) * dw, dy + float(p[1]) * dh)
+    shapes, problems, boxes = [], [], []
+    if label_pt < 24:
+        problems.append(f"標籤字級 {label_pt}pt 低於 24pt")
+    pad = label_pt * 0.32 / 72.0
+    lh = line_h(label_pt, 1.0)
+    for m in marks or []:
+        t = m.get("type")
+        col = str(m.get("color", MARK_RED)).lstrip("#")
+        if t == "circle":
+            (cx, cy), rx, ry = P(m["c"]), float(m["r"][0]) * dw, float(m["r"][1]) * dh
+            shapes.append({"t": "circle", "x": cx - rx, "y": cy - ry, "w": 2 * rx, "h": 2 * ry, "color": col})
+        elif t in ("arrow", "span", "line"):
+            (x1, y1), (x2, y2) = P(m["from"]), P(m["to"])
+            shapes.append({"t": t, "x1": x1, "y1": y1, "x2": x2, "y2": y2, "color": col,
+                           "head": t == "span", "tail": t in ("arrow", "span"), "dash": bool(m.get("dash"))})
+        elif t == "label":
+            lines = label_lines(m)
+            bw = max(text_w_in(s, label_pt) for s in lines) + 2 * pad + 0.04
+            bh = lh * len(lines) + 2 * pad
+            cx, cy = P(m["at"])
+            x0, y0 = cx - bw / 2, cy - bh / 2
+            mx, my = dw * 0.01, dh * 0.01
+            if bw + 2 * mx <= dw:
+                x0 = min(max(x0, dx + mx), dx + dw - mx - bw)
+            if bh + 2 * my <= dh:
+                y0 = min(max(y0, dy + my), dy + dh - my - bh)
+            name = m.get("text") or m.get("zh") or " ".join(m.get("lines", []))
+            r = (x0, y0, x0 + bw, y0 + bh)
+            if r[0] < dx - 0.01 or r[1] < dy - 0.01 or r[2] > dx + dw + 0.01 or r[3] > dy + dh + 0.01:
+                problems.append(f"標籤「{name}」超出圖")
+            for n2, r2 in boxes:
+                if not (r[2] <= r2[0] or r2[2] <= r[0] or r[3] <= r2[1] or r2[3] <= r[1]):
+                    problems.append(f"標籤「{name}」和「{n2}」重疊")
+            boxes.append((name, r))
+            shapes.append({"t": "label", "x": x0, "y": y0, "w": bw, "h": bh, "lines": lines, "name": name,
+                           "bg": str(m.get("bg", MARK_BOX)).lstrip("#"), "pt": label_pt, "pad": pad})
+        else:
+            problems.append(f"不認得的 mark type：{t}")
+    return shapes, problems
+
+
+def _plain_shape(sp):
+    """拿掉 python-pptx 預設的主題樣式（effectRef 會帶陰影、fontRef 會改字色），顏色全部明寫。"""
+    st = sp._element.find(qn("p:style"))
+    if st is not None:
+        sp._element.remove(st)
+
+
+def _ln_end(ln, tag):
+    e = ln.makeelement(qn(f"a:{tag}"), {"type": "triangle", "w": "lg", "len": "lg"})
+    ln.append(e)
+
+
+def _add_line(s, x1, y1, x2, y2):
+    """直線用一般圖形（p:sp、prstGeom line），不用接點（p:cxnSp）：LibreOffice 會把端點剛好落在標籤框邊中點的接點
+    吸附到框上、改畫成直角折線（2026-10-27 骨與關節舊片講義實測）；一般的線在 PowerPoint 一樣可以拖兩端。"""
+    c = s.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2))
+    el = c._element
+    sp = el.makeelement(qn("p:sp"), {})
+    nv = el.makeelement(qn("p:nvSpPr"), {})
+    nv.append(copy.deepcopy(el.find(qn("p:nvCxnSpPr")).find(qn("p:cNvPr"))))
+    nv.append(el.makeelement(qn("p:cNvSpPr"), {}))
+    nv.append(el.makeelement(qn("p:nvPr"), {}))
+    sp.append(nv)
+    sp.append(copy.deepcopy(el.find(qn("p:spPr"))))
+    el.addprevious(sp)
+    el.getparent().remove(el)
+    return s.shapes[len(s.shapes) - 1]
+
+
+def add_marks(s, cid, marks, pic, label_pt=MARK_LABEL_PT):
+    """在截圖上疊 PowerPoint 原生圖形（教師 2026-10-27：箭頭燒進圖裡，錯了他不能改）。
+    不群組；每個圖形有名字（「註記 MC03-2 箭頭1」「標籤 MC03-2 透明細胞」），教師可以直接點選、拖曳、改字、刪除。"""
+    emu = 914400.0
+    dx, dy, dw, dh = pic.left / emu, pic.top / emu, pic.width / emu, pic.height / emu
+    shapes, problems = marks_layout(marks, dx, dy, dw, dh, label_pt)
+    cnt = {}
+    zh = {"circle": "圈", "arrow": "箭頭", "span": "範圍", "line": "線"}
+    for g in shapes:
+        t = g["t"]
+        cnt[t] = cnt.get(t, 0) + 1
+        if t == "circle":
+            sp = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(g["x"]), Inches(g["y"]), Inches(g["w"]), Inches(g["h"]))
+            _plain_shape(sp)
+            sp.fill.background()
+            sp.line.color.rgb = RGBColor.from_string(g["color"])
+            sp.line.width = Pt(MARK_LW)
+            sp.name = f"註記 {cid} {zh[t]}{cnt[t]}"
+        elif t in ("arrow", "span", "line"):
+            sp = _add_line(s, g["x1"], g["y1"], g["x2"], g["y2"])
+            sp.line.color.rgb = RGBColor.from_string(g["color"])
+            sp.line.width = Pt(MARK_LW)
+            if g["dash"]:
+                sp.line.dash_style = MSO_LINE_DASH_STYLE.DASH
+            ln = sp.line._get_or_add_ln()
+            if g["head"]:
+                _ln_end(ln, "headEnd")
+            if g["tail"]:
+                _ln_end(ln, "tailEnd")
+            sp.name = f"註記 {cid} {zh[t]}{cnt[t]}"
+        else:
+            sp = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(g["x"]), Inches(g["y"]),
+                                    Inches(g["w"]), Inches(g["h"]))
+            _plain_shape(sp)
+            sp.adjustments[0] = min(0.5, g["pt"] * 0.18 / 72.0 / min(g["w"], g["h"]))
+            sp.fill.solid()
+            sp.fill.fore_color.rgb = RGBColor.from_string(g["bg"])
+            clr = sp.fill._xPr.find(qn("a:solidFill")).find(qn("a:srgbClr"))
+            clr.append(clr.makeelement(qn("a:alpha"), {"val": str(MARK_BOX_ALPHA * 1000)}))
+            sp.line.fill.background()
+            tf = sp.text_frame
+            tf.word_wrap = False
+            tf.auto_size = MSO_AUTO_SIZE.NONE
+            tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+            for side in ("margin_left", "margin_right", "margin_top", "margin_bottom"):
+                setattr(tf, side, Inches(g["pad"] if side in ("margin_left", "margin_right") else 0))
+            for i, line in enumerate(g["lines"]):
+                add_para(tf, line, g["pt"], WHITE, PP_ALIGN.CENTER, first=(i == 0))
+            sp.name = f"標籤 {cid} {g['name']}"
+    return len(shapes), problems
+
+
 def add_bg_page(s, page, layout, size):
     y = BG_Y
     if page["bullets"]:
@@ -381,7 +535,8 @@ def build(deck, out, notes=True, base_dir=".", bg_pt=24):
     png = grey_png()
     rep = Report()
     ids = {}
-    slots = {"shot": 0, "shot_image": 0, "gx_image": 0, "gx_placeholder": 0, "sc_image": 0, "sc_placeholder": 0, "bg": 0}
+    slots = {"shot": 0, "shot_image": 0, "gx_image": 0, "gx_placeholder": 0, "sc_image": 0, "sc_placeholder": 0, "bg": 0,
+             "marks": 0}
     n = 0
 
     # 封面
@@ -458,7 +613,12 @@ def build(deck, out, notes=True, base_dir=".", bg_pt=24):
                 add_panel(s, IMG_X[side], IMG_Y, IMG_W, IMG_H)
                 add_panel(s, IMG_X["right" if side == "left" else "left"], IMG_Y, IMG_W, IMG_H)
             if apath and os.path.exists(apath):
-                add_real_image(s, apath, side, img.get("credit", ""), cid)
+                pic = add_real_image(s, apath, side, img.get("credit", ""), cid)
+                if img.get("marks"):
+                    k, probs = add_marks(s, cid, img["marks"], pic, float(img.get("label_pt", MARK_LABEL_PT)))
+                    slots["marks"] += k
+                    for p in probs:
+                        rep.add("rule", where, "截圖註記：" + p, 0, 0, title)
                 if kind == "shot":
                     shots += 1
                     slots["shot_image"] += 1

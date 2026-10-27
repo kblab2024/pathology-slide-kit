@@ -22,7 +22,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import bullet_level  # noqa: E402
 from gen_lab_pptx import (BG_H, BG_IND, BG_LINE, BG_SPACE, BG_W, BG_X, BG_Y, BLUE, BUL_IND, BUL_SPC, DIV_W, DIV_X,  # noqa: E402
                           IMG_H, IMG_W, IMG_X, IMG_Y, PANEL, SH, SPACE_AFTER, STYLE, SW, SZ, TITLE_W, TITLE_Y, TXT_W, TXT_X,
-                          kind_of, plan_bg, TBL_GAP, Report, bullets_need, n_lines, side_text, slot_side)
+                          kind_of, plan_bg, TBL_GAP, Report, bullets_need, n_lines, side_text, slot_side,
+                          MARK_BOX_ALPHA, MARK_LABEL_PT, MARK_LW, marks_layout)
 from html_deck import CSS, JS, data_uri  # noqa: E402
 from PIL import Image  # noqa: E402
 
@@ -77,10 +78,48 @@ def image_html(c, base, side, max_side, quality):
         dw, dh = (IMG_W, IMG_W * ih / iw) if iw / ih > IMG_W / hh else (hh * iw / ih, hh)
         dx, dy = x + (IMG_W - dw) / 2, IMG_Y + (hh - dh) / 2      # 和 gen_lab_pptx 一樣：等比、置中、出處行不壓圖
         out = box(dx, dy, dw, dh, f'<img src="{uri}" style="width:100%;height:100%">')
+        if img.get("marks"):
+            out += marks_svg(img["marks"], dx, dy, dw, dh, float(img.get("label_pt", MARK_LABEL_PT)))
         if t:
             out += box(x, dy + dh + 0.04, IMG_W, 0.5, ptxt(t, SZ["credit"], "color:#595959"))
         return out
     return box(x, IMG_Y, IMG_W, IMG_H, cls="bx ph")
+
+
+def marks_svg(marks, dx, dy, dw, dh, label_pt):
+    """截圖註記畫成疊在圖上的 SVG；位置與大小和 gen_lab_pptx.add_marks 同一套（marks_layout）。"""
+    shapes, _ = marks_layout(marks, dx, dy, dw, dh, label_pt)
+    lw = MARK_LW * PT
+    defs, body, cols = [], [], set()
+    for g in shapes:
+        if g["t"] in ("arrow", "span"):
+            cols.add(g["color"])
+    for col in sorted(cols):
+        defs.append(f'<marker id="ah{col}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" '
+                    f'orient="auto-start-reverse" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#{col}"/></marker>')
+    for g in shapes:
+        t = g["t"]
+        if t == "circle":
+            body.append(f'<ellipse cx="{(g["x"] + g["w"] / 2) * PX:.1f}" cy="{(g["y"] + g["h"] / 2) * PX:.1f}" '
+                        f'rx="{g["w"] / 2 * PX:.1f}" ry="{g["h"] / 2 * PX:.1f}" fill="none" stroke="#{g["color"]}" stroke-width="{lw:.1f}"/>')
+        elif t in ("arrow", "span", "line"):
+            ends = (f' marker-end="url(#ah{g["color"]})"' if g["tail"] else "") + \
+                   (f' marker-start="url(#ah{g["color"]})"' if g["head"] else "")
+            dash = f' stroke-dasharray="{lw * 3:.0f} {lw * 2:.0f}"' if g["dash"] else ""
+            body.append(f'<line x1="{g["x1"] * PX:.1f}" y1="{g["y1"] * PX:.1f}" x2="{g["x2"] * PX:.1f}" y2="{g["y2"] * PX:.1f}" '
+                        f'stroke="#{g["color"]}" stroke-width="{lw:.1f}"{dash}{ends}/>')
+        else:
+            fs = g["pt"] * PT
+            x, y, w, h = g["x"] * PX, g["y"] * PX, g["w"] * PX, g["h"] * PX
+            body.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{fs * 0.18:.1f}" '
+                        f'fill="#{g["bg"]}" fill-opacity="{MARK_BOX_ALPHA / 100:.2f}"/>')
+            n = len(g["lines"])
+            for i, line in enumerate(g["lines"]):
+                cy = y + h / 2 + (i - (n - 1) / 2) * fs * 1.12
+                body.append(f'<text x="{x + w / 2:.1f}" y="{cy:.1f}" fill="#fff" font-size="{fs:.1f}" text-anchor="middle" '
+                            f'dominant-baseline="central" font-family="{html.escape(FONT)}">{esc(line)}</text>')
+    return (f'<svg class="bx" style="left:0;top:0;width:{SW * PX:.0f}px;height:{SH * PX:.0f}px;pointer-events:none" '
+            f'viewBox="0 0 {SW * PX:.0f} {SH * PX:.0f}"><defs>{"".join(defs)}</defs>{"".join(body)}</svg>')
 
 
 def side_html(c, side):

@@ -184,13 +184,14 @@ def build(deck, base, max_side, quality, bg_pt):
                        cls="bx mid"), "封面"))
     for sec in deck.get("sections", []):
         d = sec.get("divider", {})
-        inner = box(DIV_X, 2.52, DIV_W, 0.3, ptxt(d.get("label", ""), SZ["label"]))
-        y = 2.91
-        for line in d.get("title_lines", []):
-            inner += box(DIV_X, y, DIV_W, 0.7, ptxt(line, SZ["theme"]))
-            y += 0.75
-        inner += box(DIV_X, y - 0.07, DIV_W, 0.8, ptxt(d.get("slides_line", ""), SZ["glass"]))
-        frames.append((box(0, 0, SW, SH, inner, cls="bx div"), d.get("label", "")))
+        if d is not None:          # "divider": null＝這一節不放分隔張（同 gen_lab_pptx）
+            inner = box(DIV_X, 2.52, DIV_W, 0.3, ptxt(d.get("label", ""), SZ["label"]))
+            y = 2.91
+            for line in d.get("title_lines", []):
+                inner += box(DIV_X, y, DIV_W, 0.7, ptxt(line, SZ["theme"]))
+                y += 0.75
+            inner += box(DIV_X, y - 0.07, DIV_W, 0.8, ptxt(d.get("slides_line", ""), SZ["glass"]))
+            frames.append((box(0, 0, SW, SH, inner, cls="bx div"), d.get("label", "")))
         for c in sec.get("slides", []):
             if kind_of(c) == "bg":
                 for h in bg_html(c, bg_pt):

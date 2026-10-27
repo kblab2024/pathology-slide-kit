@@ -28,6 +28,7 @@ deck.json（實驗講義工作流的輸出）：
   sc    形態學示意圖張：img.path 有圖就照 gx 放；沒有就放淡灰空圖（形狀名「示意圖待換 <id>」，
         之後由 lab_swap_images.py 換成加好標籤的圖）
   img.path 相對 deck.json 所在的資料夾。gx、sc、shot 的說明句都放圖框另一邊（20.2pt）。
+某一節寫 "divider": null 就不放分隔張（例：封面後直接放一張玻片編號對照）。
 deck.json 最上層 "panel": true：圖框與說明句底下各墊一塊淺灰底（EAE9E6，6.14×5.32 吋），照教師發炎講義的原樣；
   沒寫就不墊（骨與關節實驗講義是不墊的版本）。"bullets": true：說明句每段前加「•」（懸掛縮排 0.27 吋、段距 14pt），
   也是發炎講義的原樣。--fit 量 deck.json 時照檔裡的 bullets 量；量單張或節檔時用 --bullets。
@@ -528,6 +529,28 @@ def add_bg_page(s, page, layout, size):
                 p._p.get_or_add_pPr().set("hangingPunct", "0")   # 全形標點不懸到格外（2026-10-16 實排）
 
 
+def add_divider_text(s, d, rep, where):
+    """分隔張的字：Section N、主題一到兩行、玻片行。"""
+    tf = textbox(s, DIV_X, 2.52, DIV_W, 0.24)
+    add_para(tf, d.get("label", ""), SZ["label"], WHITE, first=True)
+    y = 2.91
+    for line in d.get("title_lines", []):
+        tf = textbox(s, DIV_X, y, DIV_W, 0.66)
+        add_para(tf, line, SZ["theme"], WHITE, first=True)
+        k = n_lines(line, SZ["theme"], DIV_W)
+        if k > 1:
+            rep.add("overflow", where, "分隔張主題超過一行", k, 1, line)
+        y += 0.75
+    if len(d.get("title_lines", [])) > 2:
+        rep.add("rule", where, "分隔張主題超過兩行", len(d["title_lines"]), 2, " / ".join(d["title_lines"]))
+    glass = d.get("slides_line", "")
+    tf = textbox(s, DIV_X, y - 0.07, DIV_W, 0.78)
+    add_para(tf, glass, SZ["glass"], WHITE, first=True)
+    k = n_lines(glass, SZ["glass"], DIV_W)
+    if k > 1:
+        rep.add("overflow", where, "分隔張玻片行超過一行", k, 1, glass)
+
+
 def build(deck, out, notes=True, base_dir=".", bg_pt=24):
     prs = Presentation()
     prs.slide_width, prs.slide_height = Inches(SW), Inches(SH)
@@ -554,28 +577,11 @@ def build(deck, out, notes=True, base_dir=".", bg_pt=24):
     STYLE["bullets"] = bool(deck.get("bullets"))
     for sec in deck.get("sections", []):
         d = sec.get("divider", {})
-        s = prs.slides.add_slide(blank)
-        n += 1
-        set_bg(s, BLUE)
-        where = f"#{n} {d.get('label', '')}"
-        tf = textbox(s, DIV_X, 2.52, DIV_W, 0.24)
-        add_para(tf, d.get("label", ""), SZ["label"], WHITE, first=True)
-        y = 2.91
-        for line in d.get("title_lines", []):
-            tf = textbox(s, DIV_X, y, DIV_W, 0.66)
-            add_para(tf, line, SZ["theme"], WHITE, first=True)
-            k = n_lines(line, SZ["theme"], DIV_W)
-            if k > 1:
-                rep.add("overflow", where, "分隔張主題超過一行", k, 1, line)
-            y += 0.75
-        if len(d.get("title_lines", [])) > 2:
-            rep.add("rule", where, "分隔張主題超過兩行", len(d["title_lines"]), 2, " / ".join(d["title_lines"]))
-        glass = d.get("slides_line", "")
-        tf = textbox(s, DIV_X, y - 0.07, DIV_W, 0.78)
-        add_para(tf, glass, SZ["glass"], WHITE, first=True)
-        k = n_lines(glass, SZ["glass"], DIV_W)
-        if k > 1:
-            rep.add("overflow", where, "分隔張玻片行超過一行", k, 1, glass)
+        if d is not None:          # "divider": null＝這一節不放分隔張（例：封面後直接放玻片編號對照）
+            s = prs.slides.add_slide(blank)
+            n += 1
+            set_bg(s, BLUE)
+            add_divider_text(s, d, rep, f"#{n} {d.get('label', '')}")
 
         for c in sec.get("slides", []):
             kind = kind_of(c)

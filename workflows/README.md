@@ -13,7 +13,7 @@
 
 其他檔案：
 - `tools/done_from_journal.py`：從執行紀錄重建 DONE 表（見「續跑」）。
-- `tools/wf_check_mac.js`：沒有 node 的 Mac 用這支代替 check_workflows.js：`osascript -l JavaScript workflows/tools/wf_check_mac.js <腳本.js> <args.json> [load_mock.json]`。用 macOS 內建的 JavaScriptCore 查語法，再用假代理空跑，印出代理數、每個代理的 label 與 model（不是 opus 的會列在 `not_opus`）。有讀設定代理（`load:*`）的工作流，第三個參數給它要回傳的內容。印出的 `agents` 就是報價用的代理數上限。它不印 effort：另外用 grep 查沒有 `\r`；課程自寫的腳本確認每個 `agent()` 都明寫了 effort，kit 的通用工作流確認 args 有 `effort`（見「角色與強度」）。
+- `tools/wf_check_mac.js`：沒有 node 的 Mac 用這支代替 check_workflows.js：`osascript -l JavaScript workflows/tools/wf_check_mac.js <腳本.js> <args.json> [load_mock.json]`。用 macOS 內建的 JavaScriptCore 查語法，再用假代理空跑，印出代理數、每個代理的 `label|model|effort|phase`、各強度的代理數 `effort_counts`（報價用），不是 opus 的列在 `not_opus`、沒寫 effort 的列在 `no_effort`（兩個都要是空的）。有讀設定代理（`load:*`）的工作流，第三個參數給它要回傳的內容。印出的 `agents` 就是報價用的代理數上限。`\r` 另外用 grep 查（2026-10-30 起印 effort；以前要用 grep 查 effort）。
 - `tools/check_workflows.js`：改完腳本後跑 `node workflows/tools/check_workflows.js`，檢查 CR 字元、禁用字、本機絕對路徑、meta 是否為純字面值、語法（照 Workflow 執行環境包起來編譯），並用假代理把每支工作流空跑一遍、核對代理數。
 - `reference/`：2026-09 免疫課程的三支原版腳本（已去除本機路徑），只供對照；新課程用上面的通用版。
 - 範本在 `../templates/`：`course.template.yaml`、`brief.template.md`、`gather.template.json`、`course.CLAUDE.template.md`、`handoff.template.md`、`blueprint.schema.json`、`written.schema.json`。
@@ -25,13 +25,13 @@
 - **風格指南與國考題庫在工具包**（`style/guide/`、`question_banks/<題庫>/`）；**課程檔、教科書頁圖、語料、風格證據在教材庫**。
 - 每個代理把成果**寫成檔案**，回傳 `{path, count, notes}`。
 - **額度保護**：任何代理回傳 null（多半是額度用完或被略過）就停止派新代理，log 會出現 `ABORT`，之後用 DONE 表續跑。
-- **共用選項**：`effort`（一個值套到這支工作流的每個代理；**一定要給**，例 `"xhigh"`：不給就繼承主 session 當時的強度，2026-10-14 實測繼承到 medium；六支通用工作流還不能分角色，見「角色與強度」）、`done`（DONE 表）。gather、review、mining 另有 `refuters`（預設 2，照 2 位用；只有審查的非事實面向可以另跑一次設 1，見「反駁與複查的上限」第 1 條）。
+- **共用選項**：`effort`（一個值套到這支工作流的每個代理；**一定要給**，例 `"xhigh"`：不給就繼承主 session 當時的強度，2026-10-14 實測繼承到 medium；lecture-gather 另收 `effort_hard`、`effort_light` 分角色，其他五支還不能分角色，見「角色與強度」）、`done`（DONE 表）。gather、review、mining 另有 `refuters`（預設 2，照 2 位用；只有審查的非事實面向可以另跑一次設 1，見「反駁與複查的上限」第 1 條）。
 
 ## 各工作流的參數
 
 | 工作流 | 必填 | 選填（預設） |
 |---|---|---|
-| lecture-gather | kit, materials, course | `gather`（直接給設定物件；預設讀 `<課>/gather.json`）、`gather_file`、`parts`（`["facts","exam","literature"]` 的子集）、`segments`（例 `["S01","S02"]`）、`topics`（文獻主題 id）、`refuters`、`effort`、`done` |
+| lecture-gather | kit, materials, course | `gather`（直接給設定物件；預設讀 `<課>/gather.json`）、`gather_file`、`parts`（`["facts","exam","literature"]` 的子集）、`segments`（例 `["S01","S02"]`）、`topics`（文獻主題 id）、`refuters`、`effort`（抽取、裁決、文獻搜尋、國考分類與選題）、`effort_hard`（事實反駁者、PubMed 查核；沒給＝`effort`）、`effort_light`（讀設定、下載題庫、找開放授權圖；沒給＝`effort`）、`done` |
 | lecture-blueprint | kit, materials, course | `deck`、`total`、`sections`、`per_section`（`[lo,hi]`）、`minutes`（40）、`quiz`（文字，例 `"10-15 in total, 3-5 per section"`）、`img_rate`（0.65）、`slug_prefix`（課程名）、`lenses`（`[{id, d}]`，預設 audience／textbook／teacher 三視角）、`judges`（3）、`out`、`corpus`（預設 `<materials>/corpus`）、`pages`（教科書頁圖資料夾，預設讀 course.yaml）、`teacher_notes`（老師對藍圖摘要的意見：檔案路徑或文字，修訂代理最優先套用；見「老師看過藍圖後修訂」）、`effort`、`done`；張數沒給就用 course.yaml `decks.<deck>` 的 target／sections／per_section |
 | lecture-write | kit, materials, course | `batches`（make_batches.py 的陣列）或 `batches_file`（預設 `<課>/_archive/written/batches.json`，由一個讀檔代理讀進來）、`blueprint`、`out`、`writer_brief`（預設 `style_evidence/writer_brief_<課>.md`，沒有就只用風格指南）、`pages`、`effort`、`done` |
 | lecture-review | kit, materials, course, pptx | `round`（1）、`deck`、`pngs`／`sheets`（沒給就先派一個代理跑 export_pdf.py 產圖）、`lenses`（6 面向的子集）、`refuters`、`out`、`writer_brief`（預設 `style_evidence/writer_brief_<課>.md`）、`pages`（教科書頁圖資料夾，預設讀 course.yaml）、`effort`、`done` |
@@ -91,13 +91,14 @@ Workflow({scriptPath: "/home/user/pathology-slide-kit/workflows/lecture-gather.j
 - 照上表調整、再加上「複查只看改過的張」，估計初稿約可省 15–25%；這是推估，下一門課跑過才知道。
 - 研究（表第 1 列）的分配沒有實測：uro-a3 的研究是 kit 的標準結構，62 個代理全部 xhigh（腳本沒寫 effort，繼承 session），沒有 max、沒有複查；教師說的「research with ultracode」和實際跑的不同。第一次照表跑研究時，報價要和這 62 個代理、subagent_tokens 10,850,106 對照，寫出多出來的費用。
 
-**程式現況**：kit 的六支通用工作流只吃一個 `args.effort` 套到全部代理（`const EFFORT = A0.effort || null`），還不能分角色；叫它們時一定要給 effort。分角色做好之前的過渡做法（2026-10-14 整理文件時定的預設，待教師確認）：
-- lecture-gather 整支給 `"xhigh"`，和 uro-a3 研究實際跑的一樣。表上事實與文獻的反駁者是 max，但一支只能給一個值：整支給 max 會連抽取、裁決、搜尋、找圖都升級，比 uro-a3 貴，也沒有教師裁決。要給 max（例：用 `parts` 把 `["facts","literature"]` 分出來給 max），先在報價寫出多出來的費用，教師說好再跑。
+**程式現況**：
+- lecture-gather（2026-10-30 起）分角色：`effort` 給抽取、裁決、文獻搜尋、國考分類與選題，`effort_hard` 給事實反駁者（`robbins:review*`）與 PubMed 查核（`lit:verify:*`），`effort_light` 給讀設定、下載題庫、找開放授權圖。照上表研究列給 `{"effort": "xhigh", "effort_hard": "max", "effort_light": "high"}`；只給 `effort` 時全部用同一級（舊寫法，和 uro-a3 研究一樣整支 xhigh）。第一次照表跑時，報價要和 uro-a3 研究（整支 xhigh）對照，寫出反駁與查核升到 max 多出來的費用。
+- 其他五支通用工作流只吃一個 `args.effort` 套到全部代理（`const EFFORT = A0.effort || null`），還不能分角色；叫它們時一定要給 effort。分角色做好之前的過渡做法（2026-10-14 整理文件時定的預設，待教師確認）：
 - lecture-review 用 `lenses` 分兩次：`["facts"]` 給 max，其他面向給 xhigh（兩次的 `out` 用不同資料夾，第二次用第一次修正後重算的 PNG）。
 - 拆不開的（lecture-blueprint、lecture-write、style-mining、style-guide）整支給 `"xhigh"`。
 - 報價時寫明哪些角色比上表高或低一級。
 
-課程自寫的腳本照 uro-a3 的寫法：args 給 `effort`（一般）與 `effort_hard`（查證），每個 `agent()` 各自指定（範本：私人 repo `courses/uro-a3/_archive/journals/uro-write.js`）；之後寫的腳本，機械性的角色用第三個參數 `effort_light`（預設 high）。通用工作流加上這三個參數是待辦。
+課程自寫的腳本照 uro-a3 的寫法：args 給 `effort`（一般）與 `effort_hard`（查證），每個 `agent()` 各自指定（範本：私人 repo `courses/uro-a3/_archive/journals/uro-write.js`）；之後寫的腳本，機械性的角色用第三個參數 `effort_light`（預設 high）。通用工作流加上這三個參數：lecture-gather 已做（2026-10-30），其他五支是待辦。
 
 ## 反駁與複查的上限（2026-10-14 教師採用）
 

@@ -15,7 +15,10 @@ export const meta = {
 //        gather_file?,                          another settings file
 //        parts?: ['facts','exam','literature'], subset to run (default: every part present and not "enabled": false)
 //        segments?: ['S01', ...], topics?: ['id', ...],   run only these segments / literature topics
-//        refuters?: 2, effort?, done?:{label: output path}}
+//        refuters?: 2, effort?, effort_hard?, effort_light?, done?:{label: output path}}
+// effort = extraction, adjudication, literature search, exam classification and selection (xhigh in the research row of
+// workflows/README.md "角色與強度"); effort_hard = the fact refuters and the PubMed verifier (max); effort_light = reading the
+// settings, downloading the exam bank, open-licence image search (high). effort_hard / effort_light fall back to effort.
 const A0 = args || {}
 const norm = (p) => (p ? String(p).replace(/\\/g, '/').replace(/\/+$/, '') : '')
 const MISSING = ['kit', 'materials', 'course'].filter(k => !A0[k])
@@ -32,6 +35,14 @@ const SEGDIR = `${CD}/facts/seg`
 const REF = Math.max(1, Math.min(3, parseInt(A0.refuters || 2, 10) || 2))
 const DONE = Object.assign({}, A0.done || {})
 const EFFORT = A0.effort || null
+const EFFORT_HARD = A0.effort_hard || EFFORT
+const EFFORT_LIGHT = A0.effort_light || EFFORT
+const roleEffort = (lab) => {
+  if (!lab) return EFFORT
+  if (/^robbins:review\d/.test(lab) || /^lit:verify:/.test(lab)) return EFFORT_HARD
+  if (/^lit:images:/.test(lab) || lab === 'exam:download-parse' || /^load:/.test(lab)) return EFFORT_LIGHT
+  return EFFORT
+}
 const RUN = `cd "${KIT}/scripts" && SLIDEKIT_MATERIALS="${MAT}" PYTHONIOENCODING=utf-8 python`
 const RET = { type: 'object', properties: { path: { type: 'string' }, count: { type: 'integer' }, notes: { type: 'string' } }, required: ['path', 'count', 'notes'] }
 let aborted = false
@@ -40,7 +51,8 @@ async function A(prompt, opts) {
   if (lab && DONE[lab]) { log('reuse (not re-run): ' + lab); return { path: DONE[lab], count: 0, notes: 'reused from previous run' } }
   if (aborted) return null
   const o = { schema: RET, ...opts, model: 'opus' }
-  if (EFFORT && !o.effort) o.effort = EFFORT
+  const e = roleEffort(lab)
+  if (e && !o.effort) o.effort = e
   const r = await agent(prompt, o)
   if (r === null) { aborted = true; log('ABORT: agent returned null at ' + lab + '; stopping. Resume later with args.done (see workflows/README.md).') }
   return r
@@ -60,7 +72,7 @@ const ld = await agent(`${ENV}
 TASK (mechanical; do not create or change any file). Run the two commands below and return their printed output exactly (one JSON line each).
 1. Gather settings${A0.gather ? ' (not needed: they were passed inline; return gather_json = "{}")' : ''}: PYTHONIOENCODING=utf-8 python -c "import json,sys; print(json.dumps(json.load(open(sys.argv[1], encoding='utf-8')), ensure_ascii=False))" "${GF}"
 2. Textbook page folder: ${RUN} -c "${INFO_PY}"
-Return ok=true, gather_json = output of 1, pages_json = output of 2. If a command fails (missing file, invalid JSON, course.yaml without textbook.pages_dir), return ok=false with the error in notes and whatever output you did get (use "{}" for a missing one).`, { label: 'load:gather', phase: 'Load', schema: LOADED, model: 'opus' })
+Return ok=true, gather_json = output of 1, pages_json = output of 2. If a command fails (missing file, invalid JSON, course.yaml without textbook.pages_dir), return ok=false with the error in notes and whatever output you did get (use "{}" for a missing one).`, { label: 'load:gather', phase: 'Load', schema: LOADED, model: 'opus', ...(EFFORT_LIGHT ? { effort: EFFORT_LIGHT } : {}) })
 if (!ld) { log('loader returned null'); return { error: 'loader failed' } }
 let G = A0.gather || null
 let PG = {}

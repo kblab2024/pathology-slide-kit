@@ -23,6 +23,22 @@ from pptx.util import Emu
 CAP_PAT = re.compile(r"(圖源|圖片來源|資料來源|來源|Robbins|ROBBINS|Fig\.|http|www\.|doi|PMID|et al|©|Courtesy|ExpertPath)", re.I)
 
 
+def image_ext(img):
+    """圖檔副檔名。python-pptx 用 PIL 判斷格式，PIL 認不得的 WMF／EMF 會丟例外（2026-10-30 同事甲 2020 呼吸講義第 63 張），
+    改看檔頭：WMF（placeable 或標準檔頭）、EMF（第 40–43 位元組是 " EMF"），都不是就用 part 的檔名。"""
+    try:
+        ext = img.ext
+    except Exception:
+        b0 = img.blob[:64]
+        if b0[:4] in (b"\x01\x00\x09\x00", b"\x02\x00\x09\x00", b"\xd7\xcd\xc6\x9a"):
+            ext = "wmf"
+        elif b0[40:44] == b" EMF":
+            ext = "emf"
+        else:
+            ext = os.path.splitext(getattr(img, "filename", None) or "")[1].lstrip(".") or "bin"
+    return "jpg" if ext == "jpeg" else ext
+
+
 def walk(shapes):
     for sh in shapes:
         if sh.shape_type == MSO_SHAPE_TYPE.GROUP:
@@ -68,7 +84,7 @@ def main():
             k += 1
             blob = img.blob
             h = hashlib.sha1(blob).hexdigest()[:16]
-            ext = img.ext if img.ext != "jpeg" else "jpg"
+            ext = image_ext(img)
             name = f"{a.code}_s{i:03d}_{k}.{ext}"
             rec = {"file": name, "slide": i, "k": k, "sha1": h, "ext": ext,
                    "pos_in": [round(Emu(sh.left).inches, 2), round(Emu(sh.top).inches, 2),

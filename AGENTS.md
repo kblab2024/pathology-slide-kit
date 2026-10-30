@@ -20,7 +20,7 @@ cd "<kit>/scripts" && PYTHONIOENCODING=utf-8 python -c "import common; print(com
 | PDF 匯出 | `export_pdf.py`（PowerPoint） | `export_pdf.py`（LibreOffice＋PowerPoint 內建的微軟正黑體，斷行與 PowerPoint 相同；第一次先跑 `bash scripts/lo_fonts_mac.sh`，見 `setup/mac.md`）；要 PowerPoint 本身定稿才用 `bash scripts/ppt_pdf_mac.sh <課>/成品/<檔>.pptx`（第一次會跳授權） | 沒有 PowerPoint，用 LibreOffice（`soffice`）；`SLIDEKIT_PDF_ENGINE=auto｜powerpoint｜libreoffice` 可強制指定 |
 | 換行量測字型 | 微軟正黑體 | PowerPoint for Mac 內建的微軟正黑體（gen_pptx 自動找） | Noto Sans CJK TC（PPTX 內仍指定微軟正黑體，交件前在 PowerPoint 看一次） |
 | `python` 指令 | `python` | `python`（找不到用 `python3`） | `python`（找不到用 `python3`） |
-| 工作流腳本檢查 | `node workflows/tools/check_workflows.js`（只用內建參數空跑 kit 的腳本；這次 args 的代理數上限照 `workflows/README.md` 的公式數） | 沒有 node：`osascript -l JavaScript workflows/tools/wf_check_mac.js <腳本> <args.json>`（語法、假代理空跑、代理數） | 同 Windows |
+| 工作流腳本檢查 | `node workflows/tools/check_workflows.js`（只用內建參數空跑 kit 的腳本；這次 args 的代理數上限照 `workflows/README.md` 的公式數） | 沒有 node：`osascript -l JavaScript workflows/tools/wf_check_mac.js <腳本> <args.json>`（語法、假代理空跑、代理數、每個代理的 effort） | 同 Windows |
 | 編碼 | 一律 `PYTHONIOENCODING=utf-8`（Windows 不設會 cp950 報錯） | 同左 | 同左 |
 
 其他公司的雲端代理（Copilot coding agent、Codex cloud、Cursor background agent 等）多半只看得到一個 repo：在那裡只改 kit 的程式與文件，不做課；環境設定腳本用 `bash setup/cloud-setup.sh`；細節見 `docs/跨工具做法.md` 第 6 節。
@@ -104,7 +104,7 @@ cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 py
   | xhigh | 次高一級；只有三級可選時用最高一級 | `xhigh` | `high`／`high` | `high` |
   | high | 再下一級 | `high` | `medium`／`medium` | `medium`（沒有就 `high`） |
 
-  沒有強度設定的工具，選它主力的推理模型（硬規則 8）。各家有哪些等級、在各工具哪裡設，見 `docs/跨工具做法.md` 第 4 節。kit 的通用工作流一支只吃一個 effort，怎麼對到這張表見 `workflows/README.md`「角色與強度」的「程式現況」。
+  沒有強度設定的工具，選它主力的推理模型（硬規則 8）。各家有哪些等級、在各工具哪裡設，見 `docs/跨工具做法.md` 第 4 節。kit 的通用工作流除了 lecture-gather（`effort`、`effort_hard`、`effort_light` 分角色）都只吃一個 effort，怎麼對到這張表見 `workflows/README.md`「角色與強度」的「程式現況」。
 - **模型**：見硬規則 8。
 - **上限與報價在每種做法都一樣**（硬規則 10、16）：代理數＝要做幾個角色（每個子代理或每次「換一雙眼睛」算一個）；三種數法見 `workflows/README.md`「開跑前先空跑拿上限」。
 

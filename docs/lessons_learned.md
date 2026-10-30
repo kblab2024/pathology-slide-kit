@@ -92,8 +92,8 @@
 - **發生什麼**：uro-a3 撰寫第一次開跑（12:44）用的是沒寫 effort 的舊腳本，代理全部繼承主 session 當時的 medium；原本以為會是 xhigh，因為研究那天的 session 剛好是 xhigh，62 個代理都繼承到 xhigh。12:49 教師說「現在請在既有workflow 請開ultracode」時一併發現，停掉（只跑到第 1 個代理、約 5 分鐘），腳本改成每個 `agent()` 明寫 effort，12:52 重開。
 - **現在怎麼做**：
   - 用 Claude 時每個代理寫死 `model: 'opus'`（其他工具照硬規則 8），並明寫 effort，各角色的等級照 `workflows/README.md`「角色與強度」。
-  - kit 的六支通用工作流只吃一個 `args.effort`：叫它們時一定要給。
-  - 課程自寫的腳本：用 grep 確認每個 `agent()` 都有 effort；kit 的通用工作流：確認 args 有 `effort`（`wf_check_mac.js` 目前不印 effort）。
+  - kit 的通用工作流只吃 `args.effort`（lecture-gather 另收 `effort_hard`、`effort_light`）：叫它們時一定要給。
+  - 課程自寫的腳本：用 grep 確認每個 `agent()` 都有 effort；kit 的通用工作流：確認 args 有 `effort`。2026-10-30 起 `wf_check_mac.js` 印出每個代理的 effort 與 `no_effort`，空跑時直接看。
 
 ## 13. 多輪反駁會讓費用失控（2026-10-14）
 

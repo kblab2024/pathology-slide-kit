@@ -2,6 +2,7 @@
 """從 Robbins 掃描 PDF 自動切出每張圖（Fig.）與表（TABLE），並產 contact sheet 供目視核對。
 
 找圖說：讀 render_pdf_pages.py 產的 Tesseract TSV（頁圖 pNN_PPP.png 或 .jpg，200dpi），找行首「Fig. N.M」「TABLE N.M」。
+表題只認全大寫的 TABLE：內文行首的「Table 15.11.」是引用，不是表題（2026-10-30 lung p.656 曾被誤認）；第 6、15、16、21、25、26 章的表題 OCR 都是全大寫。
 （PDF 文字層是 PUA 自訂編碼的版本，例如 lung 的掃描檔，要先解碼 chr(288-(code&0xff)) 再找圖說；本工具未收錄該模式。）
 切圖規則（Robbins 版面：兩欄內文、圖在圖說正上方、表在表題正下方且底色為淡黃）：
   圖：水平範圍依圖說寬度判定（>55% 頁寬＝跨欄，否則所在欄）；上緣＝圖說上方最近一條「內文整行」（≥6 字詞且寬 ≥ 欄寬 80%）的下緣；
@@ -14,7 +15,7 @@
     "_drop_panels": ["fig6_1_2.png", …]      自動分割出的無意義碎片，不輸出也不記入 index
     "_panel_gap": {"6.24": 4}                照片拼版圖面板間白縫窄（~6px）：改遞迴切割、白縫門檻 4px
     "_panels": {"6.33": [[x0, y0, x1, y1], …]}  手動面板座標（圖文混排、標籤框與圖分離時）
-    "_captions": {"6.35": "Fig. 6.35 …"}     OCR 讀不到的圖說（反白字）補進 index.json
+    "_captions": {"6.35": "Fig. 6.35 …"}     圖說（OCR 讀不到的反白字，或 OCR 抓錯的）；有寫就蓋過 OCR 的圖說，寫進 index.json
   手動座標的圖同樣會自動分面板；輸出資料夾裡不在 index 內的 fig*/table* 舊檔會被刪除。
 輸出：<out>/fig{章}_{號}.png、fig…_{k}.png（面板）、table{章}_{號}.png、index.json、contact_*.png；並列出找不到的圖號。
 沒有 PDF（例如雲端只有教材庫的頁圖）時，直接從 200dpi 頁圖裁切，--dpi 無效，index.json 記 "dpi": 200。
@@ -119,7 +120,7 @@ def caption_blocks(lines, chapter):
         kind = None
         if pat_fig.match(ws[0]["t"]) and pat_num.match(ws[1]["t"]):
             kind = "fig"
-        elif ws[0]["t"].upper() == "TABLE" and pat_num.match(ws[1]["t"]):
+        elif ws[0]["t"] == "TABLE" and pat_num.match(ws[1]["t"]):
             kind = "table"
         if not kind:
             continue
@@ -386,7 +387,7 @@ def main():
             px = save_clip(src, pno, tb, a.dpi, out)
             rec = {"kind": kind, "num": num, "page_pdf": pno, "page": pno + a.offset, "box200": tb,
                    "file": os.path.basename(out), "px": px, "dpi": src.dpi(a.dpi),
-                   "caption": " ".join(l["text"] for l in cap)[:600]}
+                   "caption": a.captions.get(("T" if kind == "table" else "") + num) or " ".join(l["text"] for l in cap)[:600]}
             if kind == "fig":
                 rec["panels"] = save_panels(src, pno, img, tb, key, a, drop)
             old = index.get(key)
@@ -403,7 +404,7 @@ def main():
         px = save_clip(src, pno, tb, a.dpi, os.path.join(a.out, key + ".png"), masks)
         index[key] = {"kind": kind, "num": num, "page_pdf": pno, "page": pno + a.offset,
                       "box200": list(tb), "file": key + ".png", "px": px, "dpi": src.dpi(a.dpi),
-                      "caption": cap_text.get(key) or a.captions.get(("T" if kind == "table" else "") + num, ""),
+                      "caption": a.captions.get(("T" if kind == "table" else "") + num) or cap_text.get(key, ""),
                       "ovr": True}
         if masks:
             index[key]["masks200"] = [list(m) for m in masks]

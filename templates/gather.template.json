@@ -6,6 +6,7 @@
     "頁圖資料夾與 page_offset 不寫在這裡：工作流從 course.yaml 的 textbook.pages_dir、textbook.page_offset 讀。",
     "facts.segments[].pages 是 PDF 頁（頁圖檔名 pNN_PPP 的 NN）；id 必須是 S01–S99，scripts/merge_facts.py 只合併 facts/seg/S??_final.json。",
     "literature.topics[].r 寫「教科書已經講了什麼」（附印刷頁），讓搜尋者只找補充、不找重複；用自己的話摘要，不要整段抄教科書。",
+    "literature 可選：verifiers 2＝每題兩位獨立查核＋一位裁決（預設 1 位）；criteria＝來源規則（例：只收指引、系統性回顧、大型研究、官方統計，逐字引句與 PMID／DOI）；keep_conflicts true＝和教科書不同的地方也完整引用、查核（投影片要同時列教科書與文獻時用）。",
     "exam.bank 是 <工具包>/question_banks/ 下的資料夾名（醫師、牙醫師…）；醫師題庫只用題號 76–100。update_bank 設成物件時才會先下載新場次。"
   ],
   "context": "We are building a 3-hour 免疫疾病 pathology lecture for 3rd-year DENTAL students (牙醫三, course code C) taught by the course's pathology teacher.",

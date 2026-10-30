@@ -127,7 +127,11 @@ def scan(kind, d):
         for p in sorted(glob.glob(os.path.join(lit, "*.json"))):
             b = os.path.basename(p)[:-5]
             if b.endswith("_verified"):
+                # 一位查核時是 lit:verify 寫的；兩位查核（lit_verifiers 2）時是 lit:adjudicate 寫的。兩個 label 都列，續跑哪一種都對得上
                 out.append((f"lit:verify:{b[:-9]}", p))
+                out.append((f"lit:adjudicate:{b[:-9]}", p))
+            elif re.search(r"_verify[12]$", b):
+                out.append((f"lit:verify{b[-1]}:{b[:-8]}", p))
             elif b.endswith("_images"):
                 out.append((f"lit:images:{b[:-7]}", p))
             else:

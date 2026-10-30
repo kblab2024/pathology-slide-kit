@@ -31,7 +31,7 @@
 
 | 工作流 | 必填 | 選填（預設） |
 |---|---|---|
-| lecture-gather | kit, materials, course | `gather`（直接給設定物件；預設讀 `<課>/gather.json`）、`gather_file`、`parts`（`["facts","exam","literature"]` 的子集）、`segments`（例 `["S01","S02"]`）、`topics`（文獻主題 id）、`refuters`、`effort`（抽取、裁決、文獻搜尋、國考分類與選題）、`effort_hard`（事實反駁者、PubMed 查核；沒給＝`effort`）、`effort_light`（讀設定、下載題庫、找開放授權圖；沒給＝`effort`）、`done` |
+| lecture-gather | kit, materials, course | `gather`（直接給設定物件；預設讀 `<課>/gather.json`）、`gather_file`、`parts`（`["facts","exam","literature"]` 的子集）、`segments`（例 `["S01","S02"]`）、`topics`（文獻主題 id）、`refuters`、`lit_verifiers`（1＝一位 PubMed 查核，預設；2＝兩位獨立查核＋一位裁決，也可以在 gather.json 寫 `literature.verifiers`）、`effort`（抽取、裁決、文獻搜尋、國考分類與選題）、`effort_hard`（事實反駁者、文獻查核與文獻裁決；沒給＝`effort`）、`effort_light`（讀設定、下載題庫、找開放授權圖；沒給＝`effort`）、`done` |
 | lecture-blueprint | kit, materials, course | `deck`、`total`、`sections`、`per_section`（`[lo,hi]`）、`minutes`（40）、`quiz`（文字，例 `"10-15 in total, 3-5 per section"`）、`img_rate`（0.65）、`slug_prefix`（課程名）、`lenses`（`[{id, d}]`，預設 audience／textbook／teacher 三視角）、`judges`（3）、`out`、`corpus`（預設 `<materials>/corpus`）、`pages`（教科書頁圖資料夾，預設讀 course.yaml）、`teacher_notes`（老師對藍圖摘要的意見：檔案路徑或文字，修訂代理最優先套用；見「老師看過藍圖後修訂」）、`effort`、`done`；張數沒給就用 course.yaml `decks.<deck>` 的 target／sections／per_section |
 | lecture-write | kit, materials, course | `batches`（make_batches.py 的陣列）或 `batches_file`（預設 `<課>/_archive/written/batches.json`，由一個讀檔代理讀進來）、`blueprint`、`out`、`writer_brief`（預設 `style_evidence/writer_brief_<課>.md`，沒有就只用風格指南）、`pages`、`effort`、`done` |
 | lecture-review | kit, materials, course, pptx | `round`（1）、`deck`、`pngs`／`sheets`（沒給就先派一個代理跑 export_pdf.py 產圖）、`lenses`（6 面向的子集）、`refuters`、`out`、`writer_brief`（預設 `style_evidence/writer_brief_<課>.md`）、`pages`（教科書頁圖資料夾，預設讀 course.yaml）、`effort`、`done` |
@@ -92,7 +92,7 @@ Workflow({scriptPath: "/home/user/pathology-slide-kit/workflows/lecture-gather.j
 - 研究（表第 1 列）的分配沒有實測：uro-a3 的研究是 kit 的標準結構，62 個代理全部 xhigh（腳本沒寫 effort，繼承 session），沒有 max、沒有複查；教師說的「research with ultracode」和實際跑的不同。第一次照表跑研究時，報價要和這 62 個代理、subagent_tokens 10,850,106 對照，寫出多出來的費用。
 
 **程式現況**：
-- lecture-gather（2026-10-30 起）分角色：`effort` 給抽取、裁決、文獻搜尋、國考分類與選題，`effort_hard` 給事實反駁者（`robbins:review*`）與 PubMed 查核（`lit:verify:*`），`effort_light` 給讀設定、下載題庫、找開放授權圖。照上表研究列給 `{"effort": "xhigh", "effort_hard": "max", "effort_light": "high"}`；只給 `effort` 時全部用同一級（舊寫法，和 uro-a3 研究一樣整支 xhigh）。第一次照表跑時，報價要和 uro-a3 研究（整支 xhigh）對照，寫出反駁與查核升到 max 多出來的費用。
+- lecture-gather（2026-10-30 起）分角色：`effort` 給抽取、裁決、文獻搜尋、國考分類與選題，`effort_hard` 給事實反駁者（`robbins:review*`）、文獻查核（`lit:verify*`）與文獻裁決（`lit:adjudicate:*`），`effort_light` 給讀設定、下載題庫、找開放授權圖。文獻要嚴謹時（rs-a1 教師 2026-10-30「文獻要嚴謹」）給 `lit_verifiers: 2`：每題兩位獨立查核、一位裁決，和教科書事實的反駁結構一樣；gather.json 的 `literature.criteria` 寫來源規則，`literature.keep_conflicts: true` 讓和教科書不同的地方也完整引用、查核（投影片要並列時用）。照上表研究列給 `{"effort": "xhigh", "effort_hard": "max", "effort_light": "high"}`；只給 `effort` 時全部用同一級（舊寫法，和 uro-a3 研究一樣整支 xhigh）。第一次照表跑時，報價要和 uro-a3 研究（整支 xhigh）對照，寫出反駁與查核升到 max 多出來的費用。
 - 其他五支通用工作流只吃一個 `args.effort` 套到全部代理（`const EFFORT = A0.effort || null`），還不能分角色；叫它們時一定要給 effort。分角色做好之前的過渡做法（2026-10-14 整理文件時定的預設，待教師確認）：
 - lecture-review 用 `lenses` 分兩次：`["facts"]` 給 max，其他面向給 xhigh（兩次的 `out` 用不同資料夾，第二次用第一次修正後重算的 PNG）。
 - 拆不開的（lecture-blueprint、lecture-write、style-mining、style-guide）整支給 `"xhigh"`。
@@ -120,7 +120,7 @@ Workflow({scriptPath: "/home/user/pathology-slide-kit/workflows/lecture-gather.j
 
 | 工作流 | 代理數公式 | 免疫課實例 |
 |---|---|---|
-| lecture-gather | 1（讀設定）＋ 段落數 ×(2＋R) ＋ 國考 3（更新題庫再＋1）＋ 文獻主題數 × 3（不找圖的主題 × 2） | 13 段、14 主題（1 個不找圖）：97（`exam.update_bank: true` 時 98） |
+| lecture-gather | 1（讀設定）＋ 段落數 ×(2＋R) ＋ 國考 3（更新題庫再＋1）＋ 文獻主題數 × 3（不找圖的主題 × 2）；文獻兩位查核（`lit_verifiers: 2`）時文獻改成主題數 × 5（不找圖的主題 × 4） | 13 段、14 主題（1 個不找圖）：97（`exam.update_bank: true` 時 98）；rs-a1（2026-10-30）15 段、10 主題（1 個找圖）、國考關、兩位查核：102 |
 | lecture-blueprint | 1 用語表 ＋ 視角數 ＋ 評審數 ＋ 3 | 3 視角、3 評審：10 |
 | lecture-write | 批數 × 5 ＋ 1（沒給 batches 陣列時再＋1 讀檔） | 11 批（藍圖 181 張，成品表格自動拆張後 184 張）：56，讀 batches.json 時 57 |
 | lecture-review | 面向數 ×(1＋R) ＋ 1（沒給 pngs 時再＋1 算圖） | 6 面向：19–20 |
@@ -176,7 +176,7 @@ Workflow({scriptPath: "/home/user/pathology-slide-kit/workflows/lecture-gather.j
 3. journal 已經不見（例如雲端 session 結束前沒複製）：改用輸出檔推回 label，`python <kit>/workflows/tools/done_from_journal.py --scan write --dir <materials>/courses/<課>/_archive/written --args ... --out ...`（種類：`gather` 給課程資料夾、`blueprint`（課程的 `glossary.md` 存在時也收 `glossary`）、`write`、`review` 給該輪資料夾、`mining` 給挖掘資料夾）。檔案存在不代表那一步當時做完了，先看過最後幾個檔，必要時用 `--drop` 讓它重跑。
 4. 用新 args 再執行同一支工作流。
 
-各工作流的 label：gather `robbins:extract:S01`、`robbins:review1:S01`、`robbins:adjudicate:S01`、`exam:download-parse`、`exam:classify-a`、`exam:classify-b`、`exam:verify-select`、`lit:search:<id>`、`lit:verify:<id>`、`lit:images:<id>`；blueprint `glossary`、`draft:<視角>`、`judge1`…、`synthesize`、`critic`、`revise`；write `write:<k>`、`facts:<k>`、`voice:<k>`、`terms:<k>`、`revise:<k>`、`continuity`；review `render`、`review:<面向>`、`verify1:<面向>`、`verify2:<面向>`、`fix`；mining `mine:<面向>`、`refute1:<面向>`、`refute2:<面向>`、`revise:<面向>`、`brief:writer`；guide `write:<檔>`、`critic:consistency`、`critic:completeness`、`revise:<檔>`、`index`。讀設定的 `load:*` 代理不進 DONE 表，每次都重跑（很便宜）。
+各工作流的 label：gather `robbins:extract:S01`、`robbins:review1:S01`、`robbins:adjudicate:S01`、`exam:download-parse`、`exam:classify-a`、`exam:classify-b`、`exam:verify-select`、`lit:search:<id>`、`lit:verify:<id>`（兩位查核時是 `lit:verify1:<id>`、`lit:verify2:<id>`、`lit:adjudicate:<id>`）、`lit:images:<id>`；blueprint `glossary`、`draft:<視角>`、`judge1`…、`synthesize`、`critic`、`revise`；write `write:<k>`、`facts:<k>`、`voice:<k>`、`terms:<k>`、`revise:<k>`、`continuity`；review `render`、`review:<面向>`、`verify1:<面向>`、`verify2:<面向>`、`fix`；mining `mine:<面向>`、`refute1:<面向>`、`refute2:<面向>`、`revise:<面向>`、`brief:writer`；guide `write:<檔>`、`critic:consistency`、`critic:completeness`、`revise:<檔>`、`index`。讀設定的 `load:*` 代理不進 DONE 表，每次都重跑（很便宜）。
 
 ## CR 字元（行尾）規則
 - Workflow 工具拒絕含 `\r` 的腳本。所有 `.js` 一律 LF 行尾。

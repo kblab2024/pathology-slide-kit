@@ -15,7 +15,11 @@ export const meta = {
 //        gather_file?,                          another settings file
 //        parts?: ['facts','exam','literature'], subset to run (default: every part present and not "enabled": false)
 //        segments?: ['S01', ...], topics?: ['id', ...],   run only these segments / literature topics
-//        refuters?: 2, effort?, effort_hard?, effort_light?, done?:{label: output path}}
+//        refuters?: 2, lit_verifiers?: 1|2, effort?, effort_hard?, effort_light?, done?:{label: output path}}
+// lit_verifiers (or gather.json literature.verifiers): 1 = one PubMed verifier writes <topic>_verified.json (default, as before);
+// 2 = two independent verifiers (<topic>_verify1/2.json) and an adjudicator that writes <topic>_verified.json, like the textbook track.
+// gather.json literature.criteria (text) = extra source rules for search, verify and adjudicate; literature.keep_conflicts (true) =
+// differences from the textbook are recorded as fully cited, verified entries (for slides that show textbook and literature side by side).
 // effort = extraction, adjudication, literature search, exam classification and selection (xhigh in the research row of
 // workflows/README.md "角色與強度"); effort_hard = the fact refuters and the PubMed verifier (max); effort_light = reading the
 // settings, downloading the exam bank, open-licence image search (high). effort_hard / effort_light fall back to effort.
@@ -39,7 +43,7 @@ const EFFORT_HARD = A0.effort_hard || EFFORT
 const EFFORT_LIGHT = A0.effort_light || EFFORT
 const roleEffort = (lab) => {
   if (!lab) return EFFORT
-  if (/^robbins:review\d/.test(lab) || /^lit:verify:/.test(lab)) return EFFORT_HARD
+  if (/^robbins:review\d/.test(lab) || /^lit:verify\d*:/.test(lab) || /^lit:adjudicate:/.test(lab)) return EFFORT_HARD
   if (/^lit:images:/.test(lab) || lab === 'exam:download-parse' || /^load:/.test(lab)) return EFFORT_LIGHT
   return EFFORT
 }
@@ -148,6 +152,11 @@ async function litTrack() {
   if (pick && TOPICS.length < pick.length) log('literature: some args.topics ids not found in gather settings')
   if (!TOPICS.length) { log('literature: no topics'); return [] }
   const imgDir = L.image_dir || 'assets/images/文獻圖'
+  const LV = Math.max(1, Math.min(2, parseInt(A0.lit_verifiers || L.verifiers || 1, 10) || 1))
+  const RULES = L.criteria ? `\nSource rules for this course (follow strictly): ${L.criteria}` : ''
+  const CONF = L.keep_conflicts
+    ? 'Where the literature differs from the textbook (a newer guideline, a revised classification, different numbers), record it under "conflicts" with the textbook statement and its printed page AND a fully cited literature claim (same fields as a claim: claim_zh, claim_en, quote, citation, slide_cite, evidence_type). The slides will show the textbook and the literature side by side, so conflicts need the same rigour as claims.'
+    : 'Do not include claims that contradict the textbook; if the literature contradicts the textbook, record it under "conflicts" instead.'
   const imgSources = L.image_sources || 'Wikimedia Commons (check the licence on the file page: Public domain, CC0, CC BY, CC BY-SA), CDC Public Health Image Library (public domain), or figures from PMC Open Access articles whose licence is CC BY / CC BY-NC (verify the licence statement on the article page). No other sources.'
   return await pipeline(TOPICS,
     (t) => A(`${COMMON}
@@ -156,15 +165,30 @@ TASK: literature search for ONE supplement topic.
 Topic: ${t.q}
 What the textbook already says (canonical; our slides state these facts from the textbook): ${t.r || '(not given; check the textbook pages yourself)'}
 Find ${L.claims_per_topic || '3-6'} short, slide-sized claims from peer-reviewed literature (prefer reviews, guidelines, consensus statements or large series from ${L.years || '2010 onwards'}${L.journals ? ` in journals such as ${L.journals}` : ''}${t.sources ? `; for this topic use ${t.sources}` : ''}) that ADD ${L.adds || 'relevance for this audience'} beyond the textbook. Use WebSearch and WebFetch (PubMed: https://pubmed.ncbi.nlm.nih.gov/?term=...). Each claim must come with an exact supporting sentence copied from the abstract/full text (quote), and full citation metadata.
-Do not include claims that contradict the textbook; if the literature contradicts the textbook, record it under "conflicts" instead.
+${CONF}${RULES}
 Write JSON to ${GATHER}/lit/${t.id}.json:
-{"topic":"${t.id}","claims":[{"id":"${t.id}-1","claim_zh":"繁中一句（術語 中文(English)）","claim_en":"...","quote":"exact sentence","citation":{"authors":"First A, Second B, et al.","title":"...","journal":"NLM abbreviation","year":2019,"volume":"90","issue":"1","pages":"23-30","pmid":"...","doi":"..."},"slide_cite":"(資料來源: J Periodontol. 2019;90(1):23-30.)","evidence_type":"review|guideline|cohort|case series|official statistics","relation_to_textbook":"extends|consistent"}],"conflicts":[{"textbook":"...","paper":"...","citation":{...}}]}
+{"topic":"${t.id}","claims":[{"id":"${t.id}-1","claim_zh":"繁中一句（術語 中文(English)）","claim_en":"...","quote":"exact sentence","citation":{"authors":"First A, Second B, et al.","title":"...","journal":"NLM abbreviation","year":2019,"volume":"90","issue":"1","pages":"23-30","pmid":"...","doi":"..."},"slide_cite":"(資料來源: J Periodontol. 2019;90(1):23-30.)","evidence_type":"review|guideline|cohort|case series|official statistics","relation_to_textbook":"extends|consistent"}],"conflicts":[{"textbook":"...","textbook_page":0,"paper":"...","citation":{...}${L.keep_conflicts ? ',"claim_zh":"...","claim_en":"...","quote":"...","slide_cite":"...","evidence_type":"..."' : ''}}]}
 Return count = number of claims.`, { label: 'lit:search:' + t.id, phase: 'Literature' }),
-    (found, t) => found && A(`${COMMON}
+    (found, t) => {
+      if (!found) return null
+      if (LV === 1) return A(`${COMMON}
 
 TASK: adversarially VERIFY the literature claims in ${found.path} (topic ${t.id}). Textbook context: ${t.r || '(not given; check the textbook pages yourself)'}
-For EACH claim: open https://pubmed.ncbi.nlm.nih.gov/<pmid>/ (or the DOI / official page) with WebFetch and confirm (a) the paper exists with exactly this title/journal/year/volume/issue/pages/PMID/DOI (fix any metadata error), (b) the quote really appears (or the abstract clearly states the claim), (c) claim_zh faithfully reflects the source without overstatement, (d) it does not contradict the textbook (if it does, move it to conflicts). Default to rejecting a claim you cannot verify. Also fix slide_cite to the format "(資料來源: <J Abbrev>. <year>;<vol>(<issue>):<pages>.)".
-Write ${GATHER}/lit/${t.id}_verified.json with the same structure plus per-claim fields "verified": true/false and "verify_note". Return count = number of verified claims.`, { label: 'lit:verify:' + t.id, phase: 'Literature' }),
+For EACH claim: open https://pubmed.ncbi.nlm.nih.gov/<pmid>/ (or the DOI / official page) with WebFetch and confirm (a) the paper exists with exactly this title/journal/year/volume/issue/pages/PMID/DOI (fix any metadata error), (b) the quote really appears (or the abstract clearly states the claim), (c) claim_zh faithfully reflects the source without overstatement, (d) it does not contradict the textbook (if it does, move it to conflicts). Default to rejecting a claim you cannot verify.${RULES} Also fix slide_cite to the format "(資料來源: <J Abbrev>. <year>;<vol>(<issue>):<pages>.)".
+Write ${GATHER}/lit/${t.id}_verified.json with the same structure plus per-claim fields "verified": true/false and "verify_note". Return count = number of verified claims.`, { label: 'lit:verify:' + t.id, phase: 'Literature' })
+      const VERIFY2 = (k) => A(`${COMMON}
+
+TASK: independent adversarial VERIFIER #${k} of 2 for the literature claims in ${found.path} (topic ${t.id}). Another verifier does the same job separately; do not open its file. Textbook context: ${t.r || '(not given; check the textbook pages yourself)'}${RULES}
+${k === 1 ? 'Work through the claims in file order.' : 'Work through the claims in reverse order, and pay special attention to numbers, cut-offs, definitions, classification and guideline versions and years.'}
+For EACH claim${L.keep_conflicts ? ' and EACH conflicts entry' : ''}: open https://pubmed.ncbi.nlm.nih.gov/<pmid>/ (or the DOI / journal / official guideline page; the full text when the abstract does not settle it) with WebFetch and check (a) the paper exists with exactly this title/journal/year/volume/issue/pages/PMID/DOI, (b) the quote really appears in it (say where: abstract, results, a table, a recommendation), (c) claim_zh says no more than the source (no overstatement, no dropped qualifier, numbers identical), (d) the evidence type is right and the source is not superseded by a newer version of the same guideline, (e) its relation to the textbook (check the textbook page yourself) is stated correctly. Default to "reject" when you cannot verify.
+Write ${GATHER}/lit/${t.id}_verify${k}.json: {"verdicts":[{"id":"${t.id}-1","verdict":"confirm|fix|reject","fix":{"claim_zh":"...","citation":{},"quote":"...","slide_cite":"..."},"evidence":"URL and where in the source","note":"..."}],"conflict_verdicts":[{"index":0,"verdict":"confirm|fix|reject","fix":{},"evidence":"..."}],"missed":[{"what":"an important statement from a top source on this exact topic that the search missed","citation":{},"quote":"..."}]}
+Return count = number of non-confirm verdicts.`, { label: `lit:verify${k}:${t.id}`, phase: 'Literature' })
+      return parallel([1, 2].map(k => () => VERIFY2(k))).then(vs => (vs && vs.every(Boolean)) ? A(`${COMMON}
+
+TASK: ADJUDICATE the literature claims of topic ${t.id}. Inputs: search ${found.path} ; verifications ${vs.map(v => v.path).join(' and ')}. Textbook context: ${t.r || '(not given; check the textbook pages yourself)'}${RULES}
+For every claim${L.keep_conflicts ? ' and every conflicts entry' : ''}: both verifiers confirm -> keep; both reject -> drop (verified false); otherwise (one confirms, one rejects or fixes, or both fix differently) open the source yourself and decide, applying the correct metadata, quote and wording. Add a "missed" item only after you have read its source yourself. Fix slide_cite to "(資料來源: <J Abbrev>. <year>;<vol>(<issue>):<pages>.)" (guidelines and official statistics: issuing body, title, year).
+Write ${GATHER}/lit/${t.id}_verified.json with the search file's structure plus per-claim "verified": true/false and "verify_note" (what decided it), the same two fields on each conflicts entry, and a top-level "adjudication": {"kept":n,"fixed":n,"dropped":n,"disputed":n,"notes":"..."}. Return count = number of verified claims.`, { label: 'lit:adjudicate:' + t.id, phase: 'Literature' }) : null)
+    },
     (ver, t) => (ver && t.images !== false && L.images !== false) ? A(`${COMMON}
 
 TASK: find 1-3 openly licensed images for the lecture topic: ${t.q}

@@ -76,7 +76,7 @@ gen_pptx 每次會印出「量字字型：…」，也寫進 `_layout.json` 的 
 
 說明：
 - `render_pdf_pages.py --course` 從 course.yaml 的 `textbook.pdf`、`textbook.pages_dir`、`textbook.page_offset` 補齊參數；預設 jpg、不出半頁（教材庫就存這個格式）；找不到 Tesseract 會報錯，只要圖時加 `--no-ocr`（切圖會少了圖說定位）。
-- `robbins_crop.py` 的頁圖可以是 png 或 jpg；有 PDF 時以 `--dpi`（預設 300）從 PDF 重新算圖，沒有 PDF 時直接裁 200dpi 頁圖（jpg 頁圖的裁切框與 png 相差幾個像素）。`--out` 裡不在 index 內的 fig*/table* 舊檔會被刪除，不要指到別的資料夾。
+- `robbins_crop.py` 的頁圖可以是 png 或 jpg；有 PDF 時以 `--dpi`（預設 300）從 PDF 重新算圖，沒有 PDF 時直接裁 200dpi 頁圖（jpg 頁圖的裁切框與 png 相差幾個像素）。`--out` 裡同一章、不在 index 內的 fig*/table* 舊檔會被刪除，不要指到別的資料夾。跨章的課（例：Robbins 第 13、14 章）兩章依序跑到同一個 `--out`：`index.json`、`圖片清單.md`、contact sheet 會保留別章的項目，`--ovr` 只套用 `--chapter` 那一章的鍵，兩章可共用一份 ovr（2026-10-30 起；以前第二章會把第一章清掉）。
 - `export_pdf.py` 兩個引擎都不可用時，錯誤訊息列出各自的原因，結束碼 2。
 
 中間工具（工作流代理也會呼叫）：

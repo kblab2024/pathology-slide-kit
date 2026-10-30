@@ -16,15 +16,16 @@
     "_panel_gap": {"6.24": 4}                照片拼版圖面板間白縫窄（~6px）：改遞迴切割、白縫門檻 4px
     "_panels": {"6.33": [[x0, y0, x1, y1], …]}  手動面板座標（圖文混排、標籤框與圖分離時）
     "_captions": {"6.35": "Fig. 6.35 …"}     圖說（OCR 讀不到的反白字，或 OCR 抓錯的）；有寫就蓋過 OCR 的圖說，寫進 index.json
-  手動座標的圖同樣會自動分面板；輸出資料夾裡不在 index 內的 fig*/table* 舊檔會被刪除。
+  手動座標的圖同樣會自動分面板；只套用 --chapter 那一章的鍵（兩章共用一份 ovr 也可以）。
 輸出：<out>/fig{章}_{號}.png、fig…_{k}.png（面板）、table{章}_{號}.png、index.json、contact_*.png；並列出找不到的圖號。
+  跨章的課（例：Robbins 第 13、14 章）兩章依序跑到同一個 --out：index.json、圖片清單.md、contact_*.png 保留別章的項目（2026-10-30 起；以前第二章會把第一章清掉）。
 沒有 PDF（例如雲端只有教材庫的頁圖）時，直接從 200dpi 頁圖裁切，--dpi 無效，index.json 記 "dpi": 200。
 
 用法：python robbins_crop.py --course immune --chapter 6 --out <資料夾> [--expect 46] [--ovr ovr.json] [--dpi 300]
       python robbins_crop.py --pdf robbinsimmune.pdf --pages-dir <頁圖資料夾> --chapter 6 --offset 166 --out <資料夾>
   --course     從 course.yaml 的 textbook.pdf、textbook.pages_dir、textbook.page_offset 補齊沒給的 --pdf／--pages-dir／--offset
   --pages-dir  頁圖＋TSV 資料夾（pNN_PPP.png|jpg＋pNN_PPP.tsv）
-  --out 裡不在 index 內的 fig*/table* 舊檔會被刪除：不要指到別的用途的資料夾。
+  --out 裡同一章、不在這次 index 內的 fig*/table* 舊檔會被刪除（別章的檔不動）：不要指到別的用途的資料夾。
 """
 import argparse
 import csv
@@ -335,7 +336,8 @@ def main():
     a.panel_gap = ovr.get("_panel_gap", {})
     a.panel_boxes = ovr.get("_panels", {})
     a.captions = ovr.get("_captions", {})
-    ovr = {k: v for k, v in ovr.items() if not k.startswith("_")}
+    ovr = {k: v for k, v in ovr.items() if not k.startswith("_") and k.lstrip("T").split(".")[0] == str(a.chapter)}
+    others = other_chapters(os.path.join(a.out, "index.json"), a.chapter)
     index = {}
     cap_text = {}
     for tsv in sorted(glob.glob(os.path.join(a.pages_dir, "p*_*.tsv"))):
@@ -412,10 +414,14 @@ def main():
             index[key]["panels"] = save_panels(src, pno, img, tb, key, a, drop, masks)
     keep = {v["file"] for v in index.values() if "file" in v}
     keep |= {p["file"] for v in index.values() for p in v.get("panels", [])}
+    own = re.compile(r"(fig|table)%d_\d+(_\w+)?\.png" % a.chapter)
     for f in os.listdir(a.out):
-        if re.fullmatch(r"(fig|table)\d+_\d+(_\w+)?\.png", f) and f not in keep:
+        if own.fullmatch(f) and f not in keep:
             os.remove(os.path.join(a.out, f))
-    json.dump(index, open(os.path.join(a.out, "index.json"), "w", encoding="utf-8", newline="\n"), ensure_ascii=False, indent=1)
+    merged = dict(sorted({**others, **index}.items(), key=lambda kv: sort_key(kv[1])))
+    if others:
+        print(f"保留別章的項目 {len(others)} 筆（index.json、圖片清單.md、contact sheet 含所有章）")
+    json.dump(merged, open(os.path.join(a.out, "index.json"), "w", encoding="utf-8", newline="\n"), ensure_ascii=False, indent=1)
     figs = sorted(int(k.split("_")[1]) for k, v in index.items() if v["kind"] == "fig" and "file" in v)
     tabs = sorted(int(k.split("_")[1]) for k, v in index.items() if v["kind"] == "table" and "file" in v)
     print(f"圖 {len(figs)} 張、表 {len(tabs)} 張")
@@ -425,18 +431,47 @@ def main():
     errs = [k for k, v in index.items() if "error" in v]
     if errs:
         print("有圖說但切不到範圍：", errs)
-    write_list(a.out, index)
-    contact(a.out, index)
+    write_list(a.out, merged)
+    contact(a.out, merged)
 
 
-AUTO_MARK = "<!-- robbins_crop.py 自動產生；手改前先把這一行刪掉，否則下次重跑會蓋掉 -->"
+def sort_key(v):
+    """依 圖／表 → 章 → 號 排序（跨章的課，兩章的圖不交錯）。"""
+    ch, _, n = str(v.get("num", "0.0")).partition(".")
+    try:
+        return (v.get("kind", ""), int(ch), float(n or 0))
+    except ValueError:
+        return (v.get("kind", ""), 0, 0.0)
+
+
+def other_chapters(path, chapter):
+    """--out 既有 index.json 裡別章的項目：跨章的課兩章輸出到同一個資料夾時保留。檔案已不在的項目不留。"""
+    if not os.path.exists(path):
+        return {}
+    try:
+        old = json.load(open(path, encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(old, dict):
+        return {}
+    outdir = os.path.dirname(path)
+    keep = {}
+    for k, v in old.items():
+        if not isinstance(v, dict) or str(v.get("num", "")).split(".")[0] == str(chapter):
+            continue
+        if "file" in v and not os.path.exists(os.path.join(outdir, v["file"])):
+            continue
+        keep[k] = v
+    return keep
+
+
+AUTO_MARK ="<!-- robbins_crop.py 自動產生；手改前先把這一行刪掉，否則下次重跑會蓋掉 -->"
 
 
 def write_list(outdir, index):
     """圖片清單.md：給藍圖代理找圖用（檔案、圖號、印刷頁、面板、圖說開頭）。
     已有手寫的圖片清單.md（第一行不是 AUTO_MARK）時不覆蓋，改寫 圖片清單_auto.md。"""
-    items = [(k, v) for k, v in sorted(index.items(), key=lambda kv: (kv[1]["kind"], float(kv[1]["num"].split(".")[1])))
-             if "file" in v]
+    items = [(k, v) for k, v in sorted(index.items(), key=lambda kv: sort_key(kv[1])) if "file" in v]
     L = [AUTO_MARK, "", "# 教科書切圖清單", "",
          "圖說只取開頭，供找圖；投影片上的出處寫「Robbins Fig. N.M」，不要照抄圖說原文。", "",
          "| 檔案 | 圖表 | 印刷頁 | 面板 | 圖說（開頭） |", "|---|---|---|---|---|"]
@@ -455,8 +490,10 @@ def write_list(outdir, index):
 
 
 def contact(outdir, index, per=12, cell=420):
-    items = [(k, v) for k, v in sorted(index.items(), key=lambda kv: (kv[1]["kind"], float(kv[1]["num"].split(".")[1])))
-             if "file" in v]
+    items = [(k, v) for k, v in sorted(index.items(), key=lambda kv: sort_key(kv[1])) if "file" in v]
+    for f in os.listdir(outdir):  # 先清掉上次自動產的 contact_NN.png（張數變少時才不會留舊檔）
+        if re.fullmatch(r"contact_\d+\.png", f):
+            os.remove(os.path.join(outdir, f))
     for s in range(0, len(items), per):
         chunk = items[s:s + per]
         cols = 4

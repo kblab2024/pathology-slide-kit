@@ -6,6 +6,7 @@
 > 下一個 session 的第一句（貼給下一個 session 的代理；任何工具都用這一句）：
 > **「先讀 pathology-slide-materials/courses/<課程>/_archive/handoff.md 與 pathology-slide-materials/courses/<課程>/CLAUDE.md，驗環境，然後做階段 <N>。」**
 > 不會自動載入 `AGENTS.md` 的工具：先讀 kit 與 materials 的 `AGENTS.md`（在教師的 Mac 上再加工作區的）。
+> 畫幅：一律 16:9（13.333×7.5 吋；教師 2026-11-20，`<kit>/docs/教師偏好與決策.md` 第 4 節）。接手原來是 4:3 的課，在這裡寫明轉了沒有、還有哪些設定是照 4:3 調的。
 
 ## 四個階段（一個階段一個 session）
 

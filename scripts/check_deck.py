@@ -188,11 +188,11 @@ def main(course, pptx_path, deck, section=None):
         print(f"[ok] 國考題 {len(quiz)} 題 key 皆有效")
     if quiz and not built["exam"]:
         reds.append("此 deck 設定不放國考題，卻有 quiz 張")
-    # 硬規則 19（教師 2026-11-22，鐵律）：上限 110 張、國考題 15–18 題、兩小時三節、三小時四節。
+    # 硬規則 19（教師 2026-11-22，鐵律）：上限兩小時 110 張、三小時 150 張，國考題 15–18 題，兩小時三節、三小時四節。
     # 國考複習（整講都是題目）與實驗講義不套：decks.<deck>.kind 寫 review 或 lab。
     dk = course.deck(deck)
     if dk.get("kind") not in ("review", "lab"):
-        cap = 110
+        cap = 150 if dk.get("hours") == 3 else 110
         if n > cap:
             reds.append(f"硬規則 19：{n} 張，超過上限 {cap}（含封面、分隔張、國考題張）")
         else:

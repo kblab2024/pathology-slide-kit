@@ -1136,7 +1136,10 @@ def build_pptx(course, deck, out_path, section=None):
         G.cur = s
         try:
             if s["type"] == "divider":
-                L_divider(slide, s, sec_label=(s["section"] if s.get("section_first") else ""))
+                # 硬規則 19（教師 2026-11-22「分割不用特別註明」）：換節的分隔張預設不印「第N節」；
+                # 要印的課在 course.yaml 寫 layout.divider_section_label: true。
+                show_sec = (G.course.get("layout") or {}).get("divider_section_label", False)
+                L_divider(slide, s, sec_label=(s["section"] if (show_sec and s.get("section_first")) else ""))
             elif s["type"] == "quiz":
                 L_quiz(slide, s, built["questions"])
             else:

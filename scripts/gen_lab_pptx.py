@@ -68,7 +68,7 @@ from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import bullet_level  # noqa: E402
+from common import bullet_level, clear_doc_props  # noqa: E402
 from gen_pptx import TABLE_LINE_K, _TOK, _font, _w, em, line_h, measure_font_info, n_lines  # noqa: E402
 
 SW, SH = 13.33, 7.5
@@ -669,6 +669,7 @@ def build(deck, out, notes=False, base_dir=".", bg_pt=24):
                 if parts:
                     s.notes_slide.notes_text_frame.text = "\n".join(parts)
 
+    clear_doc_props(prs)
     prs.save(out)
     return n, shots, rep, ids, slots
 

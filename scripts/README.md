@@ -69,7 +69,7 @@ gen_pptx 每次會印出「量字字型：…」，也寫進 `_layout.json` 的 
 | 4.5 版型容量 | `python fit_capacity.py --course <課程> [--json]` | 這門課的字級下每種版型每行幾字、幾行、表格幾列（用 gen_pptx 的量字函式，0.1 秒）；規劃、撰寫代理先讀這張表，不要自己試產校準 |
 | 5 藍圖＋撰寫 | 由工作流產生（見 `workflows/README.md`），格式見 `templates/blueprint.schema.json`、`templates/written.schema.json` | blueprint.json、written.json |
 | 6 組裝來源檔 | `python assemble.py --course <課程> blueprint.json written.json [--dry-run]` | `sources/*-pool.md`、`*-script.md`、`decks/<deck>.md`（有 RED 不寫檔） |
-| 7 產投影片 | `python gen_pptx.py --course <課程> [--date YYYYMMDD] [--section N] [--name 檔名]` | `成品/<檔名>.pptx`＋`_layout.json`，並自動跑 check_deck。**不寫備忘稿**（`AGENTS.md` 硬規則 18；`course.yaml` 寫 `speaker_notes: true` 的課才把講稿放進去），check_deck 看到備忘稿有字就 RED。`--section N` 的檔名自動加「_第N節」；多套 deck 又給 `--name` 時自動加「_<deck>」；覆寫既有檔會印提醒 |
+| 7 產投影片 | `python gen_pptx.py --course <課程> [--date YYYYMMDD] [--section N] [--name 檔名]` | `成品/<檔名>.pptx`＋`_layout.json`，並自動跑 check_deck。**不寫備忘稿**（`AGENTS.md` 硬規則 18；`course.yaml` 寫 `speaker_notes: true` 的課才把講稿放進去），check_deck 看到備忘稿有字就 RED。存檔前清掉檔案摘要資訊的作者、上次修改者與註解（`common.clear_doc_props`；範本預設是 python-pptx 的字樣，學生看得到；`gen_lab_pptx.py` 也一樣）。`--section N` 的檔名自動加「_第N節」；多套 deck 又給 `--name` 時自動加「_<deck>」；覆寫既有檔會印提醒 |
 | 8 文字風格檢查 | `python style_check.py --course <課程>` | RED／WARN（讀 `style/rules.yaml`＋課程 glossary；中英對照範圍依 course.yaml `bilingual`：`per_slide` 逐張、`first_per_deck`（預設）看首見率、`off`）。教師看過、說這一講就這樣留的寫法，逐處寫進 course.yaml 的 `style_allow`（`{slide, text, why, rule?, n?}`），那幾處改列「教師核可」、不算 RED；不是通則，沒用到的項目會列 WARN |
 | 9 匯出 PDF＋縮圖 | `python export_pdf.py <pptx> --pdf <pdf> --sheets <資料夾> --pngs <資料夾> [--engine libreoffice]` | PDF、4×3 縮圖拼板、逐張 PNG |
 | 10 待補圖清單 | `python img_todo.py --course <課程>` | `成品/待補圖清單.md` |

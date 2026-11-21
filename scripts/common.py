@@ -437,6 +437,17 @@ def deck_notes(course, built):
     return notes_map(built, parse_script(course))
 
 
+def clear_doc_props(prs):
+    """存檔前清掉 python-pptx 範本帶進來的檔案摘要資訊（作者、上次修改者、註解）。
+
+    範本的預設是「上次修改者＝python-pptx 的作者名」「註解＝generated using python-pptx」，
+    學生在 PowerPoint 的檔案資訊看得到；交出去的檔不放給自己看的字（AGENTS.md 硬規則 18）。"""
+    cp = prs.core_properties
+    cp.author = ""
+    cp.last_modified_by = ""
+    cp.comments = ""
+    return prs
+
 def deck_filename(course, deck, date=None, pdf=False):
     d = course.deck(deck)
     tpl = d.get("pdf_filename" if pdf else "filename")

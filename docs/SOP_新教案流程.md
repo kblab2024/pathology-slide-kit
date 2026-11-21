@@ -302,7 +302,7 @@ run rewrite_pack.py apply --course $C --deck <deck> <回覆檔 …> --tag gemini
 
 ## 第 10 步：交付
 
-成品在 `$CD/成品/`：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`、同名 `(PDF)`、`待教師裁決清單.md`、`待補圖清單.md`。日期用上課日（course.yaml `lecture_date`）。
+成品在 `$CD/成品/`：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`、同名 `(PDF)`、`待教師裁決清單.md`、`待補圖清單.md`、參考資料（一個 markdown 檔，只給教師：每張的出處與移下投影片的細節，用我們自己的話寫、不必潤飾；硬規則 18）。日期用上課日（course.yaml `lecture_date`）。
 
 - **一律是草稿**：交件資料夾、檔名、一起交的檔照 `docs/教師偏好與決策.md` 第 8 節。
 - **草稿要附 Gemini 重寫包**（第 9b 步；每一講必做）。回覆套回來以後交下一版，那一版才算走完流程。

@@ -97,6 +97,7 @@ cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 py
     - **原本放在備忘稿的東西**：要給學生看的寫上投影片；給教師看的（待他決定的事、截圖要拍的倍率與視野、來源說明）寫進待教師裁決清單或另一份清單（實驗講義用 `gen_lab_pptx.py --src-list`），不寫進 PPTX。講稿檔（`*-script.md`）與移下投影片的細節還是來源檔：事實的依據、Gemini 重寫包的研究資料從那裡來，只是不再放進交出去的檔。
     - **已經有備忘稿的檔**（2026-11-21 以前產的、教師自己改過的定稿）：`python strip_notes.py <來源.pptx> --out <新檔.pptx>` 清掉另存；它只拿掉備忘稿頁，其他零件逐位元不變。不覆寫原檔，新檔照交件規則用新檔名；他自己的檔要不要清、清哪幾份由他說。
     - `course.yaml` 的 `speaker_notes: true` 是給別的老師用這套工具時的選項（照舊把講稿放進備忘稿）；這位教師的課不寫。
+    - **參考資料另交 markdown**（同一天晚上：「未來所有教案都不要備忘稿 不要讓學生看到這種東西喔 參考資料寫markdown給我」）：每張背後的出處、移下投影片的細節、文獻和 Robbins 不同的地方，寫成一個 markdown 檔只給他（`成品/參考資料_<deck>.md`，交件檔名 `參考資料_<講題>_草稿N.md`）。PPTX、HTML 也不放任何給自己看的字（內部編號、待辦、寫給他的話）。給他看的 markdown 用我們自己的話寫就好，不必潤飾、不交給 Gemini。
 
 ## 4. 工作流：多代理的步驟怎麼做
 
@@ -201,7 +202,7 @@ python rewrite_pack.py apply --course <course> --deck <deck> <回覆檔 …> --t
 ## 5. 產出放哪、怎麼交回
 
 - 中間檔：`<materials>/courses/<course>/_archive/{gather,blueprint,written,review,render,journals}/`；交接檔 `_archive/handoff.md`。
-- 成品：`<materials>/courses/<course>/成品/`：PPTX、PDF、同名 `_layout.json`（每張的 slug 與張號，回灌用）、`待教師裁決清單.md`、`待補圖清單.md`、HTML 版（`scripts/html_deck.py`，圖片內嵌的單一檔；教師偏好第 8 節）。PPTX 與 HTML 都不放備忘稿（硬規則 18）。檔名寫課程代碼不寫系名：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`，PDF 同名改 `(PDF)`（`course.yaml` 的 `decks.<deck>.filename`）。
+- 成品：`<materials>/courses/<course>/成品/`：PPTX、PDF、同名 `_layout.json`（每張的 slug 與張號，回灌用）、`待教師裁決清單.md`、`待補圖清單.md`、參考資料（markdown，只給教師，硬規則 18）、HTML 版（`scripts/html_deck.py`，圖片內嵌的單一檔；教師偏好第 8 節）。PPTX 與 HTML 都不放備忘稿（硬規則 18）。檔名寫課程代碼不寫系名：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`，PDF 同名改 `(PDF)`（`course.yaml` 的 `decks.<deck>.filename`）。
 - Gemini 重寫（硬規則 17）的檔：重寫包由 `rewrite_pack.py make` 寫到 repo 與雲端同步資料夾以外的資料夾，再和草稿一起交；它隨時可以從來源檔重出，不進 repo。manifest、教師帶回來的回覆、對照表與套用紀錄放 `<materials>/courses/<course>/_archive/revoice/`，和來源檔一起 commit。
 - **交給教師的一律是草稿**：檔名、資料夾、一起交的檔、交件管道（OneDrive、git、Dropbox）照 `docs/教師偏好與決策.md` 第 8 節。放進他的 OneDrive 的步驟與禁用檔名只在他那台 Mac 的工作區 `AGENTS.md`；讀不到那份檔的環境不要寫 OneDrive。用 git 交件的指令見 `docs/SOP_新教案流程.md` 第 10 步。
 - 每跑完一個階段（蒐集、藍圖、撰寫、充實、每一輪審查）就 commit＋push 一次 `_archive/`（含 `journals/`）與來源檔：雲端 VM 閒置會被回收，沒 push 的檔案與正在跑的工作流不會回來。雲端 session 只能 push 到 session 目前的工作分支。commit 並 push 到這門課的工作分支（雲端是 session 的分支）不必問；開 PR、合併進 main、直接 push 到 main 照教師當次的指示，沒有指示先問（kit 的工作版同步到公開版，是教師 2026-10-14 已說好的）。

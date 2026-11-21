@@ -38,7 +38,7 @@ from pptx.util import Inches, Pt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import flow_shapes  # noqa: E402
 import label_shapes  # noqa: E402
-from common import (DARK_TEXT, FONT, SOFT_BREAK, build_deck, bullet_level, deck_filename, deck_notes,  # noqa: E402
+from common import (DARK_TEXT, FONT, SOFT_BREAK, build_deck, bullet_level, clear_doc_props, deck_filename, deck_notes,  # noqa: E402
                     load_course, parse_markup, parse_pool, strip_markup)
 
 Image.MAX_IMAGE_PIXELS = None
@@ -1144,6 +1144,7 @@ def build_pptx(course, deck, out_path, section=None):
         nt = notes.get(s["id"], "")
         if nt:
             slide.notes_slide.notes_text_frame.text = nt
+    clear_doc_props(prs)
     prs.save(out_path)
     rep = {s["id"]: {"num": s["num"], "fits": G.layout.get(s["id"], [])} for s in built["slides"]}
     json.dump({"errors": errors, "measure_font": measure_font_info(), "slides": rep}, open(os.path.splitext(out_path)[0] + "_layout.json", "w",

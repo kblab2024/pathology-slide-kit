@@ -21,7 +21,7 @@ import sys
 import unicodedata
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import SOFT_BREAK, build_deck, bullet_level, load_course, notes_map, parse_markup, parse_script  # noqa: E402
+from common import SOFT_BREAK, build_deck, bullet_level, deck_notes, load_course, parse_markup  # noqa: E402
 
 PX = 2  # 1pt → 2px
 FONT = "'Noto Sans TC', Arial, sans-serif"
@@ -284,7 +284,7 @@ def main():
         return 0
     assets = {os.path.normcase(os.path.abspath(k)): v for k, v in json.load(open(a.assets, encoding="utf-8")).items()}
     r = R(c, assets)
-    notes = notes_map(built, parse_script(c))
+    notes = deck_notes(c, built)      # 預設是空的：不放備忘稿（硬規則 18）；course.yaml speaker_notes: true 才放講稿
     os.makedirs(os.path.join(a.out, "project", "slides"), exist_ok=True)
     order, sections, cur = [], {}, None
     for s in slides:

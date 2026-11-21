@@ -91,6 +91,12 @@ cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 py
     - **交件**：待教師裁決清單開頭寫明這一版的句子是 Gemini 重寫的、照抄了哪幾行、換回了哪些字（附頁碼）、它用了哪些我們的檢查會擋的詞、標題改了幾張。`style_check.py` 裡「LLM 語」那一類的 RED（它用的連接詞）不自己改，列給教師決定；中英對照、符號等其他 RED 仍要修到 0。
     - **期間不改來源檔**：重寫包交出去以後、回覆套回來以前，不改那一講的來源檔；之後內容又改的張，用 `make --only` 請對方重寫那幾張。
     - 教師來不及跑 Gemini 時，交件說明要寫明「這一版還沒有經過 Gemini 重寫」，不可以當作流程走完。撰寫與充實階段照舊照硬規則 2 寫（草稿要講得清楚，對方才讀得懂每一張要教什麼；這兩個階段裡管句子長相的步驟能不能省，教師還沒說）。
+    - 教師對某一講的回答只管那一講：它用的連接詞留不留、它改的標題要不要還原、Robbins 前後並陳的句子要不要拿掉，每一講都列出來問。2026-11-21 他對第一次套用的那一講回「留 不還原 不拿掉 但不當成凡例」，所以這三件不寫成通則、檢查規則也不改；他說留的那幾處逐處寫進該課 `course.yaml` 的 `style_allow`（`style_check.py` 才會放行），別的張與別的講照常檢查。
+18. **交出去的檔不放備忘稿（PowerPoint 的講者備註欄；kit 的舊文件叫「備註」）。** 教師 2026-11-21：「備忘稿全清掉 我不用那個東西 也不要讓學生看到」。所有課、所有種類的檔都一樣（大堂課、實驗講義、補充教材、考題）。緣由在 `docs/教師偏好與決策.md` 第 8 節。
+    - **產檔**：`gen_pptx.py`、`gen_lab_pptx.py`、`to_claude_slides.py` 預設不寫備忘稿，HTML 版本來就沒有；課程自己寫的產檔程式也不可以寫。`check_deck.py` 看到備忘稿有字就 RED；不經 `check_deck.py` 的檔（實驗講義、課程自己產的檔）交件前跑 `python strip_notes.py --check <檔>`。
+    - **原本放在備忘稿的東西**：要給學生看的寫上投影片；給教師看的（待他決定的事、截圖要拍的倍率與視野、來源說明）寫進待教師裁決清單或另一份清單（實驗講義用 `gen_lab_pptx.py --src-list`），不寫進 PPTX。講稿檔（`*-script.md`）與移下投影片的細節還是來源檔：事實的依據、Gemini 重寫包的研究資料從那裡來，只是不再放進交出去的檔。
+    - **已經有備忘稿的檔**（2026-11-21 以前產的、教師自己改過的定稿）：`python strip_notes.py <來源.pptx> --out <新檔.pptx>` 清掉另存；它只拿掉備忘稿頁，其他零件逐位元不變。不覆寫原檔，新檔照交件規則用新檔名；他自己的檔要不要清、清哪幾份由他說。
+    - `course.yaml` 的 `speaker_notes: true` 是給別的老師用這套工具時的選項（照舊把講稿放進備忘稿）；這位教師的課不寫。
 
 ## 4. 工作流：多代理的步驟怎麼做
 
@@ -166,7 +172,7 @@ python export_pdf.py "<成品>/<檔名>.pptx" --pdf "<成品>/<PDF 檔名>.pdf" 
 python img_todo.py --course <course>
 ```
 
-Mac 也用 `export_pdf.py`（LibreOffice；先跑一次 `bash scripts/lo_fonts_mac.sh`）；要 PowerPoint 本身定稿才用 `bash scripts/ppt_pdf_mac.sh "<成品>/<檔名>.pptx"`。然後 `python check_render.py "<成品>/<檔名>.pptx" "<PDF>" --warn-pt 4`（RED 要 0），再逐張看 `_archive/render/png/` 的 PNG（或縮圖拼板 sheets）。
+Mac 也用 `export_pdf.py`（LibreOffice；先跑一次 `bash scripts/lo_fonts_mac.sh`）；要 PowerPoint 本身定稿才用 `bash scripts/ppt_pdf_mac.sh "<成品>/<檔名>.pptx"`。然後 `python check_render.py "<成品>/<檔名>.pptx" "<PDF>" --warn-pt 4`（RED 要 0），再逐張看 `_archive/render/png/` 的 PNG（或縮圖拼板 sheets）。`check_deck.py` 也查備忘稿（硬規則 18）：有字就 RED。
 
 ### 4.5 審查（`lecture-review.js`，一到兩輪）
 
@@ -195,7 +201,7 @@ python rewrite_pack.py apply --course <course> --deck <deck> <回覆檔 …> --t
 ## 5. 產出放哪、怎麼交回
 
 - 中間檔：`<materials>/courses/<course>/_archive/{gather,blueprint,written,review,render,journals}/`；交接檔 `_archive/handoff.md`。
-- 成品：`<materials>/courses/<course>/成品/`：PPTX、PDF、同名 `_layout.json`（每張的 slug 與張號，回灌用）、`待教師裁決清單.md`、`待補圖清單.md`、HTML 版（`scripts/html_deck.py`，圖片內嵌的單一檔；教師偏好第 8 節）。檔名寫課程代碼不寫系名：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`，PDF 同名改 `(PDF)`（`course.yaml` 的 `decks.<deck>.filename`）。
+- 成品：`<materials>/courses/<course>/成品/`：PPTX、PDF、同名 `_layout.json`（每張的 slug 與張號，回灌用）、`待教師裁決清單.md`、`待補圖清單.md`、HTML 版（`scripts/html_deck.py`，圖片內嵌的單一檔；教師偏好第 8 節）。PPTX 與 HTML 都不放備忘稿（硬規則 18）。檔名寫課程代碼不寫系名：`病理學{碼}_{講題}(PPTX)_{YYYYMMDD}.pptx`，PDF 同名改 `(PDF)`（`course.yaml` 的 `decks.<deck>.filename`）。
 - Gemini 重寫（硬規則 17）的檔：重寫包由 `rewrite_pack.py make` 寫到 repo 與雲端同步資料夾以外的資料夾，再和草稿一起交；它隨時可以從來源檔重出，不進 repo。manifest、教師帶回來的回覆、對照表與套用紀錄放 `<materials>/courses/<course>/_archive/revoice/`，和來源檔一起 commit。
 - **交給教師的一律是草稿**：檔名、資料夾、一起交的檔、交件管道（OneDrive、git、Dropbox）照 `docs/教師偏好與決策.md` 第 8 節。放進他的 OneDrive 的步驟與禁用檔名只在他那台 Mac 的工作區 `AGENTS.md`；讀不到那份檔的環境不要寫 OneDrive。用 git 交件的指令見 `docs/SOP_新教案流程.md` 第 10 步。
 - 每跑完一個階段（蒐集、藍圖、撰寫、充實、每一輪審查）就 commit＋push 一次 `_archive/`（含 `journals/`）與來源檔：雲端 VM 閒置會被回收，沒 push 的檔案與正在跑的工作流不會回來。雲端 session 只能 push 到 session 目前的工作分支。commit 並 push 到這門課的工作分支（雲端是 session 的分支）不必問；開 PR、合併進 main、直接 push 到 main 照教師當次的指示，沒有指示先問（kit 的工作版同步到公開版，是教師 2026-10-14 已說好的）。
@@ -226,4 +232,4 @@ python rewrite_pack.py apply --course <course> --deck <deck> <回覆檔 …> --t
 - 開新課的範本：課程指引 `templates/course.CLAUDE.template.md`、交接檔 `templates/handoff.template.md`。
 - 常用程式放 kit，不要每門課各抄一份；兩門課以上用得到的就收進 `scripts/` 或 `workflows/tools/`，課程只留設定檔（教師 2026-10-14，`docs/教師偏好與決策.md` 第 5 節）。每支的用法見 `scripts/README.md`。
 - 教師下了新的通用明令：寫進 `docs/教師偏好與決策.md`（正本，連日期與原話），規則有變時改本檔、指南、範本；只管一門課的寫進該課 `brief.md` 與 handoff。各工具的本機記憶放摘要、repo 不能放的原話與指向。
-- 硬規則 2、3、4、8、15、16、17 重述了教師偏好第 4 節與 `workflows/README.md` 的要點（本檔是每個工具都會自動讀的檔，規則要寫完整）；改那兩處時，同一個 commit 改對應的硬規則。
+- 硬規則 2、3、4、8、15、16、17、18 重述了教師偏好第 4、8 節與 `workflows/README.md` 的要點（本檔是每個工具都會自動讀的檔，規則要寫完整）；改那兩處時，同一個 commit 改對應的硬規則。

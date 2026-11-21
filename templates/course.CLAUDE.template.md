@@ -22,7 +22,7 @@
 | 檔案 | 內容 |
 |---|---|
 | `sources/<主題>-pool.md` | 每張投影片：標題、type、圖、出處、條列、表格（格式見 `<kit>/scripts/README.md`） |
-| `sources/<主題>-script.md` | 備註（教科書頁碼＋短提示） |
+| `sources/<主題>-script.md` | 講稿（選填；教科書頁碼＋短提示）。只當來源檔，不放進 PPTX 的備忘稿（kit `AGENTS.md` 硬規則 18） |
 | `sources/decks/<deck>.md` | 張序與分節 |
 | `course.yaml` | 字級、色票、框架圖、國考標題格式、中英對照範圍與白名單 |
 | `glossary.md` | 中英對照唯一用字（style_check 檢查） |
@@ -58,4 +58,5 @@ PYTHONIOENCODING=utf-8 python check_render.py "$CD/成品/<PPTX 檔名>.pptx" "$
 ## 注意（不太變的事）
 - 進度、下一步、待辦寫在 `_archive/handoff.md`，不寫在這裡。
 - 教師若親手改了成品：先照 `<kit>/docs/SOP_新教案流程.md` 第 11b 步回灌，才可以重產。
-- 每一講定稿前要請 Gemini 重寫句子（`<kit>/AGENTS.md` 硬規則 17、SOP 第 9b 步）：`rewrite_pack.py make` 出重寫包和草稿一起交，回覆回來 `apply`、逐張對事實、套回、重產。設定在 `course.yaml` 的 `rewrite:`（照抄的行）。重寫包交出去以後、回覆套回來以前，不改那一講的來源檔。
+- 每一講定稿前要請 Gemini 重寫句子（`<kit>/AGENTS.md` 硬規則 17、SOP 第 9b 步）：`rewrite_pack.py make` 出重寫包和草稿一起交，回覆回來 `apply`、逐張對事實、套回、重產。設定在 `course.yaml` 的 `rewrite:`（照抄的行）。重寫包交出去以後、回覆套回來以前，不改那一講的來源檔。教師對某一講的回答（連接詞留不留、標題還不還原）只管那一講，記在 `brief.md`；他說留的詞逐處寫進 `course.yaml` 的 `style_allow`。
+- 交出去的檔不放備忘稿（`<kit>/AGENTS.md` 硬規則 18）：gen_pptx 預設不寫；課程自己的產檔程式也不寫，交件前跑 `strip_notes.py --check`。

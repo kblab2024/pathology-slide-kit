@@ -427,6 +427,16 @@ def notes_map(built, script):
     return notes
 
 
+def deck_notes(course, built):
+    """要放進 PPTX／網頁版備忘稿（講者備註欄）的字：{slug: 全文}。預設不放，回傳空的。
+
+    教師 2026-11-21：「備忘稿全清掉 我不用那個東西 也不要讓學生看到」→ 交件的檔一律沒有備忘稿（AGENTS.md 硬規則 18）。
+    course.yaml 寫 speaker_notes: true 的課才照舊把講稿放進去（給別的老師用這套工具時的選項；這位教師的課不寫）。"""
+    if not course.get("speaker_notes"):
+        return {}
+    return notes_map(built, parse_script(course))
+
+
 def deck_filename(course, deck, date=None, pdf=False):
     d = course.deck(deck)
     tpl = d.get("pdf_filename" if pdf else "filename")

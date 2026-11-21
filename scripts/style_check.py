@@ -12,6 +12,11 @@
     off：不檢查中英對照
     三種模式都檢查「禁用變體」→ RED。
   國考題張的題幹是官方原文，不檢查中英對照與用語。
+  教師核可的例外（course.yaml 的 style_allow，選填）：教師看過某一張的某個寫法、說這一講就這樣留的時候，逐張逐字列在這裡，
+  那一處就不算 RED／WARN，改列在「教師核可」。這不是通則：規則照舊，別的張、別的講照常檢查。每一項：
+      - {slide: <slug>, text: <被擋的那幾個字>, why: "教師 YYYY-MM-DD：…", rule: <規則 id，選填>, n: <這一張放行幾處，預設 1>}
+    沒有對到任何一處的項目會列 WARN（那個字已經不在那一張，該刪掉這一項）。只管 rules.yaml 的 phrase／regex 規則，
+    不管中英對照、禁用變體與全套計數。
 結束碼：有 RED 為 1。
 """
 import argparse
@@ -93,6 +98,34 @@ def check_bilingual(slides, gloss, whitelist):
     return reds
 
 
+def load_allow(course):
+    """course.yaml 的 style_allow → [{slide, text, rule, n, why, used}]；格式不對就報錯（少了 why 也算：要寫是誰、哪一天說的）。"""
+    out = []
+    for k, a in enumerate(course.get("style_allow") or [], 1):
+        if not isinstance(a, dict) or not a.get("slide") or not a.get("text") or not a.get("why"):
+            raise ValueError(f"course.yaml style_allow 第 {k} 項要有 slide、text、why：{a!r}")
+        out.append({"slide": str(a["slide"]), "text": str(a["text"]), "rule": a.get("rule"), "n": int(a.get("n", 1)),
+                    "why": str(a["why"]), "used": 0})
+    return out
+
+
+def split_allowed(allow, rule_id, slug, found):
+    """found＝這條規則在這一張對到的字串（照出現順序）。回傳 (沒有放行的, 放行的 [(字串, 項目)])。
+    同一項在同一張、同一條規則最多放行 n 處，多出來的照常報。"""
+    slug = slug.split("~")[0]
+    used, bad, okd = {}, [], []
+    for t in found:
+        e = next((a for a in allow if a["slide"] == slug and a["text"] == t and a["rule"] in (None, rule_id)
+                  and used.get(id(a), 0) < a["n"]), None)
+        if e is None:
+            bad.append(t)
+            continue
+        used[id(e)] = used.get(id(e), 0) + 1
+        e["used"] += 1
+        okd.append((t, e))
+    return bad, okd
+
+
 BILINGUAL_MODES = ("per_slide", "first_per_deck", "off")
 FIRST_RATE_WARN = 0.70   # TERM-07：首見率門檻
 
@@ -171,6 +204,7 @@ def main():
     script = parse_script(course)
     rules = yaml.safe_load(open(a.rules, encoding="utf-8"))["rules"]
     reds, warns = [], []
+    allow, approved = load_allow(course), []
     slides = [s for s in built["slides"] if s["type"] != "quiz"]
     for r in rules:
         pat = re.compile(re.escape(r["pattern"]) if r["kind"] == "phrase" else r["pattern"]) \
@@ -192,9 +226,14 @@ def main():
                 if e:
                     texts.append(("備註", "\n".join(e["jiang"].values()) + "\n".join(e["bullets"])))
             for where, t in texts:
-                m = pat.search(t)
-                if m:
-                    sink.append(f"{r['id']} #{s['num']} {s['id']}（{where}）「{m.group(0)}」：{r['message']}")
+                found = [m.group(0) for m in pat.finditer(t)]
+                if not found:
+                    continue
+                bad, okd = split_allowed(allow, r["id"], s["id"], found) if allow else (found, [])
+                for txt, e in okd:
+                    approved.append(f"{r['id']} #{s['num']} {s['id']}（{where}）「{txt}」：{e['why']}")
+                if bad:
+                    sink.append(f"{r['id']} #{s['num']} {s['id']}（{where}）「{bad[0]}」：{r['message']}")
     gloss = load_glossary(course.path("glossary"))
     wl = {x.lower() for x in course.get("bilingual_whitelist", [])}
     mode = bilingual_mode(course)
@@ -204,12 +243,18 @@ def main():
         warns += w2
     elif mode != "off":
         warns.append(f"找不到 glossary：{course.path('glossary')}（中英對照未檢查）")
+    for e in allow:
+        if not e["used"]:
+            warns.append(f"style_allow 有沒用到的項目：{e['slide']}「{e['text']}」（那個字已經不在那一張；刪掉這一項）")
     if not a.quiet:
         for m in warns:
             print("[WARN]", m)
+        for m in approved:
+            print("[教師核可]", m)
     for m in reds:
         print("[RED]", m)
-    print(f"===== style_check：RED {len(reds)}、WARN {len(warns)}（{len(built['slides'])} 張，glossary {len(gloss)} 詞，中英對照 {mode}）=====")
+    tail = f"、教師核可的例外 {sum(1 for e in allow if e['used'])} 項" if allow else ""
+    print(f"===== style_check：RED {len(reds)}、WARN {len(warns)}{tail}（{len(built['slides'])} 張，glossary {len(gloss)} 詞，中英對照 {mode}）=====")
     return 1 if reds else 0
 
 

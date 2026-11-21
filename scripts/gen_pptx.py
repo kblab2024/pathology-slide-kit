@@ -38,8 +38,8 @@ from pptx.util import Inches, Pt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import flow_shapes  # noqa: E402
 import label_shapes  # noqa: E402
-from common import (DARK_TEXT, FONT, SOFT_BREAK, build_deck, bullet_level, deck_filename, load_course,  # noqa: E402
-                    notes_map, parse_markup, parse_pool, parse_script, strip_markup)
+from common import (DARK_TEXT, FONT, SOFT_BREAK, build_deck, bullet_level, deck_filename, deck_notes,  # noqa: E402
+                    load_course, parse_markup, parse_pool, strip_markup)
 
 Image.MAX_IMAGE_PIXELS = None
 _TMP = os.path.join(tempfile.gettempdir(), "_deck_imgtmp")
@@ -1115,7 +1115,7 @@ def build_pptx(course, deck, out_path, section=None):
         for k, s in enumerate(built["slides"], 1):
             s["num"] = k
         built["sections"] = [(1, len(built["slides"]), t)]
-    notes = notes_map(built, parse_script(course))
+    notes = deck_notes(course, built)      # 預設是空的：PPTX 不放備忘稿（硬規則 18）；course.yaml speaker_notes: true 才放講稿
     prs = Presentation()
     prs.slide_width = Inches(G.SW)
     prs.slide_height = Inches(G.SH)

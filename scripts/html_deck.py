@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image  # noqa: E402
 
 import to_claude_slides as tcs  # noqa: E402
-from common import build_deck, deck_filename, load_course, notes_map, parse_script  # noqa: E402
+from common import build_deck, deck_filename, load_course  # noqa: E402
 
 CSS = """
 html,body{margin:0;background:#2b2f36}
@@ -98,7 +98,6 @@ def main():
     paths = sorted({os.path.abspath(i["abspath"]) for s in slides for i in s["imgs"] if i.get("exists")})
     assets = {os.path.normcase(p): data_uri(p, a.max_side, a.quality) for p in paths}
     r = tcs.R(c, assets)
-    notes = notes_map(built, parse_script(c))
     title = a.title or f"{c['topic']}（{built['name']}）"
     secs, frames, cur = [], [], None
     for s in slides:
@@ -106,7 +105,7 @@ def main():
         if s["section_title"] != cur:
             cur = s["section_title"]
             secs.append((cur.split("｜", 1)[-1], s["num"]))
-        html = r.render(dict(s, id=sid), built["questions"], "")
+        html = r.render(dict(s, id=sid), built["questions"], "")      # 第三個參數是備忘稿：HTML 版一律不放（硬規則 18）
         frames.append(f'<div class="frame" id="s{s["num"]}"><span class="num">{s["num"]}</span>'
                       f'<div class="slide">{html}</div></div>')
     toc = "".join(f'<a href="#s{n}">{tcs.esc(t)}（{n}）</a>' for t, n in secs)

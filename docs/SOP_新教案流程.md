@@ -214,7 +214,8 @@ kit 的 `lecture-write.js` 是 2026-09 的結構（每批撰寫 → 3 位查核 
 [py] img_todo.py --course $C                  # → 成品/待補圖清單.md
 ```
 
-- check_deck 要 ALL GREEN（字級、每張字元、有圖率、佔位字、靜態頁碼、國考 key、估算溢出）。
+- check_deck 要 ALL GREEN（字級、每張字元、有圖率、佔位字、靜態頁碼、國考 key、估算溢出、備忘稿 0 張）。
+- **PPTX 不放備忘稿**（`AGENTS.md` 硬規則 18；教師 2026-11-21）：gen_pptx 預設不寫。實驗講義與課程自己產的檔不經 check_deck，交件前跑 `[py] strip_notes.py --check <檔>`。
 - **逐張看 PNG**：溢出、孤字、行首標點、英文字被斷行、圖太小、圖說壓到出處。檢查器全綠仍常有這些問題。
 - Windows 用 PowerPoint 匯出；雲端用 LibreOffice，字型換成 Noto，斷行可能和 PowerPoint 略有不同，交件前最好在 Windows 的 PowerPoint 再看一次。
 - 發現問題改來源檔，重跑本步。
@@ -292,6 +293,7 @@ run rewrite_pack.py apply --course $C --deck <deck> <回覆檔 …> --tag gemini
 ### 9b-3 交下一版
 
 - 新檔名（版次照教師的叫法）。待教師裁決清單開頭加一節：這一版的句子是 Gemini 重寫的、照抄了哪幾行、我們換回了哪些字（附頁碼依據）、它自己的備註、它用了哪些檢查會擋的詞、標題改了幾張（要還原回張號就可以）。
+- 教師回答以後：他說留的詞逐處寫進 `course.yaml` 的 `style_allow`（slug、那幾個字、他哪一天說的），`style_check.py` 才會是 RED 0；回答記在該課 `brief.md`。**他的回答只管那一講**（2026-11-21「但不當成凡例」），下一講照樣列出來問。
 - `_archive/revoice/` 的 manifest、回覆、對照表、套用紀錄和來源檔一起 commit。
 - 之後內容又改的張：`make --only <張號>` 出小包，請它重寫那幾張。
 - 套回以後，先前照舊句子寫的編輯清單（例：用字對照表、可重跑的修改清單）對不上，不再跑，也不再附。
@@ -304,6 +306,7 @@ run rewrite_pack.py apply --course $C --deck <deck> <回覆檔 …> --tag gemini
 
 - **一律是草稿**：交件資料夾、檔名、一起交的檔照 `docs/教師偏好與決策.md` 第 8 節。
 - **草稿要附 Gemini 重寫包**（第 9b 步；每一講必做）。回覆套回來以後交下一版，那一版才算走完流程。
+- **交出去的 PPTX 不放備忘稿**（硬規則 18）：放進交件資料夾以前跑一次 `[py] strip_notes.py --check <要交的每一份 PPTX>`，要印「有備忘稿的 0 份」。舊檔或教師改過的檔要清：`[py] strip_notes.py <來源.pptx> --out <新檔.pptx>`（在同步資料夾外面做，新檔用新檔名，不覆寫原檔）。
 - **本機（他的 Mac）**：放進他的 OneDrive，步驟與禁用檔名照那台 Mac 的工作區 `AGENTS.md`；大檔傳不上時改走下面的 git（教師 2026-10-14：「還不如推到git」）。Dropbox 他也說可以，資料夾還沒定。
 - **Windows 本機**：成品留在 repo 的 `成品/`，告訴老師檔案位置；不寫 OneDrive（`docs/教師偏好與決策.md` 第 8 節：讀不到 Mac 工作區 `AGENTS.md` 的環境不寫），要給他別處的檔就用下面的 git 交件。
 - **用 git 交件**（雲端 session，或 OneDrive 傳不上大檔時）：在私人 repo 的課程分支（雲端是 session 分支）
@@ -347,7 +350,7 @@ run rewrite_pack.py apply --course $C --deck <deck> <回覆檔 …> --tag gemini
 1. 新舊張配對以 slug 為準：`diff_decks.py` 以全文相似度配對新舊張，加 `--layout` 就會在每個「原#N」標出 slug，並列一張「新#→原#→slug」對照表（layout 檔隨交件一起 commit，新 clone 也有）；舊專案沒有 layout 檔時用備註表頭「投影片 N｜」。相似度低於約 0.6 的配對要人工確認。
 2. 他改的標題、條列、表格寫回對應 slug；他新增的張給新 slug 並加進選單；他複製出的同標題連張，每張各自一個 slug、各存各的內容。
 3. 他刪的張：從 `sources/decks/<deck>.md` 拿掉；若素材池由多個班別共用，只拿掉該班的 `aud`，不要刪 slug。
-4. **不要把 PPTX 的備註寫回 script.md**（他不讀也不改備註，新增張的備註多半是複製殘留）。
+4. **不要把 PPTX 的備註寫回 script.md**（他不讀也不改備註，新增張的備註多半是複製殘留）。他回來的檔若還帶著 2026-11-21 以前我們寫的備忘稿，重產的新版不會有（硬規則 18）；配對新舊張靠 `--layout` 的 slug，不靠備註。
 5. 清掉他用圖蓋住但還留在檔內的佔位文字。
 6. 他改的事實也要對 Robbins；有疑點列清單問他，不靜默採用或還原。
 7. 回灌後重產，再 `diff_decks.py` 比一次「他的版本」與「重產版本」，除了刻意的修正外應該一致。

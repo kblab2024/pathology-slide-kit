@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """實驗講義 PPTX：讀 deck.json，照教師 2026 自製實驗講義（〈病理學實驗_A1_發炎〉）的版型產 16:9 PPTX。
 
-用法：python gen_lab_pptx.py <deck.json> --out <輸出.pptx> [--report <報告.json>] [--no-notes] [--bg-pt 24]
+用法：python gen_lab_pptx.py <deck.json> --out <輸出.pptx> [--report <報告.json>] [--src-list <清單.md>] [--notes] [--bg-pt 24]
                               [--img-max-side 1600] [--jpeg-quality 82]
       python gen_lab_pptx.py --fit <deck.json 或節檔.json> [--bg-pt 24] [--bullets]
         只量字、不產檔：逐張印出需要的高度對可用高度（撰寫代理自查用；量法和正式產檔同一套）
@@ -17,7 +17,7 @@ deck.json（實驗講義工作流的輸出）：
 每張內容張的 kind（沒寫就是 shot；2026-10-15 教師：「實驗講義不可以只有截圖，要有背景知識跟形態學示意圖」）：
   shot  截圖張：有 img.path 就放那張截圖（wsi_crop.py 從掃描檔切、annotate_shot.py 加註記；2026-10-21 起）；
         沒有就放不含任何字的淡灰空圖（形狀名「截圖待補 <id>」），教師用 PowerPoint「變更圖片」換截圖；
-        備註寫倍率與視野
+        要拍的倍率與視野寫在 --src-list 的清單
         img.marks（annotate_shot.py 的格式：circle／arrow／span／line／label，座標是圖寬、圖高的 0–1）疊成 PowerPoint
         原生圖形：紅色直線箭頭、紅圈、深灰底白字 24pt 標籤，不群組、每個有名字，教師可以點選、拖曳、改字
         （2026-10-27 教師：箭頭燒進圖裡，錯了他不能改）；img.path 指沒加註記的原始截圖，用 merge_annot.py 從 annot.json 帶入
@@ -40,7 +40,9 @@ deck.json 最上層 "panel": true：圖框與說明句底下各墊一塊淺灰�
             另一邊放 20.2pt 說明句（寬 5.58、垂直置中）
   背景張    標題同上；條列區 (0.52,1.35) 起、寬 12.29、高 5.75
   字型一律微軟正黑體（common.FONT）。
-截圖要拍的倍率與視野、資料來源寫進備註欄（--no-notes 不寫）；gx、sc、bg 的備註只寫來源。
+備忘稿（講者備註欄）預設不寫字：教師 2026-11-21「備忘稿全清掉 我不用那個東西 也不要讓學生看到」（AGENTS.md 硬規則 18）。
+截圖要拍的倍率與視野、每張的資料來源改寫到 --src-list 指定的清單（給教師看、不發給學生；和講義一起交）。
+--notes 才照舊寫進備忘稿（給別的老師用這套工具時的選項）；舊指令的 --no-notes 還收，等於預設。
 
 量字：沿用 gen_pptx 的字型量測（Windows 微軟正黑體；Mac 用 PowerPoint 內建的 MSJH；雲端 Noto Sans CJK TC）。
 報出：
@@ -564,7 +566,7 @@ def add_divider_text(s, d, rep, where):
         rep.add("overflow", where, "分隔張玻片行超過一行", k, 1, glass)
 
 
-def build(deck, out, notes=True, base_dir=".", bg_pt=24):
+def build(deck, out, notes=False, base_dir=".", bg_pt=24):
     prs = Presentation()
     prs.slide_width, prs.slide_height = Inches(SW), Inches(SH)
     blank = prs.slide_layouts[6]
@@ -710,12 +712,38 @@ def fit(path, bg_pt, bullets=False):
     return 1 if ov else 0
 
 
+def write_src_list(deck, ids, path, pptx_name=""):
+    """截圖說明與來源清單：以前寫在備忘稿的字（要拍的倍率與視野、每張的資料來源）改寫到這份 Markdown。
+    給教師看，不發給學生。ids＝build() 回傳的 {id: 張號}。回傳列數。"""
+    def cell(t):
+        return str(t or "").replace("|", "／").replace("\n", " ").strip()
+
+    rows = []
+    for sec in deck.get("sections", []):
+        for c in sec.get("slides", []):
+            img = c.get("img") or {}
+            shot = ""
+            if kind_of(c) == "shot" and img:
+                shot = "｜".join(x for x in (cell(img.get("mag")), cell(img.get("capture"))) if x)
+            src = "；".join(cell(x) for x in (c.get("sources") or []))
+            if shot or src:
+                rows.append(f"| {ids.get(c.get('id', ''), '')} | {cell(c.get('id'))} | {cell(c.get('title'))} | {shot} | {src} |")
+    head = ["# 截圖說明與來源清單" + (f"：{pptx_name}" if pptx_name else ""), "",
+            "這份清單給教師看，不發給學生。講義的備忘稿（講者備註欄）不放字，原本寫在那裡的字列在這裡。", "",
+            "| 張 | 編號 | 標題 | 截圖（倍率｜視野） | 來源 |", "|---|---|---|---|---|"]
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(head + rows) + "\n")
+    return len(rows)
+
+
 def main():
     ap = argparse.ArgumentParser(description="實驗講義 deck.json → PPTX（教師 2026 實驗講義版型）")
     ap.add_argument("deck", nargs="?")
     ap.add_argument("--out")
     ap.add_argument("--report", help="放不下與版型問題寫成 JSON（預設：<輸出>_layout.json）")
-    ap.add_argument("--no-notes", action="store_true", help="備註欄不寫截圖說明與來源")
+    ap.add_argument("--notes", action="store_true", help="把截圖說明與來源寫進備忘稿（預設不寫：硬規則 18，學生會看到）")
+    ap.add_argument("--no-notes", action="store_true", help="舊選項，等於預設（備忘稿不寫字）")
+    ap.add_argument("--src-list", metavar="MD", help="截圖說明與來源另寫成一份清單（給教師看，不發給學生）")
     ap.add_argument("--bg-pt", type=float, default=24, help="背景知識張的條列與表格字級（預設 24）")
     ap.add_argument("--fit", metavar="JSON", help="只量字、不產檔（deck.json、節檔或張的清單）")
     ap.add_argument("--bullets", action="store_true", help="--fit 量單張或節檔時照「•」懸掛縮排量（deck.json 以檔裡的 bullets 為準）")
@@ -732,7 +760,10 @@ def main():
     if os.path.exists(a.out):
         print(f"[注意] 覆寫既有檔：{a.out}")
     base = os.path.dirname(os.path.abspath(a.deck))
-    n, shots, rep, ids, slots = build(deck, a.out, notes=not a.no_notes, base_dir=base, bg_pt=a.bg_pt)
+    n, shots, rep, ids, slots = build(deck, a.out, notes=a.notes and not a.no_notes, base_dir=base, bg_pt=a.bg_pt)
+    if a.src_list:
+        k = write_src_list(deck, ids, a.src_list, os.path.basename(a.out))
+        print(f"截圖說明與來源清單 {k} 列 -> {a.src_list}")
     rp = a.report or os.path.splitext(a.out)[0] + "_layout.json"
     with open(rp, "w", encoding="utf-8") as f:
         json.dump({"measure_font": measure_font_info(), "slides": n, "image_slots": shots, "slots": slots,

@@ -23,7 +23,7 @@ textbook:                 # 唯一正典教科書（事實以它為準；文獻�
 
 paths:                    # 必填：來源檔與成品位置（相對於課程資料夾）
   pool: sources/免疫疾病-pool.md      # 素材池：每張投影片的標題、type、圖、出處、條列、表格
-  script: sources/免疫疾病-script.md  # 講稿／備註
+  script: sources/免疫疾病-script.md  # 講稿（選填）。只當來源檔：預設不放進 PPTX 的備忘稿（AGENTS.md 硬規則 18）
   decks_dir: sources/decks            # 選單：<deck>.md 決定張序與分節
   out_dir: 成品                        # PPTX／PDF 輸出資料夾
   glossary: glossary.md               # 中英對照唯一用字（style_check 逐張檢查）
@@ -154,3 +154,12 @@ diagrams:
     # orient: rows        # 選填：節點排成列（預設排成欄）
     # node_w: 3.0         # 選填：orient: rows 時的節點寬
     # col_w: [1.7, 2.9, 0.9]   # 選填：各欄寬
+
+# 備忘稿（PowerPoint 的講者備註欄）：預設不放，這位教師的課不要寫這一行（AGENTS.md 硬規則 18；
+# 教師 2026-11-21「備忘稿全清掉 我不用那個東西 也不要讓學生看到」）。別的老師要把講稿放進備忘稿才寫：
+# speaker_notes: true
+
+# 教師看過、說「這一講就這樣留」的寫法（style_check.py 讀）：逐張、逐字列，只放行列出來的這幾處，不是通則。
+# 例：Gemini 重寫用了檢查會擋的連接詞，教師說這一講留著。每一項要寫他哪一天說的；那個字不在那一張了就刪掉這一項。
+# style_allow:
+#   - {slide: <slug>, text: 進而, why: "教師 YYYY-MM-DD：留（只限這一講）"}        # 選填 rule: <規則 id>、n: <這一張放行幾處，預設 1>

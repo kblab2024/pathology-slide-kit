@@ -70,6 +70,16 @@ def main(course, pptx_path, deck, section=None):
     w, h = Emu(prs.slide_width).inches, Emu(prs.slide_height).inches
     if abs(w - course["slide"]["width"]) > 0.01 or abs(h - course["slide"]["height"]) > 0.01:
         reds.append(f"畫幅 {w:.2f}×{h:.2f} ≠ 設定 {course['slide']['width']}×{course['slide']['height']}")
+    # 備忘稿（講者備註欄）：教師 2026-11-21「備忘稿全清掉 我不用那個東西 也不要讓學生看到」（AGENTS.md 硬規則 18）
+    noted = [k for k, sl in enumerate(prs.slides, 1) if sl.has_notes_slide
+             and (sl.notes_slide.notes_text_frame.text if sl.notes_slide.notes_text_frame is not None else "").strip()]
+    if noted and not course.get("speaker_notes"):
+        reds.append(f"備忘稿有字 {len(noted)} 張：張 {noted[:15]}（交件的 PPTX 不放備忘稿；用 strip_notes.py 清掉另存，"
+                    "並查是哪支程式寫進去的）")
+    elif noted:
+        print(f"[ok] 備忘稿有字 {len(noted)} 張（course.yaml 寫了 speaker_notes: true）")
+    else:
+        print("[ok] 備忘稿 0 張")
 
     bad_font, small, smallish, placeholder, pagenum = [], [], [], [], []
     runs = 0

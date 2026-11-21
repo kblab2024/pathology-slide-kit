@@ -111,6 +111,11 @@ RADICAL_SUPP = {
 }
 # Big5／倚天延伸：圈號 ①–⑩ 被讀成 U+045B–U+0464
 BIG5_CIRCLED = {chr(0x045B + i): chr(0x2460 + i) for i in range(10)}
+# 考選部舊版試卷字型（中醫師 104–111 年等）：私用區的圈號與選項框字
+#   U+E129–U+E132 = ①–⑩（標頭「中醫師①」＝中醫師(一)、題幹的 ①②③④）；
+#   U+E18C–U+E18F = 選項 Ⓐ–Ⓓ（放在行首，題號單獨一行，見 parse_question_pdf 的舊版格式）
+MOEX_CIRCLED = {chr(0xE129 + i): chr(0x2460 + i) for i in range(10)}
+MOEX_OPTION = {chr(0xE18C + i): "ABCD"[i] for i in range(4)}
 
 KEEP_CYRILLIC = False  # 由 --keep-cyrillic 設定
 
@@ -128,6 +133,8 @@ def fix_glyphs(s: str) -> str:
             out.append(RADICAL_SUPP.get(c, c))
         elif 0x045B <= o <= 0x0464 and not KEEP_CYRILLIC:
             out.append(BIG5_CIRCLED[c])
+        elif c in MOEX_CIRCLED:
+            out.append(MOEX_CIRCLED[c])
         elif 0xF870 <= o <= 0xF8FF:
             continue
         else:
@@ -299,14 +306,61 @@ def _parse_q_header(lines: List[str], start: int) -> QuestionMeta:
     return meta
 
 
+LONE_NUM_RE = re.compile(r"^(\d{1,3})$")
+
+
+def _fix_text_before_marker(q: dict, meta: "QuestionMeta") -> None:
+    """舊版試卷的短選項（「①②③」「1」）在文字流裡排在框字前面：
+    「…題幹 / ①②③ / Ⓐ / ①②④ / Ⓑ …」。這時框字那一行是空的，每個選項的字跑到前一個容器（題幹或上一個選項）的最後一行，
+    最後一個選項變成空的。只在「有選項是空的、而且空起頭的選項後面還接著字」時才搬：每個空起頭的選項拿前一個容器的最後一行。
+    四個選項都是圖（四個都空、後面也沒有字）不動。"""
+    empty_start = q.get("empty_start") or []
+    opts = q["opts"]
+    if not empty_start or not any(not "".join(v).strip() for v in opts.values()):
+        return
+    if not any(len(opts[k]) > 1 and "".join(opts[k][1:]).strip() for k in empty_start if k in opts):
+        return
+    order = [k for k in "ABCD" if k in opts]
+    for i, k in enumerate(order):
+        if k not in empty_start:
+            continue
+        prev = q["stem"] if i == 0 else opts[order[i - 1]]
+        if len(prev) >= 2:
+            opts[k][0] = prev.pop()
+    meta.warnings.append(f"題 {q['題號']} 選項字排在框字前面，已照位置搬回（請抽查）")
+
+
 def parse_question_pdf(path: str) -> Tuple[QuestionMeta, List[dict]]:
-    """回傳 (meta, [{'題號':int,'question':str,'options':{'A':..}} ...])。"""
+    """回傳 (meta, [{'題號':int,'question':str,'options':{'A':..}} ...])。
+
+    兩種版式：
+      新版（牙醫師、醫師、中醫師 112 年起）：「1.題幹」、選項「A.」…；
+      舊版（中醫師 104–111 年等）：題號單獨一行（「1」），選項是私用區的框字 U+E18C–U+E18F（轉成「A.」…）。
+    """
     lines, flagged = pdf_lines(path)
+    if any(c in l for l in lines for c in MOEX_OPTION):
+        # 舊版的選項框字只當選項記號用；兩個選項排在同一行（「A.… B.…」）時拆成兩行
+        split = []
+        for l in lines:
+            for part in re.split("(?=[" + "".join(MOEX_OPTION) + "])", l):
+                part = part.strip()
+                if part:
+                    split.append((MOEX_OPTION[part[0]] + "." + part[1:].strip()) if part[0] in MOEX_OPTION else part)
+                elif not split or split[-1]:
+                    split.append("")
+        lines = split
     start = None
+    old_style = False
     for i, l in enumerate(lines):
         if re.match(r"^[1１][\.．]", l):
             start = i
             break
+    if start is None:
+        # 舊版：第一個單獨一行的「1」，後面幾行內有「A.」選項
+        for i, l in enumerate(lines):
+            if l == "1" and any(x.startswith("A.") for x in lines[i + 1:i + 12]):
+                start, old_style = i, True
+                break
     if start is None:
         raise ValueError(f"{path}: 找不到第 1 題")
     meta = _parse_q_header(lines, start)
@@ -327,8 +381,13 @@ def parse_question_pdf(path: str) -> Tuple[QuestionMeta, List[dict]]:
         l = l[:4].translate(FW_DIGITS) + l[4:]  # 行首全形數字正規化
 
         m = STEM_RE.match(l)
+        if not m and old_style:
+            # 舊版題號單獨一行（「22」）；有的頁題號直接黏著題幹（「23有關…」），只在上一題四個選項齊了才認
+            m = re.match(r"^(\d{1,3})()$", l) if LONE_NUM_RE.match(l) else None
+            if not m and expect_opt == "END":
+                m = re.match(r"^(\d{1,3})([^\d\.．\s%].*)$", l)
         if m and int(m.group(1)) == expect_q and (cur is None or expect_opt == "END"):
-            cur = {"題號": expect_q, "stem": [m.group(2)], "opts": {}}
+            cur = {"題號": expect_q, "stem": [m.group(2)] if m.group(2) else [], "opts": {}}
             questions.append(cur)
             expect_q += 1
             expect_opt = "A"
@@ -338,6 +397,8 @@ def parse_question_pdf(path: str) -> Tuple[QuestionMeta, List[dict]]:
         mo = OPTION_RE.match(l)
         if mo and cur is not None and expect_opt not in (None, "END") and norm_letter(mo.group(1)) == expect_opt:
             cur["opts"][expect_opt] = [mo.group(2)]
+            if not mo.group(2).strip():
+                cur.setdefault("empty_start", []).append(expect_opt)
             last_key = expect_opt
             expect_opt = "END" if expect_opt == "D" else chr(ord(expect_opt) + 1)
             continue
@@ -347,6 +408,9 @@ def parse_question_pdf(path: str) -> Tuple[QuestionMeta, List[dict]]:
         target = cur["stem"] if last_key == "stem" else cur["opts"][last_key]
         target.append(l)
 
+    if old_style:
+        for q in questions:
+            _fix_text_before_marker(q, meta)
     out = []
     for q in questions:
         opts = {k: join_lines(v) for k, v in q["opts"].items()}
@@ -404,11 +468,15 @@ def parse_correction_note(note: str) -> Dict[int, str]:
 def _positional_answers(doc: "fitz.Document", n: int) -> Tuple[Dict[int, str], List[str]]:
     warns: List[str] = []
     nums, letters = [], []
+    labeled = []   # 舊版答案表（中醫師 104–111 年等）題號寫成「第1題」，答案字母置中排在它下面
     for pno, page in enumerate(doc):
         for x0, y0, x1, y1, t, *_ in page.get_text("words"):
             t = t.strip()
+            ml = re.fullmatch(r"第(\d{1,3})題", t)
             if re.fullmatch(r"\d{1,3}", t) and 1 <= int(t) <= n:
                 nums.append((pno, x0, y0, x1, y1, int(t)))
+            elif ml and 1 <= int(ml.group(1)) <= n:
+                labeled.append((pno, x0, y0, x1, y1, int(ml.group(1))))
             else:
                 m = LETTER_TOKEN_RE.match(t)
                 if m:
@@ -416,6 +484,8 @@ def _positional_answers(doc: "fitz.Document", n: int) -> Tuple[Dict[int, str], L
     ans: Dict[int, str] = {}
     for pno, x0, y0, x1, y1, letter in letters:
         cands = [N for N in nums if N[0] == pno and abs(N[3] - x1) <= 5 and -2 <= y0 - N[4] <= 30]
+        cx = (x0 + x1) / 2
+        cands += [N for N in labeled if N[0] == pno and abs((N[1] + N[3]) / 2 - cx) <= 6 and -2 <= y0 - N[4] <= 30]
         if not cands:
             continue
         cands.sort(key=lambda N: y0 - N[4])

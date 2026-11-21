@@ -183,7 +183,9 @@ def strip_markup(text):
 # ---------------- 國考題庫 ----------------
 def load_questions(course, deck):
     """<KIT>/question_banks/<bank>/*.json 合併；key='{年度}-{第幾次}#{題號}'。
-    醫師題庫只收病理段（題號 76–100）。"""
+    醫師題庫只收病理段（題號 76–100）。
+    一場考好幾科的題庫（中醫師：六科各自從第 1 題編起）每題自帶 "key"（例 '114-1-5#18'＝114 年第一次、科號 5、第 18 題），
+    有 "key" 就用它；科號的對照寫在該題庫的 README 段落（question_banks/README.md）。"""
     bank = course.deck(deck).get("question_bank")
     if not bank:
         return {}
@@ -203,7 +205,7 @@ def load_questions(course, deck):
                 continue
             q = dict(q)
             q["bank"] = bank
-            qs[f"{q['年度']}-{q['第幾次']}#{q['題號']}"] = q
+            qs[q.get("key") or f"{q['年度']}-{q['第幾次']}#{q['題號']}"] = q
     return qs
 
 

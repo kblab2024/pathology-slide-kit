@@ -786,9 +786,10 @@ def L_table3(slide, s):
 
 
 def quiz_title(course, deck, q):
-    """quiz_label 的佔位：{年度}、{第幾次}（中文數字：一、二）、{次}（阿拉伯數字：1、2）、{題號}。"""
+    """quiz_label 的佔位：{年度}、{第幾次}（中文數字：一、二）、{次}（阿拉伯數字：1、2）、{題號}、{科目}（題庫有寫才有，例 中醫臨床醫學(三)）。"""
     tpl = course.deck(deck).get("quiz_label", "{年度}-{第幾次} 第{題號}題")
-    return tpl.format(年度=q["年度"], 第幾次=CN_NUM.get(int(q["第幾次"]), q["第幾次"]), 次=q["第幾次"], 題號=q["題號"])
+    return tpl.format(年度=q["年度"], 第幾次=CN_NUM.get(int(q["第幾次"]), q["第幾次"]), 次=q["第幾次"], 題號=q["題號"],
+                      科目=q.get("科目", ""))
 
 
 def quiz_style(course, deck):
@@ -854,9 +855,16 @@ def L_quiz(slide, s, qs):
     ans = [a.strip() for a in str(q["answer"]).split(",")]
     opts = [(k, q["options"][k]) for k in "ABCDE" if k in q["options"]]
     size = G.S["quiz_min"]
+    # 題下那一行（quiz_note）與「本題一律給分」固定用 label 字級，也要算進去（2026-11-22：沒算時長選項的題會把題下那一行擠出投影片）
+    extra = 0.0
+    if s.get("quiz_note"):
+        extra += n_lines(s["quiz_note"], G.S["label"], w) * line_h(G.S["label"], 1.1) + 0.05
+    if "#" in ans:
+        extra += line_h(G.S["label"], 1.0)
     for cand in range(G.S["quiz"], G.S["quiz_min"] - 1, -2):
-        need = n_lines(q["question"], cand, w) * line_h(cand, 1.15) + 0.15
+        need = n_lines(f"{q['題號']}. {q['question']}", cand, w) * line_h(cand, 1.15) + 0.15
         need += sum(n_lines(f"({k}) {v}", cand, w - 0.3) * line_h(cand, 1.15) + 0.06 for k, v in opts)
+        need += extra
         size = cand
         if need <= avail:
             break

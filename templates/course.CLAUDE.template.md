@@ -58,3 +58,4 @@ PYTHONIOENCODING=utf-8 python check_render.py "$CD/成品/<PPTX 檔名>.pptx" "$
 ## 注意（不太變的事）
 - 進度、下一步、待辦寫在 `_archive/handoff.md`，不寫在這裡。
 - 教師若親手改了成品：先照 `<kit>/docs/SOP_新教案流程.md` 第 11b 步回灌，才可以重產。
+- 每一講定稿前要請 Gemini 重寫句子（`<kit>/AGENTS.md` 硬規則 17、SOP 第 9b 步）：`rewrite_pack.py make` 出重寫包和草稿一起交，回覆回來 `apply`、逐張對事實、套回、重產。設定在 `course.yaml` 的 `rewrite:`（照抄的行）。重寫包交出去以後、回覆套回來以前，不改那一講的來源檔。

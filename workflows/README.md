@@ -13,13 +13,13 @@
 
 其他檔案：
 - `tools/done_from_journal.py`：從執行紀錄重建 DONE 表（見「續跑」）。
-- `tools/wf_check_mac.js`：沒有 node 的 Mac 用這支代替 check_workflows.js：`osascript -l JavaScript workflows/tools/wf_check_mac.js <腳本.js> <args.json> [load_mock.json]`。用 macOS 內建的 JavaScriptCore 查語法，再用假代理空跑，印出代理數、每個代理的 `label|model|effort|phase`、各強度的代理數 `effort_counts`（報價用），不是 opus 的列在 `not_opus`、沒寫 effort 的列在 `no_effort`（兩個都要是空的）。有讀設定代理（`load:*`）的工作流，第三個參數給它要回傳的內容。印出的 `agents` 就是報價用的代理數上限。`\r` 另外用 grep 查（2026-10-30 起印 effort；以前要用 grep 查 effort）。
+- `tools/wf_check_mac.js`：沒有 node 的 Mac 用這支代替 check_workflows.js：`osascript -l JavaScript workflows/tools/wf_check_mac.js <腳本.js> <args.json> [load_mock.json]`。用 macOS 內建的 JavaScriptCore 查語法，再用假代理空跑，印出代理數、每個代理的 `label|model|effort|phase`、各強度的代理數 `effort_counts` 與各模型各強度的代理數 `model_counts`（報價用），不是 opus 的列在 `not_opus`、沒寫 effort 的列在 `no_effort`（兩個都要是空的；教師選了「角色與模型」的例外時，`not_opus` 要和報價的角色一致）。有讀設定代理（`load:*`）的工作流，第三個參數給它要回傳的內容。印出的 `agents` 就是報價用的代理數上限。`\r` 另外用 grep 查（2026-10-30 起印 effort；以前要用 grep 查 effort）。
 - `tools/check_workflows.js`：改完腳本後跑 `node workflows/tools/check_workflows.js`，檢查 CR 字元、禁用字、本機絕對路徑、meta 是否為純字面值、語法（照 Workflow 執行環境包起來編譯），並用假代理把每支工作流空跑一遍、核對代理數。
 - `reference/`：2026-09 免疫課程的三支原版腳本（已去除本機路徑），只供對照；新課程用上面的通用版。
 - 範本在 `../templates/`：`course.template.yaml`、`brief.template.md`、`gather.template.json`、`course.CLAUDE.template.md`、`handoff.template.md`、`blueprint.schema.json`、`written.schema.json`。
 
 ## 共通規則
-- **用 Claude 時所有代理一律 `model: 'opus'`**，寫死在每支腳本的代理呼叫裡；反駁與複查也一樣。其他公司的工具照 `AGENTS.md` 硬規則 8。
+- **用 Claude 時所有代理一律 `model: 'opus'`**，寫死在每支腳本的代理呼叫裡；反駁與複查也一樣。其他公司的工具照 `AGENTS.md` 硬規則 8。教師當次選定的例外見「角色與模型」。
 - **參數**：`kit`＝工具包根目錄（含 `scripts/`），`materials`＝教材庫根目錄（含 `courses/`、`textbook/`、`corpus/`、`style_evidence/`），`course`＝`materials/courses/` 下的資料夾名。三者缺一（style-mining、style-guide 的 course 可省）就只寫一行說明並結束，不派任何代理。路徑用正斜線（`D:/...`），反斜線也會被換掉，但 JSON 裡要寫成 `\\`，容易出錯。
 - **代理呼叫腳本的固定寫法**：`cd "<kit>/scripts" && SLIDEKIT_MATERIALS="<materials>" PYTHONIOENCODING=utf-8 python <script>.py --course <course> ...`（代理在 shell 裡執行；Windows 是 Git Bash；Linux 找不到 `python` 時用 `python3`）。不收 `--course` 的工具（make_batches、export_pdf、verify_quotes 等）不加，清單見 `scripts/README.md`。
 - **風格指南與國考題庫在工具包**（`style/guide/`、`question_banks/<題庫>/`）；**課程檔、教科書頁圖、語料、風格證據在教材庫**。
@@ -99,6 +99,37 @@ Workflow({scriptPath: "/home/user/pathology-slide-kit/workflows/lecture-gather.j
 - 報價時寫明哪些角色比上表高或低一級。
 
 課程自寫的腳本照 uro-a3 的寫法：args 給 `effort`（一般）與 `effort_hard`（查證），每個 `agent()` 各自指定（範本：私人 repo `courses/uro-a3/_archive/journals/uro-write.js`）；之後寫的腳本，機械性的角色用第三個參數 `effort_light`（預設 high）。通用工作流加上這三個參數：lecture-gather 已做（2026-10-30），其他五支是待辦。
+
+## 角色與模型（2026-11-12 起）
+
+經過：教師開呼吸大堂課的階段 2 時問「哪些工作要用到（比 opus 高一級的模型）、哪些用 opus」，並要一份用量評估；看完報價先選了「只有各講的大綱與完整性批評用高一級的模型」。第一講交件後（同日下午）他改成：**主 session 用高一級的模型時，由它自己決定工作流的哪個部分用高一級的模型**（他肯定的是它的策劃；他也說細部的工作不見得值得用）。主 session 不是高一級的模型時，沒有教師當次的選擇就照「一律 opus」。
+
+主 session 決定時用的判準：
+1. 一個代理的判斷會傳到整講的，用高一級的模型：上游的規劃（大綱）、最後的整體把關（要同時記住各批的內容，找重複、缺口、前後不一）。
+2. 教師最在意、照檢查表做也過不了關的，用高一級的模型：句子像不像他寫的（`docs/教師偏好與決策.md` 第 4 節 2026-11-12 的文法十點）。
+3. 一次只看一批、有事實帳或檢查表可對、數量多的，用 opus：撰寫、各面向批評、反駁、複查、修訂、套用修正。反駁與複查不換更貴的模型，是教師採用的上限（硬規則 8）。
+4. 高一級的角色每講（每套）只放三四個代理；報價時逐個列出來。
+
+目前的分法（2026-11-12；教師看過呼吸第一講的結果後再調）：
+
+| 角色 | 模型 | 理由 |
+|---|---|---|
+| 各講（各套）的大綱；階段 3 把教師的評語拆成各批的改寫指示（這一步通常是主 session 自己做） | 比 opus 高一級的模型，強度 high | 只跑一次；規劃錯了每一批都跟著錯 |
+| 各講的整體把關：階段 2 的完整性批評、階段 3 改寫後的全套檢查 | 比 opus 高一級的模型，強度 high | 看的是整講的深度、統整、連貫與張數 |
+| 各講的文法改寫：撰寫、修訂都做完後整講做一次，輸出改寫表，由程式套用、試排；有照片的張字數不能比原來多 | 比 opus 高一級的模型，強度 high | 兩門課都是口吻查核做完後，教師仍說文法不是他的，整套照十點重寫才交得出去；放進工作流，主 session 只抽看 |
+| 其餘全部（撰寫、修訂、各面向批評、反駁、複查、套用修正、用字審查、版面試排） | opus，強度照「角色與強度」 | 量大；事實有事實帳與頁圖撐著 |
+
+- 腳本的寫法：每個角色的模型由 args 給（例：`models: {default: "opus", outline: "<高一級的模型>", complete: "<高一級的模型>"}`），沒給的角色一律 opus；用高一級模型的角色另給一個強度參數（預設 high：該模型建議從 high 起，更高的強度收益不穩）。反駁與複查的 `agent()` 不讀 `models`，寫死 opus。範本：私人 repo `courses/rs-a1/_archive/journals/rs-write.js`。
+- 空跑：`wf_check_mac.js` 印 `model_counts`（模型 × 強度）與 `not_opus`（不是 opus 的代理）；`not_opus` 要和報價的角色一致，沒有選例外時要是空的。
+- 報價要多寫兩件事：哪些角色用哪個模型；方案對高一級模型另有週上限時（2026-11：最多用到週上限的一半，扣得比 opus 快），這次會用掉那個上限的幾成。主 session 自己若用高一級的模型，它的用量也算在同一個上限裡，通常比那幾個代理還多。
+- 把代理數換成週用量的估法（本機 usage 紀錄的牌價換算對教師貼過的用量點），做法與各角色的單價記在私人 repo `courses/rs-a1/_archive/handoff.md`「用量的校準」；方案或牌價變了要重做。
+- 高一級的模型可能有較嚴的內容過濾（感染等主題）：代理回傳 null 時先看輸出檔，必要時把那個角色改回 opus，只重跑那一個。
+
+## 句子最後由 Gemini 重寫（2026-11-21 起）對工作流的影響
+
+- 每一講定稿前，投影片上的字要請 Gemini 用它自己的話重寫（`AGENTS.md` 硬規則 17、SOP 第 9b 步）。這一步不在工作流裡、不用代理：出包與套回是 `scripts/rewrite_pack.py`，回覆的逐張對意思由主 session 做。報價不必算它。
+- 撰寫與充實工作流裡管句子長相的角色（「老師語氣與 LLM 語」的批評、整講的文法改寫）改出來的句子，之後會被整張重寫。**這些角色可不可以省，教師還沒說。** 在他說之前腳本照舊，但報價時另外列出「省掉文法改寫與語氣批評的話，少幾個代理、少多少」，讓他一起決定。事實、術語、版面、連貫的角色不受影響：Gemini 讀的是我們的草稿，草稿講錯或講不清楚，它也跟著錯。
+- 充實之後若還要跑審查，voice 面向不必跑：句子之後會整張重寫（硬規則 16「不重複審查」）。
 
 ## 反駁與複查的上限（2026-10-14 教師採用）
 

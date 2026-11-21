@@ -11,7 +11,7 @@
 語料（corpus_dir）：SLIDEKIT_CORPUS → <教材庫>/corpus → <工具包>/style/corpus。
 國考題庫：<工具包>/question_banks/<題庫>/*.json（醫師題庫只收題號 76–100）。
 來源檔格式（路徑在 course.yaml 的 paths，相對於課程資料夾）：
-  pool.md    素材池：「## 投影片 {slug}｜標題」＋ HTML 註解（type／IMG／quiz／diagram／src／aud／img_wanted／build）＋「- 」條列＋「|」表格
+  pool.md    素材池：「## 投影片 {slug}｜標題」＋ HTML 註解（type／IMG／flow／quiz／diagram／src／aud／img_wanted／build）＋「- 」條列＋「|」表格
   script.md  講稿：「### 投影片 {slug}｜標題」＋【講稿】／【講稿:系別】／【講義補充】
   decks/*.md 選單：「## 節｜標題」→「### 段落」→「- slug」，渲染時依序編號
 行內強調標記：[[藍:文字]]、[[紅:文字]]、[[橘:文字]]、[[青:文字]]、[[灰:文字]]，色票在 course.yaml 的 emphasis。
@@ -24,6 +24,10 @@ import re
 import sys
 
 import yaml
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import flow_shapes  # noqa: E402
+import label_shapes  # noqa: E402
 
 # 工具包根目錄（含 scripts/ 的資料夾）；KIT 與 ROOT 同義，ROOT 保留給既有程式
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -266,7 +270,13 @@ def parse_pool(course):
             absp = p if os.path.isabs(p) else os.path.join(course["dir"], p)
             img["abspath"], img["exists"] = absp, os.path.exists(absp)
             imgs.append(img)
+        # <!-- labels: 規格.json -->：示意圖的標籤畫成 PowerPoint 原生的文字方塊與指線（label_shapes.py）；規格的 out 對到同張的 IMG
+        lab_specs = label_shapes.parse_refs(body, course["dir"])
+        lab_unmatched = label_shapes.attach(imgs, lab_specs)
         src = _field(body, "src")
+        # <!-- flow: 規格檔#圖名 ｜ 出處：… -->：流程圖畫成 PowerPoint 原生圖形（flow_shapes.py）；規格檔不是 .json 或找不到時 fig＝None
+        fm = re.search(r'<!--\s*flow:\s*(.*?)-->', body, re.S)
+        flow = flow_shapes.parse_ref(fm.group(1), course["dir"]) if fm else None
         pool[sid] = {
             "id": sid, "title": title, "type": stype,
             "quiz": quiz.group(1) if quiz else None,
@@ -278,9 +288,13 @@ def parse_pool(course):
             "robbins": _field(body, "robbins"),
             "tbl": _field(body, "tbl"),
             "order": _field(body, "order"),
+            "left_frac": _field(body, "left_frac"),      # left 版型這一張的文字欄最小比例（gen_pptx L_left）
             "title_ov": {m.group(1): m.group(2).strip()
                          for m in re.finditer(r'<!--\s*title:([a-z]+):\s*([^>]*?)\s*-->', body)},
             "imgs": imgs,
+            "flow": flow, "flow_text": flow_shapes.flow_text(flow["fig"]) if flow else [],
+            "labels": lab_specs, "labels_unmatched": lab_unmatched,
+            "label_text": [t for sp in lab_specs for t in label_shapes.label_text(sp["data"])],
             "bullets": [ln.rstrip()[2:] if not ln.startswith("  ") else ln.rstrip()
                         for ln in lines[1:] if re.match(r'^(  )*- ', ln)],
             "table": _table_rows(lines[1:]),

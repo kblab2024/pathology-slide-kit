@@ -9,6 +9,8 @@
 
 版型（pool 的 <!-- type: -->）：
   title 封面｜divider 節或段落分隔｜left 條列＋右圖（無圖則全寬條列）｜flash 標題＋說明句＋大圖
+  （left／flash／robbins／big 的圖區：該張寫了 <!-- flow: 規格.json#圖名 --> 就畫成 PowerPoint 原生的流程圖，可以直接改字，
+    不放 IMG 的圖檔；見 flow_shapes.py）
   big 單句大字（可附圖）｜pair 兩圖並排（IMG 可帶「標籤：HE」）｜robbins 整張教科書圖
   table3 表格（超過 table_max_rows 列自動拆張）｜quiz 國考題（course.yaml decks.<deck>.quiz_style：
   乙＝年次當標題、正解選項整段強調色（預設）；甲＝1 列 3 欄表、首欄正解字母粗體）
@@ -34,6 +36,8 @@ from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import flow_shapes  # noqa: E402
+import label_shapes  # noqa: E402
 from common import (DARK_TEXT, FONT, SOFT_BREAK, build_deck, bullet_level, deck_filename, load_course,  # noqa: E402
                     notes_map, parse_markup, parse_pool, parse_script, strip_markup)
 
@@ -48,6 +52,10 @@ NL = chr(10)
 TABLE_LINE_K = 1.10
 # 標題與分隔張標題量字時多留的寬度（in）：uro-a3 有標題估 2 行、實排 3 行，壓到第一條。
 TITLE_MARGIN = 0.30
+# 2026-11-12 依 hema-dent 209 張的 LibreOffice 實排校正：有圖張的條列（28pt、欄寬 4.2–5.9 in）每條裡有長的英文詞時，
+# 實排比量字早斷行（例：估 [4, 3, 2] 行、實排 [4, 3, 3]，最後一條跑出投影片）。量條列行數時把欄寬當成 95%，
+# 兩張實排溢出的都抓得到；代價是文字欄會早一級加寬、圖小一點。
+BULLET_W_K = 0.95
 
 
 class G:
@@ -58,6 +66,7 @@ class G:
     EMPH = {}
     course = None
     layout = {}
+    cur = None      # 正在畫的那一張（label_shapes 記版面問題時要它的 id）
 
 
 def setup(course):
@@ -329,6 +338,11 @@ def place_image(slide, img, x, y, w, h, shadow=True):
     """圖片等比放進 (x,y,w,h)，下方留圖說；圖說以實際寬度估行數，反覆縮圖直到圖說不壓到左下「資料來源」。"""
     if not img or not img.get("exists"):
         return None
+    if (img.get("labels") or {}).get("data") and G.cur is not None:
+        # 這張圖有標籤規格（<!-- labels: -->）：放沒有字的母圖，標籤畫成原生的文字方塊與指線（教師 2026-11-12：圖版與文字方塊版兩版）
+        r = label_shapes.place(sys.modules[__name__], slide, G.cur, img, x, y, w, h)
+        if r:
+            return r
     try:
         iw, ih = Image.open(img["abspath"]).size
     except Exception:
@@ -377,6 +391,19 @@ def src_line(slide, srcs, dark=False):
 
 def real_imgs(s):
     return [i for i in s.get("imgs", []) if i.get("exists")]
+
+
+def has_fig(s):
+    """這張的圖區有東西可放：流程圖規格（畫成原生圖形）或真的圖檔。"""
+    return bool((s.get("flow") or {}).get("fig")) or bool(real_imgs(s))
+
+
+def place_fig(slide, s, x, y, w, h):
+    """圖區：有 <!-- flow: --> 規格就畫 PowerPoint 原生的流程圖（教師 2026-11-12：流程圖不要用圖檔，要能改字），否則放第一張圖。"""
+    if (s.get("flow") or {}).get("fig"):
+        return flow_shapes.place_flow(sys.modules[__name__], slide, s, x, y, w, h)
+    imgs = real_imgs(s)
+    return place_image(slide, imgs[0], x, y, w, h) if imgs else None
 
 
 # ---------------- 標題 ----------------
@@ -434,7 +461,7 @@ def bullets_need(bullets, size, w):
     need = 0.0
     for b in bullets:
         lvl, text = bullet_level(b)
-        need += n_lines(text, size, w - (0.32 + 0.38 * lvl)) * line_h(size) + 8 / 72.0
+        need += n_lines(text, size, (w - (0.32 + 0.38 * lvl)) * BULLET_W_K) * line_h(size) + 8 / 72.0
     return need
 
 
@@ -450,16 +477,37 @@ def render_bullets(slide, s, bullets, x, y, w, h, size):
         pPr = p._p.get_or_add_pPr()
         pPr.set('marL', str(int(ind * 914400)))
         pPr.set('indent', str(int(-0.32 * 914400)))
-        need += n_lines(text, size, w - ind) * line_h(size) + 8 / 72.0
+        need += n_lines(text, size, (w - ind) * BULLET_W_K) * line_h(size) + 8 / 72.0
     note_fit(s, need, h, "條列")
+
+
+def _fig_fit_w(s, w, h):
+    """這張的第一張圖（含標籤規格的白邊）等比放進 w×h 時實際的寬（吋）；流程圖或沒有圖回 None。算法同 place_image。"""
+    if (s.get("flow") or {}).get("fig"):
+        return None
+    imgs = real_imgs(s)
+    if not imgs:
+        return None
+    img = imgs[0]
+    try:
+        d = (img.get("labels") or {}).get("data")
+        if d:
+            iw, ih = Image.open(d["image"]).size
+            m = {k: float((d.get("margins") or {}).get(k, 0)) for k in ("left", "right", "top", "bottom")}
+            iw, ih = iw * (1 + m["left"] + m["right"]), ih * (1 + m["top"] + m["bottom"])
+        else:
+            iw, ih = Image.open(img["abspath"]).size
+    except Exception:
+        return None
+    hh = h - ((0.25 + 0.06) if img.get("src") else 0.0)      # 圖下一行出處
+    return min(w, max(0.8, hh) * iw / ih)
 
 
 def L_left(slide, s):
     set_bg(slide, G.BG)
     y0 = content_title(slide, s)
-    imgs = real_imgs(s)
     avail = G.SH - y0 - 0.45 - getattr(G, "src_h", 0.0)
-    if not imgs:
+    if not has_fig(s):
         render_bullets(slide, s, s["bullets"], G.M + 0.1, y0, G.SW - 2 * G.M - 0.2, avail, G.S["body_noimg"])
         return
     tw = (G.SW - 2 * G.M) * 0.47
@@ -468,20 +516,31 @@ def L_left(slide, s):
         # course.yaml layout.left_min_frac（預設 0.47）可讓條列都短（每條一行）的張把文字欄縮窄、圖放大
         lo = float((G.course.get("layout") or {}).get("left_min_frac", 0.47))
         fracs = [f for f in (0.30, 0.35, 0.40, 0.45) if f >= lo and f < 0.47] + [0.47, 0.52, 0.57, 0.62, 0.65]
+        # 素材池這一張寫 <!-- left_frac: 0.52 -->：文字欄從這個比例起跳（估算放得下、實排卻多折一行或留孤字的張用；圖跟著讓位）
+        if s.get("left_frac"):
+            lo = min(0.65, max(0.30, float(s["left_frac"])))
+            fracs = [lo] + [f for f in (0.52, 0.57, 0.62, 0.65) if f > lo]
         for frac in fracs:
             tw = (G.SW - 2 * G.M) * frac
             # 縮窄時留足餘裕（圓點、字距、替代字型），每條都要確定排成一行才採用
             if frac < 0.47 and any(n_lines("• " + bullet_level(b)[1], G.S["body"],
-                                           tw - (0.32 + 0.38 * bullet_level(b)[0]) - 0.35) > 1
+                                           (tw - (0.32 + 0.38 * bullet_level(b)[0]) - 0.35) * BULLET_W_K) > 1
                                    for b in s["bullets"]):
                 continue
             if bullets_need(s["bullets"], G.S["body"], tw) <= avail:
                 break
+        # course.yaml layout.left_fit_image: true（16:9 用；預設關）：圖受高度限制、用不滿右欄的寬時（直幅或正方形的圖），
+        # 把多出來的寬給文字欄，行數變少；圖的大小不變。右欄至少留 4.6 吋（圖下的出處行才不會多折一行）。
+        if (G.course.get("layout") or {}).get("left_fit_image"):
+            col = G.SW - 2 * G.M - tw - 0.40
+            dw = _fig_fit_w(s, col, avail - 0.15)
+            if dw is not None and dw < col - 0.5:
+                tw = max(tw, G.SW - 2 * G.M - 0.40 - max(dw + 0.30, 4.6))
         render_bullets(slide, s, s["bullets"], G.M + 0.05, y0, tw, avail, G.S["body"])
         ix = G.M + tw + 0.40
     else:
         ix = G.M
-    place_image(slide, imgs[0], ix, y0, G.SW - G.M - ix, avail - 0.15)
+    place_fig(slide, s, ix, y0, G.SW - G.M - ix, avail - 0.15)
 
 
 def _lead(slide, s, lines_max=None):
@@ -501,10 +560,10 @@ def _lead(slide, s, lines_max=None):
 def L_flash(slide, s):
     set_bg(slide, G.BG)
     y = _lead(slide, s)
-    imgs = real_imgs(s)
-    if imgs:
-        place_image(slide, imgs[0], G.M, y, G.SW - 2 * G.M, G.SH - y - 0.4)
-    note_fit(s, y, G.SH - 2.0 if imgs else G.SH - 0.4, "說明句")
+    fig = has_fig(s)
+    if fig:
+        place_fig(slide, s, G.M, y, G.SW - 2 * G.M, G.SH - y - 0.4)
+    note_fit(s, y, G.SH - 2.0 if fig else G.SH - 0.4, "說明句")
 
 
 def _big_need(bullets, w):
@@ -541,9 +600,10 @@ def L_big(slide, s):
         para(tf, t, G.S["big"], color=G.D["deep"], bold=False, first=(i == 0), line=1.15, space_after=10)
         need += n_lines(t, G.S["big"], w) * line_h(G.S["big"], 1.15) + 10 / 72.0
     y = y0 + 0.1 + need + 0.15
-    if imgs:
-        place_image(slide, imgs[0], G.M, y, G.SW - 2 * G.M, G.SH - y - 0.4)
-    note_fit(s, y, G.SH - (2.0 if imgs else 0.4), "大字")
+    fig = has_fig(s)
+    if fig:
+        place_fig(slide, s, G.M, y, G.SW - 2 * G.M, G.SH - y - 0.4)
+    note_fit(s, y, G.SH - (2.0 if fig else 0.4), "大字")
 
 
 def L_pair(slide, s):
@@ -568,9 +628,8 @@ def L_pair(slide, s):
 def L_robbins(slide, s):
     set_bg(slide, G.BG)
     y = _lead(slide, s)
-    imgs = real_imgs(s)
-    if imgs:
-        place_image(slide, imgs[0], G.M, y, G.SW - 2 * G.M, G.SH - y - 0.3)
+    if has_fig(s):
+        place_fig(slide, s, G.M, y, G.SW - 2 * G.M, G.SH - y - 0.3)
 
 
 def set_cell(cell, text, size, color=None, bold=False, fill=None, align=PP_ALIGN.LEFT):
@@ -857,7 +916,13 @@ def _cell_need(text, size, w, bold=False):
 def L_diagram(slide, s):
     """框架圖：course.yaml diagrams.<名>：nodes [{label, group}]、rows [{name, cells[]}]、groups {g:{main,light}}。
     orient: cols（預設；節點橫排、屬性為列）或 rows（節點直排、屬性為欄，適合 5 個節點＋長雙語字）。
-    格子文字可用換行字元分行（中文一行、英文一行；course.yaml 裡寫成 YAML 的 "\\n"）。點亮語彙：全部／節點 label／group 名／列名；未點亮畫淺灰。"""
+    格子文字可用換行字元分行（中文一行、英文一行；course.yaml 裡寫成 YAML 的 "\\n"）。點亮語彙：全部／節點 label／group 名／列名（節點比對時不看括號裡的英文，寫「氣管」或「氣管(trachea)」都可以）；未點亮畫淺灰。
+    多欄小字的地圖（orient: cols；教師 2026-09 B2 呼吸的 9 欄氣道地圖，2026-11-12）：框架圖自己寫字級與間距
+    cell_pt（格子）、label_pt（節點）、name_pt（列名）、gap、pad、node_h（節點格最小高）、row_cap（每列最高）、
+    legend: true（節點上方畫一行各組的色塊＋groups.<g>.name；地圖條＋圖的張不畫）、strip_split（地圖條配一張圖並排時，說明句那一欄至少占的寬度比例，預設 0.5）、bullets_below: true（條列畫在地圖下方，字級 below_pt，沒寫＝lead）。
+    寫了 cell_pt／label_pt 的框架圖，check_deck 的字級下限改用它寫的值（只在那一張）。
+    地圖條：素材池的框架圖張另有 IMG，或只亮其中幾列時，上方只畫亮的列（沒有亮任何列就全畫），列高照內容不撐開。
+    下面：一張圖＝說明句（最多三條）在左、圖在右，或說明句在上、圖在下（取圖比較大的排法）；兩張圖＝說明句（最多兩條）在上、圖並排在下（可用 IMG 的「標籤：」）；沒有圖＝條列全畫在地圖條下。"""
     set_bg(slide, G.BG)
     y0 = content_title(slide, s)
     spec = G.course["diagrams"].get(s["diagram"])
@@ -868,11 +933,18 @@ def L_diagram(slide, s):
     bright = set(s["diagram_bright"] or ["全部"])
     allon = "全部" in bright
     nodes, rows, groups = spec["nodes"], spec.get("rows", []), spec.get("groups", {})
-    lit = lambda nd: allon or nd["label"].replace(NL, "") in bright or nd["label"] in bright or nd.get("group") in bright
+    # 點亮語彙可以帶英文括號（「氣管(trachea)」）也可以只寫中文（「氣管」）：兩邊都去掉括號再比一次，
+    # 這樣節點格只寫中文小字（教師 B2 定稿的地圖）時，素材池寫全名也對得上。
+    _zh = lambda t: re.sub(r"\s*[\(（][^\(\)（）]*[\)）]\s*", "", str(t).replace(NL, "")).strip()
+    bright_zh = {_zh(b) for b in bright}
+    lit = lambda nd: (allon or nd["label"].replace(NL, "") in bright or nd["label"] in bright or nd.get("group") in bright
+                      or _zh(nd["label"]) in bright_zh)
     gcol = lambda nd: groups.get(nd.get("group"), {"main": G.D["cobalt"], "light": "E3EDF8"})
-    cs = G.S["min"]
-    lab = G.S["label"]
-    gap = 0.10
+    cs = spec.get("cell_pt") or G.S["min"]
+    lab = spec.get("label_pt") or G.S["label"]
+    rn = spec.get("name_pt") or cs
+    gap = spec.get("gap", 0.10)
+    pad = spec.get("pad", 0.07)
     # 資料來源行的頂端在 SH − 0.07 − src_h（src_line）；框架圖底下留 0.08 in。
     # 2026-10-20 以前固定扣 0.4：一行出處只剩 0.03 in，兩行出處會壓到框架圖。
     avail = G.SH - y0 - max(0.40, 0.15 + getattr(G, "src_h", 0.0))
@@ -883,10 +955,10 @@ def L_diagram(slide, s):
         line = g["main"] if on else ("C3D3E0" if head else "E2EAF1")
         rect(slide, x, y, w, h, hexc=fill, line_hex=line, line_w=(1.8 if head else 1.0), rounded=True,
              radius=(0.14 if head else 0.10))
-        _, tf = textbox(slide, x + 0.07, y + 0.03, w - 0.14, h - 0.06, anchor=MSO_ANCHOR.MIDDLE)
+        _, tf = textbox(slide, x + pad, y + 0.03, w - 2 * pad, h - 0.06, anchor=MSO_ANCHOR.MIDDLE)
         col = (G.D["deep"] if head else G.D["ink"]) if on else ("8AA0B5" if head else "BCCBD8")
         _cell_text(tf, text, size, col, bold=(bold and on))
-        need = _cell_need(text, size, w - 0.14, bold=(bold and on))
+        need = _cell_need(text, size, w - 2 * pad, bold=(bold and on))
         if need > h + 0.05:
             note_fit(s, need, h, f"框架圖格子「{str(text)[:10]}」")
 
@@ -929,26 +1001,103 @@ def L_diagram(slide, s):
             y += hs[i] + gap
         return
 
+    imgs = real_imgs(s)
+    lit_rows = [r for r in rows if r["name"] in bright]
+    # 地圖條：有圖，或只亮其中幾列（沒有圖也只畫亮的列，下面的條列才有地方放）
+    strip = bool(imgs) or (bool(lit_rows) and len(lit_rows) < len(rows) and not allon)
     lbl_w = spec.get("label_w", 0.95) if rows else 0.0
     n = len(nodes)
     nw = (W - lbl_w - (n - 1) * gap) / n
     x0 = G.M + lbl_w
-    nh = max(0.8, max(_cell_need(nd["label"], lab, nw - 0.14, bold=True) for nd in nodes))
+    if spec.get("legend") and groups and not strip:     # 地圖條＋圖的張不畫圖例（留高度給圖）
+        lh = rn * 1.2 / 72.0 + 0.10
+        lx = x0
+        for gname, g in groups.items():
+            if not g.get("name"):
+                continue
+            sq = rn / 72.0 * 0.8
+            rect(slide, lx, y0 + (lh - sq) / 2 - 0.03, sq, sq, hexc=g["main"])
+            tw = sum(_w(ch, False) for ch in g["name"]) * rn / 72.0 + 0.25
+            _, tf = textbox(slide, lx + sq + 0.06, y0 - 0.03, tw, lh, anchor=MSO_ANCHOR.MIDDLE)
+            para(tf, g["name"], rn, color=G.D["ink"], first=True, line=1.0, space_after=0)
+            lx += sq + 0.06 + tw + 0.15
+        y0 += lh
+        avail -= lh
+    nh = max(spec.get("node_h", 0.8), max(_cell_need(nd["label"], lab, nw - 2 * pad, bold=True) for nd in nodes))
     for i, nd in enumerate(nodes):
         box(x0 + i * (nw + gap), y0, nw, nh, nd["label"], lab, lit(nd), gcol(nd), bold=True, head=True)
     y = y0 + nh + 0.12
     left = avail - nh - 0.12
-    need = [max(_cell_need(c, cs, nw - 0.14) for c in r["cells"]) for r in rows]
-    hs = fit_heights(need, left - gap * (len(rows) - 1), 1.6)
-    for r, rh in zip(rows, hs):
+    rows_draw = [r for r in rows if r["name"] in bright] if strip else rows
+    if strip and not rows_draw:
+        rows_draw = rows
+    need = [max(_cell_need(c, cs, nw - 2 * pad) for c in r["cells"]) for r in rows_draw]
+    if strip:
+        hs = need
+    else:
+        hs = fit_heights(need, left - gap * (len(rows_draw) - 1), spec.get("row_cap", 1.6)) if rows_draw else []
+    for r, rh in zip(rows_draw, hs):
         on_row = allon or r["name"] in bright
         _, tf = textbox(slide, G.M, y, lbl_w - 0.08, rh, anchor=MSO_ANCHOR.MIDDLE)
-        para(tf, r["name"], cs, color=(G.D["deep"] if on_row else "A8BACA"), bold=True,
+        para(tf, r["name"], rn, color=(G.D["deep"] if on_row else "A8BACA"), bold=True,
              align=PP_ALIGN.RIGHT, first=True, line=1.0, space_after=0)
         for i, cell in enumerate(r["cells"]):
             nd = nodes[i]
             box(x0 + i * (nw + gap), y, nw, rh, cell, cs, on_row and lit(nd), gcol(nd))
         y += rh + gap
+    if not (strip or (spec.get("bullets_below") and s["bullets"])):
+        return
+    # 地圖下方：說明句與圖。一張圖：說明句在左、圖在右，或說明句在上、圖在下，兩種都估一次、取圖比較大的那一種
+    # （並排時說明句那一欄用掉圖剩下的寬度，最多三條）；兩張圖：說明句（最多兩條）在上、兩張圖並排在下；沒有圖：條列全部畫在地圖下方。
+    y += 0.06
+    bsz = spec.get("below_pt") or G.S["lead"]
+    split = spec.get("strip_split", 0.5)      # 並排時說明句那一欄至少占的寬度比例
+    text_h = lambda width, items: sum(n_lines(bullet_level(b)[1], bsz, width) * line_h(bsz) + 4 / 72.0
+                                      for b in items) + 0.10
+    side, dw_side = False, 0.0
+    if len(imgs) == 1 and s["bullets"]:
+        try:
+            iw_, ih_ = Image.open(imgs[0]["abspath"]).size
+            ar = iw_ / ih_
+        except Exception:
+            ar = 1.3
+        h_av = G.SH - y - 0.4 - 0.3                          # 圖下留一行出處
+        dw_side = min(W * (1 - split) - 0.2, h_av * ar)      # 並排時圖實際的寬
+        h_st = G.SH - (y + text_h(W - 0.26, s["bullets"][:2])) - 0.4 - 0.3
+        side = dw_side >= min(W, max(0.0, h_st) * ar)        # 上下排時圖實際的寬
+    bw = (W - dw_side - 0.3 - 0.26) if side else (W - 0.26)
+    bl = s["bullets"][:3] if side else (s["bullets"][:2] if imgs else s["bullets"])
+    y_img = y
+    if bl:
+        _, tf = textbox(slide, G.M + 0.26, y, bw, 2.4)
+        for i, b in enumerate(bl):
+            t = bullet_level(b)[1]
+            para(tf, t, bsz, color=G.D["cobaltd"], first=(i == 0), line=1.2, space_after=4)
+            y += n_lines(t, bsz, bw) * line_h(bsz) + 4 / 72.0
+        y += 0.10
+    if not imgs:
+        note_fit(s, y, G.SH - 0.4, "框架圖下的條列")
+        return
+    if side:
+        place_image(slide, imgs[0], G.M + W - dw_side, y_img, dw_side, G.SH - y_img - 0.4)
+        note_fit(s, y, G.SH - 0.4, "地圖條旁的說明句")
+        return
+    two = (imgs + [None])[:2] if len(imgs) > 1 else None
+    if two:
+        g2 = 0.3
+        w2 = (W - g2) / 2
+        labs = [i.get("label") for i in two if i and i.get("label")]
+        lab_h = (max(n_lines(t, G.S["label"], w2, bold=True) for t in labs) * line_h(G.S["label"], 1.0) + 0.12) if labs else 0
+        for k, img in enumerate(two):
+            x = G.M + k * (w2 + g2)
+            place_image(slide, img, x, y + lab_h, w2, G.SH - y - 0.35 - lab_h)
+            if img and img.get("label"):
+                _, tf = textbox(slide, x, y, w2, lab_h)
+                para(tf, img["label"], G.S["label"], color=G.D["cobaltd"], bold=True, align=PP_ALIGN.CENTER,
+                     first=True, line=1.0)
+    else:
+        place_image(slide, imgs[0], G.M, y, W, G.SH - y - 0.4)
+    note_fit(s, y, G.SH - 2.2, "地圖條與說明句")
 
 
 RENDER = {"title": L_title, "left": L_left, "flash": L_flash, "big": L_big, "pair": L_pair,
@@ -976,6 +1125,7 @@ def build_pptx(course, deck, out_path, section=None):
         slide = prs.slides.add_slide(blank)
         srcs = s.get("src") or []
         G.src_h = (n_lines("資料來源：" + "；".join(srcs), G.S["credit"], G.SW - 2 * G.M) * 0.25 + 0.05) if srcs else 0.0
+        G.cur = s
         try:
             if s["type"] == "divider":
                 L_divider(slide, s, sec_label=(s["section"] if s.get("section_first") else ""))

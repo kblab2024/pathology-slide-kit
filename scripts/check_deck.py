@@ -7,7 +7,7 @@
   2. 所有 run 的 latin／ea 字型＝Microsoft JhengHei
   3. 字級：出處（「圖：」「資料來源：」開頭）≥ credit，其餘 ≥ min（RED）；內文 < body_warn 列 WARN
   4. 每張可見字元：> char_red RED、> char_warn WARN（封面、divider、國考題不算）
-  5. 有圖率：內容張（排除封面、divider、國考題）有真圖或框架圖的比例 ≥ img_rate_min（RED）
+  5. 有圖率：內容張（排除封面、divider、國考題）有真圖、框架圖或原生流程圖（<!-- flow: -->）的比例 ≥ img_rate_min（RED）
   6. 殘留佔位字（圖片待補、▦）與靜態頁碼：RED
   7. 國考題 key 必須在該 deck 的題庫；各節張數在 per_section 範圍（WARN）
   8. gen_pptx 的 _layout.json：估算溢出 >15% RED、其餘溢出 WARN；渲染錯誤 RED
@@ -74,10 +74,22 @@ def main(course, pptx_path, deck, section=None):
     bad_font, small, smallish, placeholder, pagenum = [], [], [], [], []
     runs = 0
     types = {s["num"]: s["type"] for s in built["slides"]}
+    # 多欄小字的框架圖（course.yaml diagrams.<名> 寫了 cell_pt／label_pt／name_pt）：那一張的字級下限用它寫的值
+    dia_min = {}
+    for s in built["slides"]:
+        spec = (course.get("diagrams") or {}).get(s.get("diagram") or "") if s["type"] == "diagram" else None
+        if spec:
+            pts = [spec.get(k) for k in ("cell_pt", "label_pt", "name_pt") if spec.get(k)]
+            if pts:
+                dia_min[s["num"]] = min(pts)
     for idx, slide in enumerate(prs.slides, 1):
+        # 示意圖的原生標籤（label_shapes.py，圖形名稱以「標籤 」開頭）可以只有數字（例：Gleason 的 1–5），不算頁碼
+        lab_ps = {p._p for sh in walk(slide.shapes) if (sh.name or "").startswith("標籤 ") and sh.has_text_frame
+                  for p in sh.text_frame.paragraphs}
         for p in iter_paras(slide):
             ptxt = p.text.strip()
-            if re.fullmatch(r"\d{1,3}", ptxt) and types.get(idx) not in ("stats", "table3", "diagram"):
+            if (re.fullmatch(r"\d{1,3}", ptxt) and types.get(idx) not in ("stats", "table3", "diagram")
+                    and p._p not in lab_ps):
                 pagenum.append(idx)
             if "圖片待補" in ptxt or "▦" in ptxt:
                 placeholder.append(idx)
@@ -97,9 +109,9 @@ def main(course, pptx_path, deck, section=None):
                 if is_credit:
                     if sz < S["credit"]:
                         small.append((idx, r.text[:12], sz))
-                elif sz < S["min"]:
+                elif sz < min(S["min"], dia_min.get(idx, S["min"])):
                     small.append((idx, r.text[:12], sz))
-                elif sz < S["body_warn"]:
+                elif sz < S["body_warn"] and idx not in dia_min:
                     smallish.append((idx, sz))
     if bad_font:
         reds.append(f"非 {FONT} 的 run：張 {sorted(set(bad_font))[:15]}")
@@ -132,7 +144,8 @@ def main(course, pptx_path, deck, section=None):
         warns.append(f"字元 >{S['char_warn']}（建議拆張或刪字）{len(over_w)} 張：{over_w[:12]}")
 
     content = [s for s in built["slides"] if s["type"] not in NO_COUNT]
-    with_img = [s for s in content if any(i["exists"] for i in s["imgs"]) or s["type"] == "diagram"]
+    with_img = [s for s in content if any(i["exists"] for i in s["imgs"]) or s["type"] == "diagram"
+                or (s.get("flow") or {}).get("fig")]
     wanted = [s for s in content if not any(i["exists"] for i in s["imgs"]) and s.get("img_wanted")]
     rate = len(with_img) / len(content) if content else 1
     msg = (f"有圖率 {len(with_img)}/{len(content)}＝{rate:.0%}（門檻 {S['img_rate_min']:.0%}；"
@@ -144,6 +157,17 @@ def main(course, pptx_path, deck, section=None):
     missing = [s["num"] for s in built["slides"] if any(not i["exists"] for i in s["imgs"])]
     if missing:
         warns.append(f"素材池寫了圖但檔案不存在：張 {missing}")
+    noflow = [(s["num"], s["flow"]["spec"] + "#" + s["flow"]["name"]) for s in built["slides"]
+              if s.get("flow") and not s["flow"]["fig"] and s["flow"]["spec"].lower().endswith(".json")]
+    if noflow:
+        reds.append(f"素材池寫了流程圖規格但找不到（檔案或圖名）：{noflow}")
+    nolab = [(s["num"], sp["spec"]) for s in built["slides"] for sp in (s.get("labels") or []) if not sp.get("data")]
+    if nolab:
+        reds.append(f"素材池寫了標籤規格但找不到或讀不了：{nolab}")
+    unlab = [(s["num"], sp["spec"]) for s in built["slides"] for sp in (s.get("labels") or [])
+             if sp.get("data") and sp["spec"] in (s.get("labels_unmatched") or [])]
+    if unlab:
+        reds.append(f"標籤規格的 out 沒有對到同張的 IMG（PPTX 上會放圖版、不是原生標籤）：{unlab}")
 
     qs = built["questions"]
     quiz = [s for s in built["slides"] if s["type"] == "quiz"]

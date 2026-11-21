@@ -45,6 +45,8 @@ def slide_text(s):
     parts = [s["title"]] + [bullet_level(b)[1] for b in s["bullets"]]
     for r in s.get("table") or []:
         parts += r
+    parts += s.get("flow_text") or []      # 原生流程圖（<!-- flow: -->）框裡與箭頭旁的字也要查中英對照與用語
+    parts += s.get("label_text") or []     # 示意圖的原生標籤（<!-- labels: -->）也要查
     return strip_markup("\n".join(parts))
 
 

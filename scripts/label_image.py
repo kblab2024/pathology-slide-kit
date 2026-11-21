@@ -23,6 +23,10 @@
    {"zh": "琺瑯器", "en": "enamel organ", "point": [0.31, 0.52], "side": "left", "y": 0.50},
    {"zh": "真皮", "en": "dermis", "at": [0.30, 0.88], "box": true}           at：文字框中心（母圖座標比例），不畫引線
  ]}
+  at 的標籤預設墊白色圓角底；放在圖的空白處、不需要墊底時寫 "box": false。
+  at 加 point：文字框放在 at，再從文字框的邊拉一條直線到 point（程式畫的圖在圖裡留空白放標籤時用，不必加白邊）。
+  每個標籤可以另寫 "pt"（字級，不得低於 24）、"bold": true、"color": "六碼色碼"（例：圖上的編號 1–5、算式 3+4=7 用大一點的粗體）。
+  同一份規格也可以畫成 PowerPoint 原生的文字方塊（文字方塊版）：素材池寫 <!-- labels: 規格.json -->，見 label_shapes.py。
   side＝left／right：文字框貼左／右白邊、垂直中心在 y；side＝top／bottom：文字框水平中心在 x、貼上／下白邊。
   elbow：true（預設）＝引線先水平再斜；false＝直線。
 用法：python label_image.py <規格.json> [--preview <縮圖.png>]
@@ -76,20 +80,28 @@ HALO = max(2, round(LW * 1.2)) if S.get("halo") else 0      # 白邊寬（每側
 to_px = lambda x, y: (L + x * w0, T + y * h0)                # 母圖比例 → 畫布像素
 
 
-def text_box(lines, font):
+def text_box(lines, font, line=None):
+    line = line or LINE
     ws = [d.textbbox((0, 0), t, font=font) for t in lines]
-    return max(b[2] - b[0] for b in ws), LINE * len(lines)
+    return max(b[2] - b[0] for b in ws), line * len(lines)
 
 
-def draw_lines(x0, y0, lines, font, align="left", wbox=None):
+def draw_lines(x0, y0, lines, font, align="left", wbox=None, line=None, fill=INK):
+    line = line or LINE
     for i, t in enumerate(lines):
         l, tp, r, b = d.textbbox((0, 0), t, font=font)
         tw = r - l
         x = x0 if align == "left" else (x0 + (wbox - tw) if align == "right" else x0 + (wbox - tw) / 2)
-        d.text((x - l, y0 + i * LINE + (LINE - (b - tp)) / 2 - tp), t, font=font, fill=INK)
+        d.text((x - l, y0 + i * line + (line - (b - tp)) / 2 - tp), t, font=font, fill=fill)
+
+
+def hexcolor(c):
+    c = str(c or "")
+    return tuple(int(c[i:i + 2], 16) for i in (0, 2, 4)) if len(c) == 6 and all(ch in "0123456789abcdefABCDEF" for ch in c) else INK
 
 
 boxes, segs = [], []
+f_lab0, LINE0, PAD0 = f_lab, LINE, PAD
 for t in S.get("titles", []):
     tw_, th_ = text_box([t["text"]], f_tit)
     cx, cy = to_px(t["x"], t["y"])
@@ -101,13 +113,37 @@ for t in S.get("titles", []):
 for lb in S.get("labels", []):
     lines = [lb["zh"]] + ([f"({lb['en']})"] if lb.get("en") else [])
     name = lines[0]
-    tw_, th_ = text_box(lines, f_lab)
-    if "at" in lb:                                            # 壓在組織上：白色圓角底，不畫引線
+    pt_, bold_ = float(lb.get("pt", lab_pt)), bool(lb.get("bold"))
+    if pt_ < 24:
+        problems.append(f"「{name}」字級 {pt_}pt 低於 24pt")
+    if pt_ != lab_pt or bold_ or lb.get("color"):             # 這個標籤自己的字級、粗體、顏色
+        f_lab = ImageFont.truetype(FB if bold_ else FR, max(8, round(pt_ * px_per_pt)))
+    else:
+        f_lab = f_lab0
+    LINE, PAD, ink = round(f_lab.size * 1.18), round(f_lab.size * 0.35), hexcolor(lb.get("color"))
+    tw_, th_ = text_box(lines, f_lab, LINE)
+    if "at" in lb:                                            # 指定位置、不畫引線；預設墊白色圓角底（壓在組織上），"box": false 不墊
         cx, cy = to_px(*lb["at"])
         x0, y0 = cx - tw_ / 2, cy - th_ / 2
-        d.rounded_rectangle((x0 - PAD, y0 - PAD / 2, x0 + tw_ + PAD, y0 + th_ + PAD / 2), radius=PAD, fill="white")
-        draw_lines(x0, y0, lines, f_lab, "center", tw_)
-        boxes.append((name, (x0 - PAD, y0 - PAD / 2, x0 + tw_ + PAD, y0 + th_ + PAD / 2)))
+        if lb.get("box", True):
+            d.rounded_rectangle((x0 - PAD, y0 - PAD / 2, x0 + tw_ + PAD, y0 + th_ + PAD / 2), radius=PAD, fill="white")
+            boxes.append((name, (x0 - PAD, y0 - PAD / 2, x0 + tw_ + PAD, y0 + th_ + PAD / 2)))
+        else:
+            boxes.append((name, (x0, y0, x0 + tw_, y0 + th_)))
+        draw_lines(x0, y0, lines, f_lab, "center", tw_, LINE, ink)
+        if "point" in lb:                                     # 從文字框的邊拉直線到 point
+            px, py = to_px(*lb["point"])
+            hw, hh = tw_ / 2 + PAD, th_ / 2 + PAD / 2
+            ddx, ddy = px - cx, py - cy
+            if abs(ddx) > hw or abs(ddy) > hh:
+                tt = min(hw / abs(ddx) if ddx else 1e9, hh / abs(ddy) if ddy else 1e9)
+                a = (cx + ddx * tt, cy + ddy * tt)
+                if HALO:
+                    d.line([a, (px, py)], fill="white", width=LW + 2 * HALO)
+                    d.ellipse((px - DOT - HALO, py - DOT - HALO, px + DOT + HALO, py + DOT + HALO), fill="white")
+                d.line([a, (px, py)], fill=INK, width=LW)
+                d.ellipse((px - DOT, py - DOT, px + DOT, py + DOT), fill=INK)
+                segs.append((name, a, (px, py)))
         continue
     side = lb.get("side", "left")
     px, py = to_px(*lb["point"])
@@ -121,13 +157,13 @@ for lb in S.get("labels", []):
         else:
             x0 = W - PAD - max(tw_, R - 3 * PAD); align = "left"
             start = (x0 - PAD, cy)
-        draw_lines(x0, y0, lines, f_lab, align, tw_)
+        draw_lines(x0, y0, lines, f_lab, align, tw_, LINE, ink)
         rect = (x0, y0, x0 + tw_, y0 + th_)
     else:
         cx = to_px(lb.get("x", lb["point"][0]), 0)[0]
         x0 = cx - tw_ / 2
         y0 = PAD if side == "top" else H - PAD - th_
-        draw_lines(x0, y0, lines, f_lab, "center", tw_)
+        draw_lines(x0, y0, lines, f_lab, "center", tw_, LINE, ink)
         rect = (x0, y0, x0 + tw_, y0 + th_)
         start = (cx, y0 + th_ + PAD) if side == "top" else (cx, y0 - PAD)
     boxes.append((name, rect))
@@ -175,6 +211,6 @@ os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
 im.save(out, optimize=True)
 if A.preview:
     pv = im.copy(); pv.thumbnail((1600, 1600)); pv.save(A.preview)
-print(f"-> {out} {im.size}；放進 {slot_w} 吋寬版位：標籤 {f_lab.size / px_per_pt:.1f}pt、標題 {f_tit.size / px_per_pt:.1f}pt；"
+print(f"-> {out} {im.size}；放進 {slot_w} 吋寬版位：標籤 {f_lab0.size / px_per_pt:.1f}pt、標題 {f_tit.size / px_per_pt:.1f}pt；"
       f"標籤 {len(S.get('labels', []))} 個", "OK" if not problems else "要改：" + "；".join(sorted(set(problems))))
 sys.exit(1 if problems else 0)

@@ -1,8 +1,10 @@
 // 沒有 node 的 Mac：用 macOS 內建的 JavaScriptCore（osascript -l JavaScript）檢查工作流腳本的語法，並用假代理空跑、數代理數。
 // 用法：osascript -l JavaScript wf_check_mac.js <腳本.js> <args.json> [load_mock.json]
 //   load_mock.json：給 lecture-gather 之類有「讀設定代理」的腳本，假代理遇到 label 開頭為 load: 時回傳它的內容。
-// 印出：代理數、每個代理的 label|model|effort|phase、各強度的代理數（effort_counts）、沒寫 effort 的代理（no_effort）、log、回傳值。
+// 印出：代理數、每個代理的 label|model|effort|phase、各強度的代理數（effort_counts）、各模型各強度的代理數（model_counts）、
+// 不是 opus 的代理（not_opus）、沒寫 effort 的代理（no_effort）、log、回傳值。
 // 每個 agent() 都要是 model opus，也都要明寫 effort（kit AGENTS.md 硬規則 8）；no_effort 不是空的就要改腳本或 args。
+// not_opus 只有教師當次選了例外（workflows/README.md「角色與模型」）才可以不是空的，而且要和報價的角色一致。
 ObjC.import('Foundation');
 const rd = (p) => $.NSString.stringWithContentsOfFileEncodingError(p, $.NSUTF8StringEncoding, null).js;
 async function main(argv) {
@@ -29,6 +31,8 @@ async function main(argv) {
   const noEffort = labels.filter(l => l.split('|')[2] === '-');
   const effortCounts = {};
   labels.forEach(l => { const e = l.split('|')[2]; effortCounts[e] = (effortCounts[e] || 0) + 1; });
-  return JSON.stringify({ syntax: 'OK', agents: labels.length, effort_counts: effortCounts, not_opus: notOpus, no_effort: noEffort, labels, logs, err, out }, null, 1);
+  const modelCounts = {};
+  labels.forEach(l => { const p = l.split('|'); const k = p[1] + ' ' + p[2]; modelCounts[k] = (modelCounts[k] || 0) + 1; });
+  return JSON.stringify({ syntax: 'OK', agents: labels.length, effort_counts: effortCounts, model_counts: modelCounts, not_opus: notOpus, no_effort: noEffort, labels, logs, err, out }, null, 1);
 }
 function run(argv) { main(argv).then(r => console.log(r), e => console.log('ERR ' + e)); return ''; }

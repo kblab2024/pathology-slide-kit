@@ -94,6 +94,14 @@ sizes:
 
 layout:                   # 選填：版型微調
   left_min_frac: 0.47     # left 版型文字欄最窄比例；條列都很短（每條一行）時可設 0.30，圖放大（預設 0.47＝不縮）
+  # left_fit_image: true  # 16:9 用（預設關）：left 版型遇到直幅或正方形的圖，把右欄用不到的寬給文字欄，圖一樣大
+
+# rewrite:                 # 選填：請 Gemini 重寫句子的設定（每一講必做，AGENTS.md 硬規則 17；scripts/rewrite_pack.py 讀這一段）
+#   label: C免疫            # 重寫包檔名用的簡稱（預設：課程代碼＋deck 代號）
+#   keep: ['^某一句引句的開頭', '我覺得']   # 照抄的行（正規表示式）：引句、教師自己的比喻與個人意見。數字卡片、封面、分隔張、國考題張本來就不給重寫
+#   src: [_archive/written/w_a.md]             # 句子所在的檔（預設素材池）；素材池是從批檔組裝的課才要寫
+#   notes: [_archive/written/w_a_notes.md]     # 移下投影片的細節檔（預設讀講稿檔的【講義補充】）
+#   digest_dir: _archive/written/digest         # 各段事實摘要 <段>.md（沒有就從 facts_R.json 列出）
 
 design:                   # 選填：覆寫 scripts/common.py 的 DESIGN 色票（藍×赤陶）
   cobaltd: "333F50"       # 此例：說明句底色改中性藍灰，讓 [[藍:]] 與國考正解才是藍

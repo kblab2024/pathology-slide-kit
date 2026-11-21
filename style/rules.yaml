@@ -655,6 +655,18 @@ rules:
     example_ok: '國考重要性：低'
     evidence: '他 35/35 份內容張 0 次'
   # ---- 22_條列與句型 ----
+  - id: BUL-39
+    level: WARN
+    scope: slide
+    kind: regex
+    pattern: "短命|接班|加緊補|關起來|救不了|壓得住|壓不住|耗光|打洞(?!樣)|摘掉|被吃掉|吃掉骨|做太少|做得少|做不出|撐出來|認出來|只挖洞|不補骨|住在骨髓|卡在這|卡在脾|綁不牢|黏不上$"
+    message: "擬人或俚俗的動詞（教師 2026-11-12：文法要是他的，不是 Claude 的口語）；改成平實的說法，除非是他的原句"
+    example_bad: "貧血(anemia)好了，神經救不了"
+    example_ok: "貧血(anemia)會改善，但是神經症狀不會"
+    evidence: "教師明令 2026-11-12；22_條列與句型 BUL-39 第 4 點"
+    guide_id: BUL-39
+    guide: 20_文字/22_條列與句型.md
+    level_note: "MUST 規則，但詞表只是提示（他的原句可以留），所以給 WARN；其餘九點要人讀"
   - id: BUL-14
     guide: 20_文字/22_條列與句型.md
     level: WARN

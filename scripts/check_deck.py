@@ -188,7 +188,31 @@ def main(course, pptx_path, deck, section=None):
         print(f"[ok] 國考題 {len(quiz)} 題 key 皆有效")
     if quiz and not built["exam"]:
         reds.append("此 deck 設定不放國考題，卻有 quiz 張")
-    lo, hi = course.deck(deck).get("per_section", [0, 10 ** 6])
+    # 硬規則 19（教師 2026-11-22，鐵律）：上限 110 張、國考題 15–18 題、兩小時三節、三小時四節。
+    # 國考複習（整講都是題目）與實驗講義不套：decks.<deck>.kind 寫 review 或 lab。
+    dk = course.deck(deck)
+    if dk.get("kind") not in ("review", "lab"):
+        cap = 110
+        if n > cap:
+            reds.append(f"硬規則 19：{n} 張，超過上限 {cap}（含封面、分隔張、國考題張）")
+        else:
+            print(f"[ok] 硬規則 19：{n} 張（上限 {cap}）")
+        if len(quiz) > 18:
+            reds.append(f"硬規則 19：國考題 {len(quiz)} 題，多於 18（每講 15–18 題）")
+        elif len(quiz) < 15:
+            warns.append(f"硬規則 19：國考題 {len(quiz)} 題，少於 15（每講 15–18 題；不考醫師國考的班用該班的國考，找不到就列給教師）")
+        else:
+            print(f"[ok] 硬規則 19：國考題 {len(quiz)} 題（15–18）")
+        hours = dk.get("hours")
+        want = {2: 3, 3: 4}.get(hours)
+        nsec = len(built["sections"])
+        if hours is None:
+            warns.append(f"硬規則 19：course.yaml 的 decks.{deck} 沒寫 hours（兩小時分三節、三小時分四節；現在 {nsec} 節）")
+        elif want and nsec != want:
+            reds.append(f"硬規則 19：{hours} 小時的課要分 {want} 節，現在 {nsec} 節")
+        elif want:
+            print(f"[ok] 硬規則 19：{hours} 小時、{nsec} 節")
+    lo, hi = dk.get("per_section", [0, 10 ** 6])
     for a, b, t in built["sections"]:
         k = b - a + 1
         if lo <= k <= hi:

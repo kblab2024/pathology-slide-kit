@@ -8,7 +8,7 @@
         <!-- IMG: <規格的 out，相對課程資料夾> ｜ 出處：… ｜ 內容：… -->
         <!-- labels: <規格.json，相對課程資料夾> -->
     gen_pptx 在 PPTX 上就不放圖版，改放規格的 "image"（沒有字的母圖，或程式畫的圖），標籤畫成文字方塊、指線、圓點，
-    教師在 PowerPoint 裡可以直接改字、拖、刪。一張投影片可以寫好幾行 labels（例：pair 的兩張圖各一份）；
+    教師在 PowerPoint 裡可以直接改字、拖、刪。規格另可寫 "brackets"（括線：豎線加兩端小橫、旁邊一個字，例：Reid 指數的 a、b；格式見 label_image.py）。一張投影片可以寫好幾行 labels（例：pair 的兩張圖各一份）；
     哪一份規格對哪一張圖，看規格的 "out" 和 IMG 的路徑是不是同一個檔。html_deck.py 不認 labels，照舊用 IMG 的圖版。
 
 排法和 label_image.py 相同：母圖四周依 margins 留白邊，side＝left／right／top／bottom 的標籤放白邊，指線從文字框拉到 point
@@ -79,6 +79,7 @@ def label_text(data):
     d = data or {}
     out = [t.get("text", "") for t in d.get("titles", [])]
     out += ["".join(_lines(lb)) for lb in d.get("labels", [])]
+    out += ["".join(_lines(bk)) for bk in d.get("brackets", []) if bk.get("zh")]
     return [t for t in out if t]
 
 
@@ -248,6 +249,30 @@ def place(g, slide, s, img, x, y, w, h):
         _leader(g, slide, pts, pt, name, halo)
         texts.append((x0, y0, tw, th, lines, pt, col, bold, align, f"標籤 {name}"))
         boxes.append((name, (x0, y0, x0 + tw, y0 + th)))
+
+    for bk in d.get("brackets", []):        # 括線：一條豎線、兩端各一小橫（指向圖），字在另一側（例：Reid 指數的 a、b）
+        pt = float(bk.get("pt", lab_pt))
+        bold = bool(bk.get("bold", True))
+        col = _color(g, bk.get("color"))
+        lines = _lines(bk) if bk.get("zh") else [str(bk.get("text", ""))]
+        name = "括線 " + lines[0]
+        lx, ya = to_in(bk["x"], bk["y0"])
+        yb = to_in(bk["x"], bk["y1"])[1]
+        side = bk.get("side", "left")        # 字在豎線的哪一側；小橫指向另一側（圖）
+        tick = float(bk.get("tick", 0.14))
+        sg = 1 if side == "left" else -1
+        lw = max(1.5, pt * 0.07)
+        for q, (a, b) in enumerate([((lx, ya), (lx, yb)), ((lx, ya), (lx + sg * tick, ya)), ((lx, yb), (lx + sg * tick, yb))], 1):
+            ln = _line_shape(slide, a[0], a[1], b[0], b[1])
+            ln.line.color.rgb = g.C(col)
+            ln.line.width = Pt(lw)
+            ln.name = f"標籤 {name} 線{q}"
+        tw, th = max(_tw(g, t, pt, bold) for t in lines), _lh(pt) * len(lines)
+        pad = 0.25 * pt / 72.0
+        cy = (ya + yb) / 2 + float(bk.get("dy", 0)) * (yb - ya)
+        x0, align = (lx - pad - tw, PP_ALIGN.RIGHT) if side == "left" else (lx + pad, PP_ALIGN.LEFT)
+        texts.append((x0, cy - th / 2, tw, th, lines, pt, col, bold, align, f"標籤 {name}"))
+        boxes.append((name, (x0, cy - th / 2, x0 + tw, cy + th / 2)))
 
     for a in texts:
         _text(g, slide, *a)

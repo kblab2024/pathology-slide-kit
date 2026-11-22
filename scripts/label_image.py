@@ -26,6 +26,9 @@
   at 的標籤預設墊白色圓角底；放在圖的空白處、不需要墊底時寫 "box": false。
   at 加 point：文字框放在 at，再從文字框的邊拉一條直線到 point（程式畫的圖在圖裡留空白放標籤時用，不必加白邊）。
   每個標籤可以另寫 "pt"（字級，不得低於 24）、"bold": true、"color": "六碼色碼"（例：圖上的編號 1–5、算式 3+4=7 用大一點的粗體）。
+  "brackets": [{"text": "a", "x": -0.03, "y0": 0.10, "y1": 0.92, "side": "left", "color": "C0392B"}]：括線（豎線在 x、從 y0 到 y1，
+    兩端各一小橫指向圖、長 tick 吋（預設 0.14），字在 side 那一側；可寫 zh/en 代替 text、pt、bold（預設粗體）、dy（字沿豎線上下移，
+    以括線長度的比例）），例：Reid 指數的 a（上皮到軟骨）與 b（腺體層）。
   同一份規格也可以畫成 PowerPoint 原生的文字方塊（文字方塊版）：素材池寫 <!-- labels: 規格.json -->，見 label_shapes.py。
   side＝left／right：文字框貼左／右白邊、垂直中心在 y；side＝top／bottom：文字框水平中心在 x、貼上／下白邊。
   elbow：true（預設）＝引線先水平再斜；false＝直線。
@@ -182,6 +185,27 @@ for lb in S.get("labels", []):
     for a, b in zip(pts, pts[1:]):
         segs.append((name, a, b))
 
+
+for bk in S.get("brackets", []):                              # 括線：豎線、兩端小橫指向圖，字在另一側
+    lines = ([bk["zh"]] + ([f"({bk['en']})"] if bk.get("en") else [])) if bk.get("zh") else [str(bk.get("text", ""))]
+    name = "括線 " + lines[0]
+    pt_ = float(bk.get("pt", lab_pt))
+    f_b = ImageFont.truetype(FB if bk.get("bold", True) else FR, max(8, round(pt_ * px_per_pt)))
+    LINE_b, PAD_b, ink = round(f_b.size * 1.18), round(f_b.size * 0.25), hexcolor(bk.get("color"))
+    lx, ya = to_px(bk["x"], bk["y0"])
+    yb = to_px(bk["x"], bk["y1"])[1]
+    side = bk.get("side", "left")
+    tick = float(bk.get("tick", 0.14)) * px_per_pt * 72.0
+    sg = 1 if side == "left" else -1
+    lwb = max(2, round(f_b.size * 0.07))
+    d.line([(lx, ya), (lx, yb)], fill=ink, width=lwb)
+    d.line([(lx, ya), (lx + sg * tick, ya)], fill=ink, width=lwb)
+    d.line([(lx, yb), (lx + sg * tick, yb)], fill=ink, width=lwb)
+    tw_, th_ = text_box(lines, f_b, LINE_b)
+    cy = (ya + yb) / 2 + float(bk.get("dy", 0)) * (yb - ya)
+    x0, align = (lx - PAD_b - tw_, "right") if side == "left" else (lx + PAD_b, "left")
+    draw_lines(x0, cy - th_ / 2, lines, f_b, align, tw_, LINE_b, ink)
+    boxes.append((name, (x0, cy - th_ / 2, x0 + tw_, cy + th_ / 2)))
 
 def overlap(a, b):
     return not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])

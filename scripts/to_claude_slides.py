@@ -77,7 +77,7 @@ class R:
 
     def credit(self, text):
         t = text if text.startswith(("圖", "資料來源")) else "圖：" + text
-        return f'<p style="font-size:{self.pt("credit")}px; color:#{self.D["grey"]}; line-height:1.25">{esc(t)}</p>'
+        return f'<p style="font-size:{self.pt("credit")}px; color:#{self.D["grey"]}; line-height:1.25">{brk(t)}</p>'      # 出處太長時可用「⏎」指定換行處（2026-11-22）
 
     def figure(self, im, w, h, label=None):
         parts = []

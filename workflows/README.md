@@ -10,6 +10,7 @@
 | `lecture-review.js` | 成品 6 面向審查（事實、聲音、術語、版面 PNG、國考、圖）→ 每面向 2 反駁 → 1 位修正者改來源檔並重產 | `courses/<課>/_archive/review/round<N>/`、修改後的 pool.md 等來源檔 |
 | `style-mining.js` | 從語料（他的 deck 傾印＋改稿對照）挖風格規則：每面向 1 挖掘 → 2 反駁 → 1 修訂（預設 22 面向）；給 course 時再寫該課撰寫 brief | `style_evidence/mining/<面向>_final.json/.md`、`style_evidence/writer_brief_<課>.md` |
 | `style-guide.js` | 由挖掘結果寫公開的風格指南：每檔撰寫 → 一致性＋完整性批評 → 逐檔修訂 → 索引、檢查清單、`style/rules.yaml` | 工具包 `style/guide/`、`style/rules.yaml`；批評紀錄在 `style_evidence/guide_review/` |
+| `tcm-fusion-research.js` | 中醫系講義（硬規則 19）：方劑（含組成藥）↔ 證型 ↔ 西醫病理三方對照，每個主題研究 → 查核；組報告 → 完整性批評 → 修訂；少而精的融合對照表（含照症狀想像的病↔證）→ 融合查核；詳細的教師手冊（`docs/中醫系講義流程.md`） | `courses/<課>/_archive/research/<主題>_<日期>/`：深度研究報告、`fuse_<deck>.json`（給 `scripts/fuse_prepare.py`）、教師手冊 |
 
 其他檔案：
 - `tools/done_from_journal.py`：從執行紀錄重建 DONE 表（見「續跑」）。
@@ -37,6 +38,7 @@
 | lecture-review | kit, materials, course, pptx | `round`（1）、`deck`、`pngs`／`sheets`（沒給就先派一個代理跑 export_pdf.py 產圖）、`lenses`（6 面向的子集）、`refuters`、`out`、`writer_brief`（預設 `style_evidence/writer_brief_<課>.md`）、`pages`（教科書頁圖資料夾，預設讀 course.yaml）、`effort`、`done` |
 | style-mining | kit, materials | `course`（給了才寫撰寫 brief）、`dims`（面向 id、前綴或 `{id,p,f}` 物件；預設 22 面向）、`corpus`、`out`、`date`、`refuters`、`effort`、`done` |
 | style-guide | kit, materials | `course`（把該課的教師明令與審查教訓併入）、`files`（只重寫這些檔，例 `["12_字級"]`）、`date`（frontmatter 的 last_verified）、`mining`、`corpus`、`effort`、`done` |
+| tcm-fusion-research | course_dir, run_dir, deck, lecture（這一講是什麼）, clusters（`[{key, title, scope}]`，每個主題一節）, pool, layout（成品的 `_layout.json`）, quiz_doc（國考題的中醫醫理與出處） | `facts_desc`、`robbins_pdf`（全書 PDF，事實帳以外的頁）、`robbins_pdf_offset`（16）、`python`（`python`）、`n_quiz`（15）、`n_slides`、`cap`（110）、`max_fuse`（5）、`max_inline`（5）、`sections_desc`、`effort`（high：研究、批評、修訂）、`effort_hard`（xhigh：查核、組報告、融合、融合查核、教師手冊）、`done`；範例 args 在私人 repo `courses/uro-kidney-b2/_archive/journals/tcm-fusion-research-args_uro.json` |
 
 ## 怎麼叫用（可直接複製）
 
@@ -164,6 +166,7 @@ Workflow({scriptPath: "/home/user/pathology-slide-kit/workflows/lecture-gather.j
 | lecture-review | 面向數 ×(1＋R) ＋ 1（沒給 pngs 時再＋1 算圖） | 6 面向：19–20 |
 | style-mining | 面向數 ×(2＋R) ＋ 1（有 course 時的 brief） | 22 面向：88–89 |
 | style-guide | 檔數 × 2 ＋ 3 | 23 檔：49 |
+| tcm-fusion-research | 主題數 × 2 ＋ 6 | 中乙後中泌尿 L1，9 個主題：24 |
 
 實測 token（2026-09 免疫課各次執行的代理紀錄），以 Opus 5.5 API 牌價換算（輸入 $4、快取寫入 $5、快取讀取 $0.20、輸出 $20／百萬 token；快取若以 1 小時計價，再多約 10–20%）：
 
@@ -175,6 +178,7 @@ Workflow({scriptPath: "/home/user/pathology-slide-kit/workflows/lecture-gather.j
 | lecture-review | 審查 $3–27、反駁 $2–16、修正 $17–21 | 第 1 輪 $149；第 2 輪 $377，其中「圖」面向開了兩千多次圖、單獨花 $235（現已在提示中限制每張圖只看一次） |
 | style-mining | 挖掘約 $12、反駁約 $7、修訂約 $9 | 約 $750–850（一次性；有新改稿才重跑受影響的面向） |
 | style-guide | 撰寫約 $10、修訂約 $6 | $408（一次性） |
+| tcm-fusion-research | 研究約 $3、查核約 $4、組報告與修訂與教師手冊各約 $8、融合兩位共約 $11 | 9 個主題約 $100、約 2.5 小時（2026-11-22，用量紀錄照牌價換算） |
 
 一門新課從 gather 到兩輪 review，照預設約 $950–1,200（只做一輪 review 約 $830–990）。這些是「用 API 牌價把實測 token 換算的等值金額」，用來比較各階段的大小；雲端 session 實際怎麼扣（先扣雲端 session 額度，用完改吃方案用量；usage credits 只在使用者打開開關時才扣）與 $250 這類額度能做到哪裡，見 `docs/cloud_session_教學.md` 第 9 節。額度有限時的做法，依省下的多寡排列：
 1. 風格兩支（mining、guide）不要重跑；只在教師親手改了新稿時，用 `dims`／`files` 只跑受影響的部分。

@@ -76,6 +76,8 @@ async function main() {
   const gatherLoad = { ok: true, gather_json: JSON.stringify(tpl), pages_json: JSON.stringify({ pages_dir: '/m/textbook/pages', page_offset: 166, stems, ext: 'jpg', halves: false }), notes: '' }
   const batches = { batches: [{ k: 1, slugs: ['a', 'b'], segments: ['S1-01'], prev: '', next: 'c' }, { k: 2, slugs: ['c'], segments: ['S1-02'], prev: 'b', next: '' }] }
   const batchLoad = { ok: true, json_text: JSON.stringify(batches), notes: '' }
+  const tcm = { ...base, deck: 'x', course_dir: '/m/courses/x', run_dir: '/m/courses/x/_archive/research/tcm', lecture: 'test', pool: '/m/courses/x/sources/x-pool.md',
+    layout: '/m/courses/x/成品/x_layout.json', quiz_doc: '/m/courses/x/成品/q.md', clusters: [{ key: 'a', title: 'A', scope: 's' }, { key: 'b', title: 'B', scope: 's' }] }
   const cases = [
     ['lecture-gather.js', base, gatherLoad, 13 * 4 + 3 + 14 * 3 - 1 + 1],
     ['lecture-gather.js', { ...base, parts: ['facts'], segments: ['S01', 'S02'], refuters: 1 }, gatherLoad, 2 * 3 + 1],
@@ -87,6 +89,8 @@ async function main() {
     ['style-mining.js', { kit: base.kit, materials: base.materials }, null, 22 * 4],
     ['style-mining.js', { ...base, dims: ['12_字級', 'EXAM'] }, null, 2 * 4 + 1],
     ['style-guide.js', { kit: base.kit, materials: base.materials, course: 'immune', date: '2026-09-25' }, null, 23 * 2 + 2 + 1],
+    ['tcm-fusion-research.js', tcm, null, 2 * 2 + 6],
+    ['tcm-fusion-research.js', { ...tcm, done: { 'research:a': '/old/sec_a.md' } }, null, 2 * 2 + 6 - 1],
     ['lecture-write.js', { kit: base.kit }, null, 0],
   ]
   for (const [f, a, lj, expect] of cases) {

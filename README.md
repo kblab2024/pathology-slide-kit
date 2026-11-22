@@ -50,7 +50,7 @@ pathology-slide-kit/
 ├─ style/
 │  ├─ guide/            老師投影片風格指南 28 檔（入口 00_README.md）
 │  └─ rules.yaml        機器可讀規則（style_check.py、check_written.py 讀）
-├─ question_banks/      醫師、牙醫師國考題庫 JSON（說明見該資料夾 README.md）
+├─ question_banks/      醫師、牙醫師、中醫師國考題庫 JSON（說明見該資料夾 README.md）
 ├─ examples/immune/     範例課程設定（course.yaml、brief.md）
 └─ docs/
    ├─ SOP_新教案流程.md       新教案從頭到交付的步驟與指令
@@ -58,6 +58,7 @@ pathology-slide-kit/
    ├─ 跨工具做法.md           沒有 Claude Code 的工具（Codex、Cursor、Copilot、Gemini CLI 等）怎麼跑工作流、設強度
    ├─ cloud_session_教學.md   給老師的雲端 session 入門（含費用）
    ├─ 教師偏好與決策.md       老師的教學理念、課程代碼、開工前要問的事、交付慣例
+   ├─ 中醫系講義流程.md       中醫系講義：中醫師國考、融合中醫的對照（方劑、證型、病理）
    └─ lessons_learned.md      管線踩過的坑
 ```
 

@@ -153,7 +153,7 @@ def main(course, pptx_path, deck, section=None):
     if over_w:
         warns.append(f"字元 >{S['char_warn']}（建議拆張或刪字）{len(over_w)} 張：{over_w[:12]}")
 
-    content = [s for s in built["slides"] if s["type"] not in NO_COUNT]
+    content = [s for s in built["slides"] if s["type"] not in NO_COUNT and not s.get("fuse")]      # 融合張（<!-- fuse: yes -->）是對照表，不算有圖率
     with_img = [s for s in content if any(i["exists"] for i in s["imgs"]) or s["type"] == "diagram"
                 or (s.get("flow") or {}).get("fig")]
     wanted = [s for s in content if not any(i["exists"] for i in s["imgs"]) and s.get("img_wanted")]
@@ -193,10 +193,12 @@ def main(course, pptx_path, deck, section=None):
     dk = course.deck(deck)
     if dk.get("kind") not in ("review", "lab"):
         cap = 150 if dk.get("hours") == 3 else 110
+        if dk.get("cap"):                       # 教師對這一講另外放寬（course.yaml 寫原話；例：L1 融合中醫放寬到 115）
+            cap = int(dk["cap"])
         if n > cap:
             reds.append(f"硬規則 19：{n} 張，超過上限 {cap}（含封面、分隔張、國考題張）")
         else:
-            print(f"[ok] 硬規則 19：{n} 張（上限 {cap}）")
+            print(f"[ok] 硬規則 19：{n} 張（上限 {cap}" + ("，教師放寬" if dk.get("cap") else "") + "）")
         if len(quiz) > 18:
             reds.append(f"硬規則 19：國考題 {len(quiz)} 題，多於 18（每講 15–18 題）")
         elif len(quiz) < 15:

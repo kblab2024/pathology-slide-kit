@@ -288,6 +288,7 @@ def parse_pool(course):
             "src": [x.strip() for x in re.split(r'[｜|]', src) if x.strip()] if src else [],
             "img_wanted": _field(body, "img_wanted"),
             "robbins": _field(body, "robbins"),
+            "fuse": _field(body, "fuse"),                # 融合張（中醫系講義的方劑、證型、病理對照；<!-- fuse: yes -->）：有圖率不算它
             "tbl": _field(body, "tbl"),
             "order": _field(body, "order"),
             "left_frac": _field(body, "left_frac"),      # left 版型這一張的文字欄最小比例（gen_pptx L_left）

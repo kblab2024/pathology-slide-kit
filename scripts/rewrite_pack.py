@@ -366,6 +366,28 @@ FUSE_TASK = """## 一、請你做的事（這一次是「融合」，不是整�
 
 """
 
+FUSE_RW_ADD = """- 這一講的學生是中醫系。這一次除了整張重寫，還要把**中醫的對照（方劑與組成、證型、對應的西醫病理）融合進去**：第五節有些張附了「要融合的中醫對照」（已經查核過），請在重寫那一張的時候把它融合進去（通常是一條，或併進原有的一條或一格）；標了「新加的融合張」的幾張是我們起草的對照表，請用你自己的話整張寫。融合不是另外教中醫，每一張的主角仍是病理。
+- 教師的話：「我要的是融合進原內容且符合張數跟時間限制 不是另外教中醫喔」「融合部分要少但精 不要耽誤到正課內容」「給gemini那個不只融合還要重寫喔」。中醫的部分寫短、寫準，不要擴寫；原來的張裡，中醫的部分一張最多一條。不新增投影片；每一張的字數上限已經含融合用的放寬（第五節每張第一行）。
+- 這一份有國考題的話，最後有第六節「國考題下面那一行說明」：請改寫成「方劑（關鍵組成）→ 證型 → 西醫病理」的一句或兩句。
+"""
+
+FUSE_RW_HOWTO = """# 給 Gemini 的重寫融合包怎麼用（{LABEL}，{DATE}，草稿）
+
+這幾份包請 Gemini「用它自己的話整張重寫」投影片上的字（不是潤飾），同時把中醫的對照（方劑與組成、證型、西醫病理）融合進附了素材的那幾張；有國考題的那一份，最後一節是國考題下面那一行說明。不新增投影片，張數與上課時間不變。
+
+1. 每一份包各開一個新對話，選最好的模型。
+2. 把檔案上傳（或整份貼上），訊息寫一句：
+   「請照這份檔案開頭的指示，用你自己的話重寫第五節的每一張投影片，把附了中醫對照的那幾張融合進去，並改寫第六節的國考題說明（有的話）。」
+3. 它寫到一半停下來，就回「繼續」。
+4. 它回的內容整段複製（程式碼區塊與最後的備註），貼給做投影片的 session，或存成文字檔再說一聲。
+5. 接下來由做投影片的 session 檢查（數字、頁碼、英文、上色、長度、照抄的行）、逐張對研究資料、套回來源檔、重產、算圖，交下一版。
+
+不要請它直接改 PPTX。回覆套回來以前，這一講的來源檔先不動。
+
+{KEEP}
+標題也開放它重寫（只是病名或構造名的標題不動）；不要它動標題的話，套回時可以不套。
+"""
+
 FUSE_HOWTO = """# 給 Gemini 的融合包怎麼用（{LABEL}，{DATE}，草稿）
 
 這份包請 Gemini 把中醫的對照（方劑與組成、證型、西醫病理）融合進原來的投影片：只改第五節列的幾張、每張最多加一條，不新增投影片，張數與上課時間不變；第六節是國考題下面那一行說明。
@@ -417,6 +439,7 @@ def cmd_make(a):
     setup_gp(course)
     cfg, files, entries = load(course, a.deck)
     fuse = json.load(open(a.fuse, encoding="utf-8")) if getattr(a, "fuse", None) else None
+    fuse_rw = bool(fuse) and bool(getattr(a, "rewrite", False))     # 重寫＋融合（教師 2026-11-22：「給gemini那個不只融合還要重寫喔」）
     fslides = {f["slug"]: f for f in (fuse or {}).get("slides", [])}
     for f in (fuse or {}).get("new_slides", []):          # 新加的融合張（已經寫進 rewrite.src 的檔）：整張請它寫
         fslides[f["slug"]] = dict(f, new=True, extra_chars=0, extra_lines=0)
@@ -427,6 +450,7 @@ def cmd_make(a):
         miss = [x for x in fslides if x not in {e["slug"] for e in entries}]
         if miss:
             print(f"  [注意] 融合表裡有 {len(miss)} 張不在可以重寫的張裡（略過）：{miss}")
+    if fuse and not fuse_rw:
         entries = [e for e in entries if e["slug"] in fslides]
     elif only:
         entries = [e for e in entries if e["num"] in only]
@@ -439,10 +463,14 @@ def cmd_make(a):
     deck_name = course.deck(a.deck).get("name") or a.deck
     rules = (RULES.replace("{AUDIENCE}", str(course.get("audience") or "醫學相關科系的大學部學生"))
              .replace("{TEXTBOOK}", str(cfg.get("textbook") or "Robbins 病理學第 11 版")).replace("{PER_LINE}", str(per_line())))
-    if fuse:
+    if fuse and not fuse_rw:
         task = (FUSE_TASK.replace("{AUDIENCE}", str(course.get("audience") or "醫學相關科系的大學部學生"))
                 .replace("{TEXTBOOK}", str(cfg.get("textbook") or "Robbins 病理學第 11 版")))
         rules = task + rules[rules.index("## 二、"):]
+    elif fuse_rw:
+        rules = rules.replace("- 順序：先讀第四節（研究資料），再照第五節一張一張重寫，照第三節的格式輸出。",
+                              FUSE_RW_ADD + "- 順序：先讀第四節（研究資料），再照第五節一張一張重寫，照第三節的格式輸出；有第六節的話，國考題的說明照第六節的格式輸出。", 1)
+    if fuse:
         rules = rules.replace("1. **內容**：", "1. **內容**（這一次的例外：第五節每一張「要融合的中醫對照」可以加進那一張，只能用那裡列的內容，不要再加別的）：", 1)
         rules = rules.replace("2. **數字與頁碼**：", "2. **數字與頁碼**（「要融合的中醫對照」裡的數字可以用）：", 1)
         rules = rules.replace("不要新增原文沒有的專有名詞。", "不要新增原文沒有的專有名詞（「要融合的中醫對照」裡的方劑、藥材、證型與病名除外）。", 1)
@@ -462,13 +490,22 @@ def cmd_make(a):
         k = max(1, math.ceil(len(p["items"]) / max(1, a.per_pack)))
         size = math.ceil(len(p["items"]) / k)
         split += [{"section": p["section"], "items": p["items"][i:i + size]} for i in range(0, len(p["items"]), size)]
-    if fuse:                                   # 融合包張數少：整講一份，教師只要開一個對話
+    if fuse and not fuse_rw:                   # 融合包張數少：整講一份，教師只要開一個對話
         split = [{"section": "全講", "items": entries}]
     mp = os.path.join(cfg["rv"], f"rewrite_manifest_{a.deck}.json")
     os.makedirs(cfg["rv"], exist_ok=True)
     manifest = json.load(open(mp, encoding="utf-8")) if (only and not fuse and os.path.exists(mp)) else {"deck": a.deck, "slides": {}}
     if fuse:
-        manifest["mode"] = "fuse"
+        manifest["mode"] = "rewrite_fuse" if fuse_rw else "fuse"
+    qassign = {}                               # 國考題說明放在哪一份包（只融合：最後一份；重寫＋融合：張號落在哪一份就放哪一份）
+    if fuse and fuse.get("quiz"):
+        pool_q = parse_pool(course)
+        nums_q = {b["id"].split("~")[0]: b["num"] for b in build_deck(course, a.deck)["slides"]}
+        his = [max(e["num"] for e in p["items"]) for p in split]
+        for q in fuse["quiz"]:
+            qn = nums_q.get(q["slug"], q.get("num"))
+            kk = next((i + 1 for i, h in enumerate(his) if qn is not None and qn <= h), len(split)) if fuse_rw else len(split)
+            qassign.setdefault(kk, []).append((qn, q))
     all_titles = {}
     prev = None
     for e in load(course, a.deck)[2] if only else entries:        # 「標題和上一張相同」照整講的張序判斷
@@ -479,8 +516,12 @@ def cmd_make(a):
         nums = [e["num"] for e in p["items"]]
         sec = re.sub(r"\([^)]*\)", "", p["section"]).split("｜")[-1].strip() or f"第{k}份"
         sec = re.sub(r"[\\/:*?\"<>|\s]+", "", sec)
-        title_line = (f"# 請把中醫的對照融合進這幾張投影片：{deck_name}（{sec}，第 {min(nums)}–{max(nums)} 張）\n\n" if fuse
-                      else f"# 請用你自己的話重寫這份投影片：{deck_name}（{sec}，第 {min(nums)}–{max(nums)} 張）\n\n")
+        if fuse and not fuse_rw:
+            title_line = f"# 請把中醫的對照融合進這幾張投影片：{deck_name}（{sec}，第 {min(nums)}–{max(nums)} 張）\n\n"
+        elif fuse_rw:
+            title_line = f"# 請用你自己的話重寫這份投影片，並把中醫的對照融合進去：{deck_name}（{sec}，第 {min(nums)}–{max(nums)} 張）\n\n"
+        else:
+            title_line = f"# 請用你自己的話重寫這份投影片：{deck_name}（{sec}，第 {min(nums)}–{max(nums)} 張）\n\n"
         out = [title_line, rules]
         segs = []
         for e in p["items"]:
@@ -554,22 +595,19 @@ def cmd_make(a):
             for r, cs in enumerate(rec["rows"]):
                 out.append(f"R{r}｜" + "｜".join(show(c, True) for c in cs) + "\n")
                 n_units += len(cs)
-        if fuse and k == len(split) and fuse.get("quiz"):
-            pool = parse_pool(course)
-            nums_q = {b["id"].split("~")[0]: b["num"] for b in build_deck(course, a.deck)["slides"]}
+        if qassign.get(k):
             out.append("\n## 六、國考題下面那一行說明\n\n國考題的題目與選項照考選部原文，不能改；題目下面有一行藍灰色的小字說明（我們寫的），"
                        "請把它改寫成「方劑（關鍵組成）→ 證型 → 西醫病理」的一句或兩句（最多約 70 個全形字，英文兩個字母算一個字），"
                        "只能用每一題列的素材。專有名詞寫「中文(English)」。輸出格式：一題一行，寫成 `Q 第 N 張｜新的說明`，放在同一個程式碼區塊的最後。\n")
-            for q in fuse["quiz"]:
-                qn = nums_q.get(q["slug"], q.get("num"))
-                cur_note = (pool.get(q["slug"]) or {}).get("quiz_note", "").replace(SOFT_BREAK, "")
+            for qn, q in qassign[k]:
+                cur_note = (pool_q.get(q["slug"]) or {}).get("quiz_note", "").replace(SOFT_BREAK, "")
                 out.append(f"\n### 第 {qn} 張（國考題 {q.get('key', '')}）\n現在的說明：{cur_note}\n素材：\n"
                            + "".join(f"  - {m.get('fact', '')}（{m.get('source', '')}）\n" for m in q.get("materials", []))
                            + f"建議（我們起草的）：{q.get('note', '')}\n")
                 manifest.setdefault("quiz", {})[str(qn)] = {"slug": q["slug"], "key": q.get("key", ""), "old": cur_note,
                                                              "allow": fuse_allow([m.get("fact", "") for m in q.get("materials", [])] + [q.get("note", "")])}
         text = "".join(out)
-        kind = "融合包" if fuse else "重寫包"
+        kind = "重寫融合包" if fuse_rw else ("融合包" if fuse else "重寫包")
         fn = os.path.join(a.out, f"給Gemini_{kind}_{label}_{k}{sec}_第{min(nums)}-{max(nums)}張.md")
         open(fn, "w", encoding="utf-8", newline="\n").write(text)
         print(f"-> {fn}（{len(text)} 字；要重寫 {len(p['items'])} 張、{n_units} 個條列與格子）")
@@ -580,9 +618,12 @@ def cmd_make(a):
         print(f"   照抄 第 {n} 張｜{t[:60]}")
     today = datetime.date.today().strftime("%Y%m%d")
     keep_txt = ("照抄、不給它重寫的行（共 %d 行）：\n" % len(keep_all) + "".join(f"- 第 {n} 張：{visible(t)[:50]}\n" for n, t in keep_all)) if keep_all else "這一講沒有指定照抄的行。\n"
-    if fuse:
+    if fuse and not fuse_rw:
         hp = os.path.join(a.out, f"0_怎麼用_融合包_{label}_{today}_草稿.md")
         open(hp, "w", encoding="utf-8", newline="\n").write(FUSE_HOWTO.replace("{LABEL}", label).replace("{DATE}", today))
+    elif fuse_rw:
+        hp = os.path.join(a.out, f"0_怎麼用_重寫融合包_{label}_{today}_草稿.md")
+        open(hp, "w", encoding="utf-8", newline="\n").write(FUSE_RW_HOWTO.replace("{LABEL}", label).replace("{DATE}", today).replace("{KEEP}", keep_txt))
     else:
         hp = os.path.join(a.out, f"0_怎麼用_重寫包_{label}_{today}_草稿.md")
         open(hp, "w", encoding="utf-8", newline="\n").write(HOWTO.replace("{LABEL}", label).replace("{DATE}", today).replace("{KEEP}", keep_txt))
@@ -905,7 +946,8 @@ def cmd_apply(a):
     for r in res:
         cnt[r["lvl"]] = cnt.get(r["lvl"], 0) + 1
     sims = [r["sim"] for r in res if r["sim"] is not None]
-    fuse_mode = json.load(open(os.path.join(rv, f"rewrite_manifest_{a.deck}.json"), encoding="utf-8")).get("mode") == "fuse"
+    man_mode = json.load(open(os.path.join(rv, f"rewrite_manifest_{a.deck}.json"), encoding="utf-8")).get("mode")
+    fuse_mode = man_mode == "fuse"
     barely = [] if fuse_mode else [r["n"] for r in res if r["sim"] is not None and (r["sim"] >= 0.9 or r["copied"]) and r["lvl"] not in ("已套", "已套後手改")]
     with open(rep, "w", encoding="utf-8", newline="\n") as f:
         f.write(f"# 重寫對照表（{tag}，{a.deck}）\n\n"
@@ -963,7 +1005,7 @@ def cmd_apply(a):
         print(f"退回包（要修 {len(fix)} 張、沒有回 {len(missing)} 張、幾乎沒有改 {len(lazy)} 張）→ {bk}")
     elif os.path.exists(bk):
         os.remove(bk)
-    if fuse_mode:
+    if man_mode in ("fuse", "rewrite_fuse"):
         mq = json.load(open(os.path.join(rv, f"rewrite_manifest_{a.deck}.json"), encoding="utf-8")).get("quiz", {})
         qs = {}
         for fn in a.replies:
@@ -1021,6 +1063,8 @@ def main():
     m.add_argument("--per-pack", type=int, default=45, help="一份包最多幾張（一節超過就平分）")
     m.add_argument("--fuse", help="融合包：JSON（slides：[{slug, materials:[{fact, source}], suggest, extra_chars, extra_lines}]、quiz：[{slug, key, note, materials}]）；"
                                   "只包表上的張，請 Gemini 把素材融合進原來的投影片（不新增張、不整張重寫），上限照 extra_chars 放寬")
+    m.add_argument("--rewrite", action="store_true", help="和 --fuse 一起用：整講照一般重寫包分節、每張整張重寫，附了素材的張同時融合，"
+                                                         "國考題說明放在張號所在的那一份（教師 2026-11-22：「給gemini那個不只融合還要重寫喔」）")
     p = sub.add_parser("apply", help="檢查回覆、寫對照表；--write 才套回來源檔")
     p.add_argument("--course", required=True)
     p.add_argument("--deck", required=True)

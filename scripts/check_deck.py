@@ -11,6 +11,7 @@
   6. 殘留佔位字（圖片待補、▦）與靜態頁碼：RED
   7. 國考題 key 必須在該 deck 的題庫；各節張數在 per_section 範圍（WARN）
   8. gen_pptx 的 _layout.json：估算溢出 >15% RED、其餘溢出 WARN；渲染錯誤 RED
+  9. 硬規則 20（圖的出處只寫版權物與期刊）：出處行寫了 Runway 或 ExpertPath RED；出處行有「繪製」（我們畫的圖）WARN；封面有「感謝」WARN
 """
 import argparse
 import json
@@ -82,6 +83,7 @@ def main(course, pptx_path, deck, section=None):
         print("[ok] 備忘稿 0 張")
 
     bad_font, small, smallish, placeholder, pagenum = [], [], [], [], []
+    bad_credit, drawn_credit, cover_thanks = [], [], []   # 硬規則 20
     runs = 0
     types = {s["num"]: s["type"] for s in built["slides"]}
     # 多欄小字的框架圖（course.yaml diagrams.<名> 寫了 cell_pt／label_pt／name_pt）：那一張的字級下限用它寫的值
@@ -104,6 +106,12 @@ def main(course, pptx_path, deck, section=None):
             if "圖片待補" in ptxt or "▦" in ptxt:
                 placeholder.append(idx)
             is_credit = ptxt.startswith(CREDIT_PREFIX)
+            if is_credit and re.search(r"runway|expertpath", ptxt, re.I):
+                bad_credit.append((idx, ptxt[:24]))
+            elif is_credit and "繪製" in ptxt:
+                drawn_credit.append(idx)
+            if types.get(idx) == "title" and "感謝" in ptxt:
+                cover_thanks.append(idx)
             for r in p.runs:
                 if not r.text.strip():
                     continue
@@ -133,6 +141,14 @@ def main(course, pptx_path, deck, section=None):
         print(f"[ok] 字級：出處 ≥{S['credit']}pt，其餘 ≥{S['min']}pt")
     if smallish:
         warns.append(f"{len(smallish)} 個 run 介於 {S['min']}–{S['body_warn']}pt（張 {sorted(set(i for i, _ in smallish))[:20]}）")
+    if bad_credit:
+        reds.append(f"硬規則 20：Runway、ExpertPath 的圖不寫出處 {len(bad_credit)} 處：{bad_credit[:8]}")
+    else:
+        print("[ok] 硬規則 20：沒有 Runway、ExpertPath 的出處行")
+    if drawn_credit:
+        warns.append(f"硬規則 20：出處行有「繪製」（我們畫的圖不寫出處；照教科書的圖改畫的待教師決定）：張 {sorted(set(drawn_credit))[:15]}")
+    if cover_thanks:
+        warns.append(f"硬規則 20：封面有致謝（投影片上真的有那位同事的圖才寫）：張 {cover_thanks}")
     if placeholder:
         reds.append(f"殘留佔位字：張 {placeholder}")
     if pagenum:

@@ -104,7 +104,7 @@ Mac、任務 B 與交件工具（不收 `--course`，除了 draw_flow 的 `--cou
 - `html_lab_deck.py <deck.json> --out <檔案.html> [--max-side 760] [--quality 60]`：實驗講義的 HTML 版（deck.json → 一個圖片內嵌的 HTML，幾何同 gen_lab_pptx，淡灰圖位照畫；img.marks 畫成疊在圖上的 SVG）；放 OneDrive 的版本壓到 4 MB 以下。
 - `strip_notes.py --check <檔.pptx …>`｜`strip_notes.py <來源.pptx> --out <新檔.pptx>`：查 PPTX 有沒有備忘稿（PowerPoint 的講者備註欄），或把備忘稿全部清掉另存新檔（硬規則 18；教師 2026-11-21「備忘稿全清掉 我不用那個東西 也不要讓學生看到」）。`--check` 只看：每份印張數、有字的備忘稿張數與字數，有字就結束碼 1；實驗講義、課程自己產的檔、要交的每一份 PPTX 交件前都跑。清的時候直接改 zip、不經 python-pptx 重存：只拿掉備忘稿頁、每張投影片指向它的關聯與登記，其他零件逐位元不變，寫完自己驗（CRC、張數、開得起來、沒有備忘稿頁）。不覆寫既有檔，也不直接寫進雲端同步資料夾；教師自己改過的定稿也可以清（另存新檔，原檔不動）。
 - `draw_flow.py <規格.json> <輸出資料夾> [--course <課程>] [--only 圖名…]`：程式畫的中英對照流程圖（機轉、病程、治療流程），印出放進版位後的實際 pt，最小 < 24pt 或超出畫布時結束碼 1。規格格式見該檔 docstring。**2026-11-12 起 PNG 只給 HTML 版用**：PPTX 上的流程圖由 gen_pptx 照同一份規格畫成 PowerPoint 原生圖形（下一條），教師才能改字。
-- `flow_shapes.py`（模組，gen_pptx 與 common 會匯入，不單獨執行）：素材池某張寫 `<!-- flow: <規格.json 相對課程資料夾>#<圖名> ｜ 出處：… -->`，gen_pptx 就在那張的圖區（flash／robbins／big 全寬、left 右欄）畫圓角框、箭頭、說明文字方塊與紅色 T 字線，不放 IMG 的圖檔；出處沒寫就用同張第一個 IMG 的出處。字級從 28 往下試到課程 `sizes.label`，放不下會記進 `_layout.json`（「流程圖」），check_deck 照報。規格裡的字會進 style_check（中英對照、用語）；check_deck 把這種張算成有圖。同張留著的 IMG（draw_flow 的 PNG）只有 html_deck 會用，規格改了要重畫。
+- `flow_shapes.py`（模組，gen_pptx 與 common 會匯入，不單獨執行）：素材池某張寫 `<!-- flow: <規格.json 相對課程資料夾>#<圖名> ｜ 出處：… -->`，gen_pptx 就在那張的圖區（flash／robbins／big 全寬、left 右欄）畫圓角框、箭頭、說明文字方塊與紅色 T 字線，不放 IMG 的圖檔；出處沒寫就用同張第一個 IMG 的出處（我們畫的流程圖照硬規則 20 不寫出處）。字級從 28 往下試到課程 `sizes.label`，放不下會記進 `_layout.json`（「流程圖」），check_deck 照報。規格裡的字會進 style_check（中英對照、用語）；check_deck 把這種張算成有圖。同張留著的 IMG（draw_flow 的 PNG）只有 html_deck 會用，規格改了要重畫。
 
 Gemini 重寫（每一講必做；`AGENTS.md` 硬規則 17、SOP 第 9b 步）：
 - `rewrite_pack.py make --course <課程> --deck <deck> --out <資料夾> [--only 12,13,20-25] [--per-pack 45]`：出重寫包，請別的模型（教師指定 Gemini）用它自己的話把每一張整個重寫。一節一份 `.md`（請它做的事、不能變的底線、輸出格式、研究資料、每張的原文與長度上限），另寫一份「怎麼用」；每張的原文記在 `<課程>/_archive/revoice/rewrite_manifest_<deck>.json`。封面、分隔張、國考題張、數字卡片與 `course.yaml` `rewrite.keep` 指定的行不給重寫。`--out` 放在 repo 與雲端同步資料夾以外，做好再複製過去。`--only` 只包內容改過的那幾張。
@@ -174,7 +174,7 @@ course.yaml 選填 `layout: {left_min_frac: 0.30}`：left 版型的條列都很�
 | diagram | 框架圖（course.yaml diagrams）。多欄小字的地圖（例：教師 9 月 B2 呼吸的 9 欄氣道地圖）在該框架圖寫 `cell_pt`、`label_pt`、`name_pt`、`gap`、`pad`、`label_w`、`node_h`、`row_cap`、`legend: true`（各組色塊＋`groups.<g>.name`）、`bullets_below: true`（條列畫在圖下，字級 `below_pt`）；check_deck 對那一張的字級下限改用它寫的值。框架圖張另寫 IMG 時變成「地圖條＋圖」：上方只畫亮的列，下面最多兩條說明句與一或兩張圖（2026-11-12） | 格子 ≥20pt；4 欄時每行約 7 個中文字，每格最多兩行（約 14 字，含英文）；多欄小字時格子的字由框架圖自己定 |
 
 ## 檢查門檻（course.yaml sizes）
-字級：出處 ≥ credit（14）、其餘 ≥ min（20），內文 < body_warn（24）WARN；每張字元 > char_warn WARN、> char_red RED；有圖率 < img_rate_min RED；殘留佔位字、靜態頁碼 RED；國考題 key 不在題庫 RED；估算溢出 >15% RED。
+字級：出處 ≥ credit（14）、其餘 ≥ min（20），內文 < body_warn（24）WARN；每張字元 > char_warn WARN、> char_red RED；有圖率 < img_rate_min RED；殘留佔位字、靜態頁碼 RED；國考題 key 不在題庫 RED；估算溢出 >15% RED；出處行寫了 Runway 或 ExpertPath RED、有「繪製」WARN、封面有「感謝」WARN（硬規則 20）。
 
 ## 常見錯誤
 - `找不到課程 'xxx' 的 course.yaml。試過：…`：看列出的路徑；多半是教材庫沒放在工具包同層，設 `SLIDEKIT_MATERIALS`。

@@ -105,6 +105,7 @@ Mac、任務 B 與交件工具（不收 `--course`，除了 draw_flow 的 `--cou
 - `strip_notes.py --check <檔.pptx …>`｜`strip_notes.py <來源.pptx> --out <新檔.pptx>`：查 PPTX 有沒有備忘稿（PowerPoint 的講者備註欄），或把備忘稿全部清掉另存新檔（硬規則 18；教師 2026-11-21「備忘稿全清掉 我不用那個東西 也不要讓學生看到」）。`--check` 只看：每份印張數、有字的備忘稿張數與字數，有字就結束碼 1；實驗講義、課程自己產的檔、要交的每一份 PPTX 交件前都跑。清的時候直接改 zip、不經 python-pptx 重存：只拿掉備忘稿頁、每張投影片指向它的關聯與登記，其他零件逐位元不變，寫完自己驗（CRC、張數、開得起來、沒有備忘稿頁）。不覆寫既有檔，也不直接寫進雲端同步資料夾；教師自己改過的定稿也可以清（另存新檔，原檔不動）。
 - `draw_flow.py <規格.json> <輸出資料夾> [--course <課程>] [--only 圖名…]`：程式畫的中英對照流程圖（機轉、病程、治療流程），印出放進版位後的實際 pt，最小 < 24pt 或超出畫布時結束碼 1。規格格式見該檔 docstring。**2026-11-12 起 PNG 只給 HTML 版用**：PPTX 上的流程圖由 gen_pptx 照同一份規格畫成 PowerPoint 原生圖形（下一條），教師才能改字。
 - `flow_shapes.py`（模組，gen_pptx 與 common 會匯入，不單獨執行）：素材池某張寫 `<!-- flow: <規格.json 相對課程資料夾>#<圖名> ｜ 出處：… -->`，gen_pptx 就在那張的圖區（flash／robbins／big 全寬、left 右欄）畫圓角框、箭頭、說明文字方塊與紅色 T 字線，不放 IMG 的圖檔；出處沒寫就用同張第一個 IMG 的出處（我們畫的流程圖照硬規則 20 不寫出處）。字級從 28 往下試到課程 `sizes.label`，放不下會記進 `_layout.json`（「流程圖」），check_deck 照報。規格裡的字會進 style_check（中英對照、用語）；check_deck 把這種張算成有圖。同張留著的 IMG（draw_flow 的 PNG）只有 html_deck 會用，規格改了要重畫。
+  - **分段路徑圖（`"kind": "stages"`；2026-11-22，中醫系講義的辨證路徑）**：上層一條分段的箭頭帶、下層每段一個白底細框；有 `steps` 的那一段在框裡由上往下排「標籤＋內容」，最後一列 `result` 用橘色。規格：`{"kind": "stages", "w": 12.13, "stages": [{"label": "臨床疾病", "muted": true, "head": "尚未確診", "lines": ["…"]}, {"label": "辨證", "steps": [{"tag": "症狀", "lines": ["…"]}, {"tag": "望診", "lines": ["…"]}, {"tag": "脈診", "lines": ["…"]}], "result": {"tag": "證型", "text": "…"}}, {"label": "方劑", "head": "…", "lines": ["…"]}]}`。欄寬照每段最長的一行量（每一行都不換行），多的寬照比例分；放不下時 check_deck 報「流程圖」或「流程圖的欄寬」。用 `<!-- type: big -->` 不寫條列，整張就是這張圖；draw_flow.py 畫同一個版面的 PNG 給 HTML 版。做法見 `docs/中醫系講義流程.md` 3.8。
 
 Gemini 重寫（每一講必做；`AGENTS.md` 硬規則 17、SOP 第 9b 步）：
 - `rewrite_pack.py make --course <課程> --deck <deck> --out <資料夾> [--only 12,13,20-25] [--per-pack 45]`：出重寫包，請別的模型（教師指定 Gemini）用它自己的話把每一張整個重寫。一節一份 `.md`（請它做的事、不能變的底線、輸出格式、研究資料、每張的原文與長度上限），另寫一份「怎麼用」；每張的原文記在 `<課程>/_archive/revoice/rewrite_manifest_<deck>.json`。封面、分隔張、國考題張、數字卡片與 `course.yaml` `rewrite.keep` 指定的行不給重寫。`--out` 放在 repo 與雲端同步資料夾以外，做好再複製過去。`--only` 只包內容改過的那幾張。
@@ -170,7 +171,7 @@ course.yaml 選填 `layout: {left_min_frac: 0.30}`：left 版型的條列都很�
 | robbins | 整張教科書圖 | 說明 ≤1 行 |
 | table3 | 表格（≥20pt；超過 table_max_rows 自動拆成同標題連張）。可加 `<!-- tbl: style=clean; col_w=3,4,4; colors=3D8168,BF5B3C; align=center; fill=on -->`：style＝band（預設，深色表頭＋斑馬紋）／clean（只有表頭下粗線與列間細線）／accent（clean＋每列首欄左側色帶與淡色底，色依 colors）；col_w 各欄相對寬度；align=center 首欄以外置中；fill 把多的高度分給各列（clean／accent 預設 on）；pad=tight 把 clean／accent 的列距收小。2026-10-20 教師：「表格要做得漂亮」「字要少」 | 每格短語 |
 | quiz | 國考題：course.yaml `decks.<deck>.quiz_style` 乙（預設；年次標題＋題幹選項 24–28pt，正解整段藍；標題格式 `quiz_label`，佔位 {年度} {第幾次}（一、二） {次}（1、2） {題號}；題幹色 `design.quiz_stem`，不寫＝deep）或 甲（1 列 3 欄表「正解字母粗體｜題號．題幹＋選項｜年度-次」，不放標題） | 官方原文 |
-| stats | 大數字卡片（`數字｜說明`） | 2–4 張卡 |
+| stats | 大數字（`數字｜說明`）：沒有框的數字欄（數字靠左、下一條細灰線、說明在線下、欄間直線；硬規則 21，2026-11-22 起不畫卡片） | 2–4 欄 |
 | diagram | 框架圖（course.yaml diagrams）。多欄小字的地圖（例：教師 9 月 B2 呼吸的 9 欄氣道地圖）在該框架圖寫 `cell_pt`、`label_pt`、`name_pt`、`gap`、`pad`、`label_w`、`node_h`、`row_cap`、`legend: true`（各組色塊＋`groups.<g>.name`）、`bullets_below: true`（條列畫在圖下，字級 `below_pt`）；check_deck 對那一張的字級下限改用它寫的值。框架圖張另寫 IMG 時變成「地圖條＋圖」：上方只畫亮的列，下面最多兩條說明句與一或兩張圖（2026-11-12） | 格子 ≥20pt；4 欄時每行約 7 個中文字，每格最多兩行（約 14 字，含英文）；多欄小字時格子的字由框架圖自己定 |
 
 ## 檢查門檻（course.yaml sizes）

@@ -80,7 +80,73 @@ def runs_of(line):
     return out
 
 
+def draw_stages(name, spec):
+    """分段路徑圖（"kind": "stages"，例：中醫系講義的辨證路徑）的 PNG，只給 HTML 版用。
+    版面和 PPTX 的原生圖形同一份計算（flow_shapes.stages_plan）；規格可寫 "w"（圖寬，吋，預設 12.33＝16:9 投影片扣掉兩邊 0.5 吋）。"""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import flow_shapes as fs
+    P, PX = fs.ST, 3 * EM                      # 每吋 3×EM px（24pt 的字＝EM px，和 draw_fig 同一個比例）
+    fnt = lambda size, bold: ImageFont.truetype(FB if bold else FR, int(round(EM * size / 24)))
+    w_in = float(spec.get("w", 12.33))
+    plan = fs.stages_plan(spec, w_in, lambda t, b: (F["b"] if b else F["r"]).getlength(t) / EM)
+    m = 0.15
+    im = Image.new("RGB", (int((w_in + 2 * m) * PX), int((plan["fh"] + 2 * m) * PX)), "white")
+    d = ImageDraw.Draw(im)
+    p = lambda v: int(round((v + m) * PX))
+    hx = lambda c: tuple(int(c[k:k + 2], 16) for k in (0, 2, 4))
+    blue = "%02X%02X%02X" % COL["blue"]
+    stages = spec.get("stages", [])
+    n, bh_, nt = len(stages), P["band_h"], P["notch"]
+    by, bh = bh_ + P["band_gap"], plan["body_h"]
+    lh = lambda size: size * 1.2 * P["line"] / 72.0
+    for i, st in enumerate(stages):
+        sx, sw = plan["xs"][i], plan["widths"][i]
+        segw = sw + P["gap"] + nt - 0.05 if i < n - 1 else sw
+        pts = [(sx, 0), (sx + segw - nt, 0), (sx + segw, bh_ / 2), (sx + segw - nt, bh_), (sx, bh_)]
+        if i:
+            pts.append((sx + nt, bh_ / 2))
+        d.polygon([(p(a), p(b)) for a, b in pts], fill=hx(fs.stages_fill(blue, i, n, st.get("muted"))))
+        d.text((p(sx + (segw + (nt if i else 0)) / 2 - nt / 2), p(bh_ / 2)), st.get("label", ""), font=fnt(P["label"], True),
+               fill="white", anchor="mm")
+        d.rectangle([p(sx), p(by), p(sx + sw), p(by + bh)], fill="white", outline=hx(fs.ST_HEX["box"]), width=3)
+        if not st.get("steps"):
+            yy = by + P["pad"]
+            d.text((p(sx + P["pad"]), p(yy + lh(P["head"]) / 2)), st.get("head", ""), font=fnt(P["head"], True),
+                   fill=COL["ink"], anchor="lm")
+            yy += lh(P["head"])
+            for ln in st.get("lines", []):
+                d.text((p(sx + P["pad"]), p(yy + lh(P["base"]) / 2)), ln, font=fnt(P["base"], False), fill=COL["ink"], anchor="lm")
+                yy += lh(P["base"])
+            continue
+        tx = sx + P["pad"]
+        cx = tx + P["tag_w"] + P["tag_gap"]
+        cy = by + P["pad"]
+        steps = list(st["steps"]) + [dict(st.get("result") or {}, _result=True)]
+        for k, sp in enumerate(steps):
+            rh, last = plan["rows"][k], sp.get("_result", False)
+            d.rounded_rectangle([p(tx), p(cy), p(tx + P["tag_w"]), p(cy + P["tag_h"])], radius=int(0.11 * PX),
+                                fill=COL["or"] if last else hx(fs.ST_HEX["tag"]))
+            d.text((p(tx + P["tag_w"] / 2), p(cy + P["tag_h"] / 2)), sp.get("tag", ""), font=fnt(P["tag"], True),
+                   fill="white" if last else COL["blue"], anchor="mm")
+            if last:
+                d.text((p(cx), p(cy + P["tag_h"] / 2)), sp.get("text", ""), font=fnt(P["result"], True), fill=COL["or"], anchor="lm")
+                break
+            for q, ln in enumerate(sp.get("lines", [])):
+                d.text((p(cx), p(cy + 0.045 + (q + 0.5) * lh(P["base"]))), ln, font=fnt(P["base"], False), fill=COL["ink"], anchor="lm")
+            top, bot, mid = cy + P["tag_h"] + 0.04, cy + rh + P["row_gap"] - 0.04, tx + P["tag_w"] / 2
+            d.rectangle([p(mid - 0.0125), p(top), p(mid + 0.0125), p(bot - 0.1)], fill=hx(fs.ST_HEX["conn"]))
+            d.polygon([(p(mid - 0.08), p(bot - 0.12)), (p(mid + 0.08), p(bot - 0.12)), (p(mid), p(bot))], fill=hx(fs.ST_HEX["conn"]))
+            cy += rh + P["row_gap"]
+    out = os.path.join(A.outdir, name + ".png")
+    im.save(out, optimize=True)
+    warn = [] if plan["need_w"] <= plan["avail_w"] + 0.05 else [f"欄寬不夠（要 {plan['need_w']:.2f} 吋、只有 {plan['avail_w']:.2f}；減字或拆行）"]
+    print(f"-> {out} {im.size}；分段路徑圖 {w_in:.2f}x{plan['fh']:.2f} 吋", "OK" if not warn else "要改：" + "；".join(warn))
+    return not warn
+
+
 def draw_fig(name, spec):
+    if spec.get("kind") == "stages":
+        return draw_stages(name, spec)
     H = int(spec["slot_h"] * 3 * EM * 1.6)
     im = Image.new("RGB", (W, H), "white")
     d = ImageDraw.Draw(im)

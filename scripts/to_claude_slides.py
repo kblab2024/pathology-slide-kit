@@ -222,14 +222,18 @@ class R:
                     + f'<div style="display:flex; flex-direction:column; gap:8px">{opts}</div>' + note_line)
             return self.section(s, body, note=note)
         if t == "stats":
+            # 硬規則 21（教師 2026-11-22「claude風框框看得很膩了」）：不畫淡色圓角卡片；和 gen_pptx 同一個排法：
+            # 數字靠左、下面一條細灰線、說明在線下，欄與欄之間一條直的細灰線。原本這裡漏了「數字｜說明」以外的條列，一併補上。
             tiles = [b.split("｜", 1) for b in s["bullets"] if "｜" in b]
-            cards = "".join(
-                f'<div style="flex:1; display:flex; flex-direction:column; gap:16px; align-items:center; '
-                f'justify-content:center; background:#{self.D["tint"]}; border:2px solid #{self.D["line"]}; '
-                f'border-radius:24px; padding:40px">'
-                f'<p style="font-size:{self.pt("stats_big")}px; font-weight:700; color:#{self.D["cobalt"]}">{esc(a)}</p>'
-                f'<p style="font-size:{self.pt("label")}px; text-align:center">{esc(b)}</p></div>' for a, b in tiles)
-            return self.section(s, self.title(s) + f'<div style="display:flex; gap:32px">{cards}</div>', note=note)
+            plain = [b for b in s["bullets"] if "｜" not in b]
+            cols = [self.D["cobalt"], self.D["terra"], self.D["cobaltd"], self.D["terrad"]]
+            cells = "".join(
+                f'<div style="flex:1; padding:0 40px; {"border-left:2px solid #" + self.D["line"] + ";" if i else ""}">'
+                f'<p style="font-size:{self.pt("stats_big")}px; font-weight:700; color:#{cols[i % 4]}; '
+                f'border-bottom:2px solid #{self.D["line"]}; padding-bottom:10px; margin-bottom:16px">{esc(a)}</p>'
+                f'<p style="font-size:{self.pt("label")}px; line-height:1.3">{esc(b)}</p></div>' for i, (a, b) in enumerate(tiles))
+            body = self.title(s) + f'<div style="display:flex; margin:10px 0 40px">{cells}</div>'
+            return self.section(s, body + (self.bullets(plain, "body_noimg") if plain else ""), note=note)
         if t in ("flash", "robbins", "big") or (t == "pair" and len(imgs) < 2):
             lead = (f'<p style="font-size:{self.pt("big")}px; line-height:1.25; color:#{self.D["deep"]}">'
                     + "<br>".join(rich(bullet_level(b)[1], self.E) for b in s["bullets"]) + "</p>"

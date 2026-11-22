@@ -886,24 +886,31 @@ def L_quiz(slide, s, qs):
 
 
 def L_stats(slide, s):
+    """大數字（條列寫「數字｜說明」）。教師 2026-11-22：「51跟65這種claude風框框看得很膩了 可以換換口味嗎(也寫進鐵則)」
+    （硬規則 21）：不畫淡色底的圓角卡片（卡片裡置中的大數字＋小字說明）。改成沒有框的數字欄：每個數字一欄、靠左，
+    數字下面一條細灰線，說明寫在線下；欄與欄之間一條直的細灰線；沒有底色、沒有陰影、沒有圓角。"""
     set_bg(slide, G.BG)
     y0 = content_title(slide, s)
     tiles = [b.split("｜", 1) for b in s["bullets"] if "｜" in b]
     plain = [b for b in s["bullets"] if "｜" not in b]
     if tiles:
         n = len(tiles)
-        gap = 0.3
-        cw = (G.SW - 2 * G.M - (n - 1) * gap) / n
-        ch = 2.4
+        gap = 0.7
+        cw = (G.SW - 2 * G.M - 0.2 - (n - 1) * gap) / n
         cols = [G.D["cobalt"], G.D["terra"], G.D["cobaltd"], G.D["terrad"]]
+        nh = G.S["stats_big"] * 1.2 / 72.0
+        lab_h = max(n_lines(lab.strip(), G.S["label"], cw) for _, lab in tiles) * line_h(G.S["label"], 1.1)
+        top, ch = y0 + 0.2, nh + 0.22 + lab_h
         for i, (big, label) in enumerate(tiles):
-            x = G.M + i * (cw + gap)
-            rect(slide, x, y0 + 0.1, cw, ch, hexc=G.D["tint"], line_hex=G.D["line"], rounded=True)
-            _, tf = textbox(slide, x + 0.12, y0 + 0.1, cw - 0.24, ch, anchor=MSO_ANCHOR.MIDDLE)
-            para(tf, big.strip(), G.S["stats_big"], color=cols[i % 4], bold=True, align=PP_ALIGN.CENTER,
-                 first=True, line=1.0, space_after=6)
-            para(tf, label.strip(), G.S["label"], align=PP_ALIGN.CENTER, line=1.1)
-        y0 += ch + 0.3
+            x = G.M + 0.1 + i * (cw + gap)
+            _, tf = textbox(slide, x, top, cw, nh)
+            para(tf, big.strip(), G.S["stats_big"], color=cols[i % 4], bold=True, first=True, line=1.0, space_after=0)
+            rect(slide, x, top + nh + 0.07, cw, 0.014, hexc=G.D["line"])
+            _, tf = textbox(slide, x, top + nh + 0.18, cw, lab_h + 0.1)
+            para(tf, label.strip(), G.S["label"], first=True, line=1.1, space_after=0)
+            if i:
+                rect(slide, x - gap / 2 - 0.007, top + 0.05, 0.014, ch - 0.05, hexc=G.D["line"])
+        y0 = top + ch + 0.35
     if plain:
         render_bullets(slide, s, plain, G.M + 0.1, y0, G.SW - 2 * G.M - 0.2, G.SH - y0 - 0.45, G.S["body_noimg"])
 

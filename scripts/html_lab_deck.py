@@ -161,7 +161,7 @@ def bg_html(c, bg_pt):
             parts.append(box(BG_X, BG_Y, BG_W, BG_H, "<ul>" + "".join(lis) + "</ul>"))
             y = BG_Y + bullets_need(page["bullets"], bg_pt) + TBL_GAP
         if page["rows"] and layout:
-            rows, widths, _ = layout
+            rows, widths = layout[0], layout[1]   # gen_lab_pptx 2026-11-24 起回傳 (rows, widths, row_h, 表格字級)
             cols = "".join(f'<col style="width:{w * PX:.0f}px">' for w in widths)
             trs = []
             for k, i in enumerate([0] + page["rows"]):

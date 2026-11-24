@@ -1,9 +1,18 @@
 # -*- coding: utf-8 -*-
-"""實驗講義 PPTX：讀 deck.json，照教師 2026 自製實驗講義（〈病理學實驗_A1_發炎〉）的版型產 16:9 PPTX。
+"""實驗講義 PPTX：讀 deck.json，產 16:9 PPTX。
 
-用法：python gen_lab_pptx.py <deck.json> --out <輸出.pptx> [--report <報告.json>] [--src-list <清單.md>] [--notes] [--bg-pt 24]
-                              [--img-max-side 1600] [--jpeg-quality 82]
-      python gen_lab_pptx.py --fit <deck.json 或節檔.json> [--bg-pt 24] [--bullets]
+版面模式（2026-11-24 教師：「把以後的實驗講義都改成這個mode」）：
+  rd（預設）  大堂課新預設的版面、字大一號（呼吸二重設計版；kit templates/course.template.yaml）：
+              標題靠左粗體 32pt、左邊藍色直條、下面淡色細線；內容張冰藍灰底；截圖與圖加白邊細框；
+              說明句 24pt；背景張條列 28pt、表格 26pt（medical 樣式：淡冰藍表頭、首欄赤棕粗字、頂底深藍線、列間細線）；
+              出處 16pt；封面與分隔張深藍底、右側色塊、橘色直條（封面 44pt、分隔張主題 40pt、玻片行 28pt）。
+              截圖註記（紅箭頭、紅圈、24pt 標籤）不變。
+  classic     照教師 2026 自製實驗講義（〈病理學實驗_A1_發炎〉）的原樣（下面「版型」那一段）。
+              2026-11-24 以前交的講義重產要原來的樣子：deck.json 寫 "style": "classic"，或加 --style classic。
+
+用法：python gen_lab_pptx.py <deck.json> --out <輸出.pptx> [--report <報告.json>] [--src-list <清單.md>] [--notes] [--bg-pt N]
+                              [--style rd|classic] [--img-max-side 1600] [--jpeg-quality 82]
+      python gen_lab_pptx.py --fit <deck.json 或節檔.json> [--bg-pt N] [--bullets] [--style rd|classic]
         只量字、不產檔：逐張印出需要的高度對可用高度（撰寫代理自查用；量法和正式產檔同一套）
 
 deck.json（實驗講義工作流的輸出）：
@@ -33,7 +42,7 @@ deck.json 最上層 "panel": true：圖框與說明句底下各墊一塊淺灰�
   沒寫就不墊（骨與關節實驗講義是不墊的版本）。"bullets": true：說明句每段前加「•」（懸掛縮排 0.27 吋、段距 14pt），
   也是發炎講義的原樣。--fit 量 deck.json 時照檔裡的 bullets 量；量單張或節檔時用 --bullets。
 
-版型（幾何取自教師的發炎講義，單位吋，投影片 13.33×7.5）：
+classic 的版型（幾何取自教師的發炎講義，單位吋，投影片 13.33×7.5；rd 的圖框與說明句位置相同）：
   封面      一行 54pt，置中
   分隔張    藍底 143F9C、白字：「Section N」13.5pt，主題 45pt（一到兩行），玻片行 42pt；左緣 1.24、寬 10.86
   內容張    標題一行 30pt 置中（y 0.44）；圖框 6.14×5.32 在 (0.52,1.66)（左）或 (6.67,1.66)（右），
@@ -47,7 +56,7 @@ deck.json 最上層 "panel": true：圖框與說明句底下各墊一塊淺灰�
 量字：沿用 gen_pptx 的字型量測（Windows 微軟正黑體；Mac 用 PowerPoint 內建的 MSJH；雲端 Noto Sans CJK TC）。
 報出：
   overflow  放不下（說明句或背景條列總高超過可用高度、表格單列放不下、分隔張主題或玻片行超過一行）
-  rule      違反版型規則但仍放得下（標題超過一行、說明句超過 6 行）
+  rule      違反版型規則但仍放得下（classic：標題超過一行、說明句超過 6 行；rd：說明句超過 8 行，標題到兩行都可以、三行算放不下）
 標題裡的「\n」是手動換行（例：「DS22 瀰漫性大 B 細胞淋巴瘤\n(DIFFUSE LARGE B-CELL LYMPHOMA)低倍」），兩行仍算 rule。
 有 overflow 時結束碼 1。報告另寫 ids（id → 張號；背景張接續時寫第一張）與各種圖位的格數。
 """
@@ -69,7 +78,8 @@ from pptx.util import Inches, Pt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import bullet_level, clear_doc_props  # noqa: E402
-from gen_pptx import TABLE_LINE_K, _TOK, _font, _w, em, line_h, measure_font_info, n_lines  # noqa: E402
+from gen_pptx import (NO_GRID_STYLE, TABLE_LINE_K, _TOK, _font, _w, cell_borders, em, line_h,  # noqa: E402
+                      measure_font_info, n_lines)
 
 SW, SH = 13.33, 7.5
 BLUE = "143F9C"
@@ -97,6 +107,32 @@ TBL_GAP = 0.15
 IMG_MAX_SIDE = 1600
 KINDS = ("shot", "bg", "gx", "sc")
 SLOT_NAME = {"shot": "截圖待補", "gx": "圖待補", "sc": "示意圖待換"}
+
+# ---------------- 版面模式（2026-11-24 教師：「把以後的實驗講義都改成這個mode」） ----------------
+SZ_CLASSIC = dict(SZ)
+SZ_RD = {"cover": 44, "label": 20, "theme": 40, "glass": 28, "title": 32, "body": 24, "credit": 16, "table": 26}
+RDC = {"canvas": "F4F8FB", "title": "10243A", "bar": "2563A8", "rule": "D6E0EB", "ink": "1E2631", "grey": "64748B",
+       "bullet": "2563A8", "deep": "14263B", "block": "182D45", "accent": "E06B1F", "sub": "CBD5E1",
+       "tbl_head": "E8EFF7", "tbl_line": "D6E0EB", "tbl_first": "9A4618", "mat": "CFD9E5"}   # 同 kit 課程範本的 design
+RD = {"on": False}
+GEO = {"bg_line": BG_LINE, "max_lines": BODY_MAX_LINES}   # rd 說明句上限 8 行：24pt 八行約等於 20.2pt 六行的字數
+MAT_PAD, MAT_W = 0.08, 0.75     # 照片白邊（吋）、細框與標題細線（pt）
+RD_TITLE_X, RD_TITLE_Y = 0.52, 0.30
+
+
+def use_style(name):
+    """設定版面模式（沒寫＝rd）；回傳實際用的名字。"""
+    on = (name or "rd") != "classic"
+    RD["on"] = on
+    SZ.clear()
+    SZ.update(SZ_RD if on else SZ_CLASSIC)
+    GEO["bg_line"] = 1.3 if on else BG_LINE
+    GEO["max_lines"] = 8 if on else BODY_MAX_LINES
+    return "rd" if on else "classic"
+
+
+def default_bg_pt():
+    return 28 if RD["on"] else 24
 
 
 def textbox(slide, x, y, w, h, anchor=MSO_ANCHOR.TOP):
@@ -183,12 +219,28 @@ def side_need(text):
 
 def title_lines(title):
     """標題行數；標題裡的「\n」是手動換行（例：長的英文全名自己成一行，不讓「低倍」單獨掉到第二行）。"""
-    return sum(n_lines(seg, SZ["title"], TITLE_W) for seg in str(title).split("\n"))
+    return sum(n_lines(seg, SZ["title"], title_w(), bold=RD["on"]) for seg in str(title).split("\n"))
+
+
+def title_w():
+    return SW - 2 * RD_TITLE_X - 0.26 if RD["on"] else TITLE_W
+
+
+def bg_area(title):
+    """背景張條列區的 (y, 高)：classic 固定；rd 的標題下有細線，兩行標題時往下移。"""
+    if not RD["on"]:
+        return BG_Y, BG_H
+    rule_y = RD_TITLE_Y + title_lines(title) * line_h(SZ["title"], 1.1) + 0.12
+    y = max(BG_Y, rule_y + 0.30)
+    return y, BG_Y + BG_H - y
 
 
 def check_title(rep, where, title):
     tk = title_lines(title)
-    if tk > 1:
+    if RD["on"]:     # rd：兩行標題還在細線與圖框之間，三行才壓到圖
+        if tk > 2:
+            rep.add("overflow", where, "標題超過兩行", tk, 2, title)
+    elif tk > 1:
         rep.add("rule" if tk == 2 else "overflow", where, "標題超過一行", tk, 1, title)
     return tk
 
@@ -197,8 +249,8 @@ def check_side(rep, where, text):
     lines, need = side_need(text)
     if need > IMG_H + 0.05:
         rep.add("overflow", where, "說明句放不下", round(need, 2), IMG_H, " / ".join(text))
-    elif lines > BODY_MAX_LINES:
-        rep.add("rule", where, f"說明句超過 {BODY_MAX_LINES} 行", lines, BODY_MAX_LINES, " / ".join(text))
+    elif lines > GEO["max_lines"]:
+        rep.add("rule", where, f"說明句超過 {GEO['max_lines']} 行", lines, GEO["max_lines"], " / ".join(text))
     return lines, need
 
 
@@ -206,7 +258,7 @@ def bullets_need(bullets, size):
     need = 0.0
     for b in bullets:
         lvl, t = bullet_level(b)
-        need += n_lines(t, size, BG_W - (BG_IND + 0.40 * lvl)) * line_h(size, BG_LINE) + BG_SPACE / 72.0
+        need += n_lines(t, size, BG_W - (BG_IND + 0.40 * lvl)) * line_h(size, GEO["bg_line"]) + BG_SPACE / 72.0
     return need
 
 
@@ -242,23 +294,25 @@ def plan_bg(c, size, rep, where):
     回傳 [{"bullets": [...], "rows": [列索引…], "need": 高度}]，rows 不含表頭（表頭每頁都放）。"""
     bullets = side_text(c)
     tbl = [r for r in (c.get("table") or []) if r]
+    _, bh = bg_area(c.get("title", ""))
     need_b = bullets_need(bullets, size) if bullets else 0.0
-    if need_b > BG_H + 0.05:
-        rep.add("overflow", where, "背景條列放不下", round(need_b, 2), BG_H, " / ".join(bullets))
+    if need_b > bh + 0.05:
+        rep.add("overflow", where, "背景條列放不下", round(need_b, 2), round(bh, 2), " / ".join(bullets))
     pages = [{"bullets": bullets, "rows": [], "need": need_b}]
     if len(tbl) < 2:
         return pages, None
-    rows, widths, row_h = table_layout(tbl, size)
+    tsize = SZ.get("table", size) if RD["on"] else size
+    rows, widths, row_h = table_layout(tbl, tsize)
     head = row_h[0]
     cur = pages[0]
     used = need_b + (TBL_GAP if bullets else 0.0)   # 這一頁表格之前已用掉的高度
     for i in range(1, len(rows)):
         h = row_h[i]
-        if head + h > BG_H + 0.05:
-            rep.add("overflow", where, f"表格第 {i} 列一頁放不下", round(head + h, 2), BG_H, " / ".join(rows[i]))
+        if head + h > bh + 0.05:
+            rep.add("overflow", where, f"表格第 {i} 列一頁放不下", round(head + h, 2), round(bh, 2), " / ".join(rows[i]))
         add_h = h + (0.0 if cur["rows"] else head)          # 這頁第一列要連表頭一起放
         empty = not cur["rows"] and not cur["bullets"]       # 空白頁：再高也先放（放不下已報 overflow）
-        if used + add_h <= BG_H + 0.05 or empty:
+        if used + add_h <= bh + 0.05 or empty:
             cur["rows"].append(i)
             used += add_h
             cur["need"] = used
@@ -266,11 +320,45 @@ def plan_bg(c, size, rep, where):
             cur = {"bullets": [], "rows": [i], "need": head + h}
             pages.append(cur)
             used = head + h
-    return pages, (rows, widths, row_h)
+    return pages, (rows, widths, row_h, tsize)
 
 
 # ---------------- 產檔 ----------------
+def _rect(s, x, y, w, h, color, name=None, line=None):
+    """實心矩形（不帶主題樣式與陰影）；line＝(粗細 pt, 色) 時畫細框。"""
+    sp = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h))
+    _plain_shape(sp)
+    sp.fill.solid()
+    sp.fill.fore_color.rgb = RGBColor.from_string(color)
+    if line:
+        sp.line.color.rgb = RGBColor.from_string(line[1])
+        sp.line.width = Pt(line[0])
+    else:
+        sp.line.fill.background()
+    if name:
+        sp.name = name
+    return sp
+
+
+def add_title_rd(s, title):
+    """rd 的標題：左邊藍色直條、靠左粗體、下面一條淡色細線（同大堂課 gen_pptx 的 content_title）。"""
+    h = title_lines(title) * line_h(SZ["title"], 1.1)
+    _rect(s, RD_TITLE_X, RD_TITLE_Y + 0.06, 0.085, max(0.3, h - 0.04), RDC["bar"], "標題 直條")
+    tf = textbox(s, RD_TITLE_X + 0.26, RD_TITLE_Y, title_w(), h + 0.1)
+    segs = str(title).split("\n")
+    p = add_para(tf, segs[0], SZ["title"], RDC["title"], first=True, line=1.1, bold=True)
+    for seg in segs[1:]:
+        p.add_line_break()
+        r = p.add_run()
+        r.text = seg
+        _font(r, SZ["title"], RDC["title"], True)
+        r.font.color.rgb = RGBColor.from_string(RDC["title"])
+    _rect(s, RD_TITLE_X, RD_TITLE_Y + h + 0.12, SW - 2 * RD_TITLE_X, MAT_W / 72.0, RDC["rule"], "標題 分隔線")
+
+
 def add_title(s, title):
+    if RD["on"]:
+        return add_title_rd(s, title)
     tk = title_lines(title)
     tf = textbox(s, (SW - TITLE_W) / 2, TITLE_Y, TITLE_W, 0.47 if tk <= 1 else 0.93)
     segs = str(title).split("\n")
@@ -288,7 +376,7 @@ def add_side_text(s, side, text):
     tf = textbox(s, TXT_X[tside], IMG_Y, TXT_W, IMG_H, MSO_ANCHOR.MIDDLE)
     bul = STYLE["bullets"]
     for i, t in enumerate(text):
-        p = add_para(tf, t, SZ["body"], INK, first=(i == 0),
+        p = add_para(tf, t, SZ["body"], RDC["ink"] if RD["on"] else INK, first=(i == 0),
                      space_after=0 if bul else (SPACE_AFTER if i < len(text) - 1 else 0))
         if bul:
             from lxml import etree
@@ -334,21 +422,26 @@ def img_bytes(path):
 def add_real_image(s, path, side, credit_text, cid):
     data, (iw, ih) = img_bytes(path)
     x, y, w, h = IMG_X[side], IMG_Y, IMG_W, IMG_H
+    pad = MAT_PAD if RD["on"] else 0.0          # rd：圖外一圈白邊細框，圖往內縮
+    x, y, w, h = x + pad, y + pad, w - 2 * pad, h - 2 * pad
+    clh = 0.28 if RD["on"] else 0.25            # 出處一行的高（16pt／14pt）
     t = ""
     if credit_text:
         t = credit_text if credit_text.startswith(("圖", "資料來源", "示意圖")) else "圖：" + credit_text
         k = n_lines(t, SZ["credit"], w)
-        h = min(h, SH - 0.08 - 0.25 * k - 0.04 - y)   # 出處行放圖下，不壓圖（2026-10-16 實排：兩行出處壓到直式圖的下緣）
+        h = min(h, SH - 0.08 - clh * k - 0.04 - y - pad)   # 出處行放圖下，不壓圖（2026-10-16 實排：兩行出處壓到直式圖的下緣）
     if iw / ih > w / h:
         dw, dh = w, w * ih / iw
     else:
         dw, dh = h * iw / ih, h
     dx, dy = x + (w - dw) / 2, y + (h - dh) / 2
+    if pad:
+        _rect(s, dx - pad, dy - pad, dw + 2 * pad, dh + 2 * pad, WHITE, f"白邊 {cid}", line=(MAT_W, RDC["mat"]))
     pic = s.shapes.add_picture(io.BytesIO(data), Inches(dx), Inches(dy), Inches(dw), Inches(dh))
     pic.name = f"圖 {cid}"
     if t:
-        tf = textbox(s, x, dy + dh + 0.04, w, 0.25 * k)
-        add_para(tf, t, SZ["credit"], GREYTXT, first=True)
+        tf = textbox(s, x, dy + dh + pad + 0.04, w, clh * k)
+        add_para(tf, t, SZ["credit"], RDC["grey"] if RD["on"] else GREYTXT, first=True)
     return pic
 
 
@@ -499,15 +592,16 @@ def add_marks(s, cid, marks, pic, label_pt=MARK_LABEL_PT):
     return len(shapes), problems
 
 
-def add_bg_page(s, page, layout, size):
-    y = BG_Y
+def add_bg_page(s, page, layout, size, area=None):
+    by, bh = area or (BG_Y, BG_H)
+    y = by
     if page["bullets"]:
-        tf = textbox(s, BG_X, BG_Y, BG_W, BG_H)
+        tf = textbox(s, BG_X, by, BG_W, bh)
         for i, b in enumerate(page["bullets"]):
             lvl, t = bullet_level(b)
             ind = BG_IND + 0.40 * lvl
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-            p.line_spacing = BG_LINE
+            p.line_spacing = GEO["bg_line"]
             p.space_after = Pt(BG_SPACE)
             pPr = p._p.get_or_add_pPr()
             pPr.set("hangingPunct", "0")
@@ -515,33 +609,54 @@ def add_bg_page(s, page, layout, size):
             pPr.set("indent", str(int(-0.32 * 914400)))
             r = p.add_run()
             r.text = "• " if lvl == 0 else "– "
-            _font(r, size, BLUE if lvl == 0 else GREYTXT, True)
+            if RD["on"]:
+                _font(r, size, RDC["bullet"] if lvl == 0 else RDC["grey"], True)
+            else:
+                _font(r, size, BLUE if lvl == 0 else GREYTXT, True)
             r = p.add_run()
             r.text = t
-            _font(r, size, INK, False)
-        y = BG_Y + bullets_need(page["bullets"], size) + TBL_GAP
+            _font(r, size, RDC["ink"] if RD["on"] else INK, False)
+        y = by + bullets_need(page["bullets"], size) + TBL_GAP
     if page["rows"] and layout:
-        rows, widths, row_h = layout
+        rows, widths, row_h, tsize = layout
         idx = [0] + page["rows"]
         hs = [row_h[i] for i in idx]
         t = s.shapes.add_table(len(idx), len(widths), Inches(BG_X), Inches(y), Inches(BG_W), Inches(sum(hs))).table
         t.first_row = False
         t.horz_banding = False
+        if RD["on"]:     # medical 樣式：不要內建的格線
+            sid = t._tbl.tblPr.find(qn("a:tableStyleId"))
+            if sid is not None:
+                sid.text = NO_GRID_STYLE
         for j, wj in enumerate(widths):
             t.columns[j].width = Inches(wj)
         for k, (i, hh) in enumerate(zip(idx, hs)):
             t.rows[k].height = Inches(max(0.3, hh))
+            last = k == len(idx) - 1
             for j, txt in enumerate(rows[i]):
                 cell = t.cell(k, j)
                 cell.fill.solid()
-                cell.fill.fore_color.rgb = RGBColor.from_string(BLUE if i == 0 else (WHITE if k % 2 else TINT))
+                if RD["on"]:
+                    cell.fill.fore_color.rgb = RGBColor.from_string(RDC["tbl_head"] if i == 0 else WHITE)
+                else:
+                    cell.fill.fore_color.rgb = RGBColor.from_string(BLUE if i == 0 else (WHITE if k % 2 else TINT))
                 cell.vertical_anchor = MSO_ANCHOR.MIDDLE
                 cell.margin_left, cell.margin_right = Inches(0.10), Inches(0.08)
                 cell.margin_top, cell.margin_bottom = Inches(0.04), Inches(0.04)
                 tf = cell.text_frame
                 tf.word_wrap = True
-                p = add_para(tf, txt, size, WHITE if i == 0 else INK, first=True, line=1.1, bold=(i == 0 or j == 0))
+                if RD["on"]:
+                    col = RDC["title"] if i == 0 else (RDC["tbl_first"] if j == 0 else RDC["ink"])
+                else:
+                    col = WHITE if i == 0 else INK
+                p = add_para(tf, txt, tsize, col, first=True, line=1.1, bold=(i == 0 or j == 0))
                 p._p.get_or_add_pPr().set("hangingPunct", "0")   # 全形標點不懸到格外（2026-10-16 實排）
+                if RD["on"]:   # 頂、底 1.5pt 深藍線，表頭下 0.75pt，列與列之間 0.6pt 淡線，沒有直線
+                    if i == 0:
+                        cell_borders(cell, L=None, R=None, T=(1.5, RDC["title"]), B=(0.75, RDC["title"]))
+                    else:
+                        cell_borders(cell, L=None, R=None, T=None,
+                                     B=((1.5, RDC["title"]) if last else (0.6, RDC["tbl_line"])))
 
 
 def add_divider_text(s, d, rep, where):
@@ -566,7 +681,35 @@ def add_divider_text(s, d, rep, where):
         rep.add("overflow", where, "分隔張玻片行超過一行", k, 1, glass)
 
 
-def build(deck, out, notes=False, base_dir=".", bg_pt=24):
+def add_divider_rd(s, d, rep, where):
+    """rd 的分隔張：深藍底、右側色塊、橘色直條（同大堂課 gen_pptx 的分隔張）；Section N、主題一到兩行、玻片行。"""
+    set_bg(s, RDC["deep"])
+    _rect(s, SW * 0.64, 0, SW * 0.36, SH, RDC["block"], "色塊")
+    lines = d.get("title_lines", [])
+    th = line_h(SZ["theme"], 1.15)
+    y0 = 2.15 if len(lines) > 1 else 2.55
+    _rect(s, DIV_X - 0.32, y0 + 0.55, 0.10, max(0.8, th * max(1, len(lines))), RDC["accent"], "直條")
+    tf = textbox(s, DIV_X, y0, DIV_W, 0.45)
+    add_para(tf, d.get("label", ""), SZ["label"], RDC["sub"], first=True, bold=True)
+    y = y0 + 0.55
+    for line in lines:
+        tf = textbox(s, DIV_X, y, DIV_W, th + 0.05)
+        add_para(tf, line, SZ["theme"], WHITE, first=True, bold=True)
+        k = n_lines(line, SZ["theme"], DIV_W, bold=True)
+        if k > 1:
+            rep.add("overflow", where, "分隔張主題超過一行", k, 1, line)
+        y += th
+    if len(lines) > 2:
+        rep.add("rule", where, "分隔張主題超過兩行", len(lines), 2, " / ".join(lines))
+    glass = d.get("slides_line", "")
+    tf = textbox(s, DIV_X, y + 0.2, DIV_W, line_h(SZ["glass"], 1.1) + 0.05)
+    add_para(tf, glass, SZ["glass"], RDC["sub"], first=True)
+    k = n_lines(glass, SZ["glass"], DIV_W)
+    if k > 1:
+        rep.add("overflow", where, "分隔張玻片行超過一行", k, 1, glass)
+
+
+def build(deck, out, notes=False, base_dir=".", bg_pt=None, style=None):
     prs = Presentation()
     prs.slide_width, prs.slide_height = Inches(SW), Inches(SH)
     blank = prs.slide_layouts[6]
@@ -576,14 +719,26 @@ def build(deck, out, notes=False, base_dir=".", bg_pt=24):
     slots = {"shot": 0, "shot_image": 0, "gx_image": 0, "gx_placeholder": 0, "sc_image": 0, "sc_placeholder": 0, "bg": 0,
              "marks": 0}
     n = 0
+    use_style(style or deck.get("style"))
+    if bg_pt is None:
+        bg_pt = default_bg_pt()
 
     # 封面
     s = prs.slides.add_slide(blank)
     n += 1
     cover = deck.get("cover", "")
-    tf = textbox(s, 0.5, 3.04, SW - 1.0, 0.9, MSO_ANCHOR.MIDDLE)
-    add_para(tf, cover, SZ["cover"], INK, PP_ALIGN.CENTER, first=True)
-    k = n_lines(cover, SZ["cover"], SW - 1.0)
+    if RD["on"]:
+        set_bg(s, RDC["deep"])
+        _rect(s, SW * 0.62, 0, SW * 0.38, SH, RDC["block"], "色塊")
+        _rect(s, 0.6, 3.0, 0.10, 1.1, RDC["accent"], "直條")
+        cw = SW - 0.92 - 0.6
+        tf = textbox(s, 0.92, 3.0, cw, 1.1, MSO_ANCHOR.MIDDLE)
+        add_para(tf, cover, SZ["cover"], WHITE, first=True, bold=True)
+        k = n_lines(cover, SZ["cover"], cw, bold=True)
+    else:
+        tf = textbox(s, 0.5, 3.04, SW - 1.0, 0.9, MSO_ANCHOR.MIDDLE)
+        add_para(tf, cover, SZ["cover"], INK, PP_ALIGN.CENTER, first=True)
+        k = n_lines(cover, SZ["cover"], SW - 1.0)
     if k > 1:
         rep.add("overflow", f"#{n} 封面", "封面超過一行", k, 1, cover)
 
@@ -595,8 +750,11 @@ def build(deck, out, notes=False, base_dir=".", bg_pt=24):
         if d is not None:          # "divider": null＝這一節不放分隔張（例：封面後直接放玻片編號對照）
             s = prs.slides.add_slide(blank)
             n += 1
-            set_bg(s, BLUE)
-            add_divider_text(s, d, rep, f"#{n} {d.get('label', '')}")
+            if RD["on"]:
+                add_divider_rd(s, d, rep, f"#{n} {d.get('label', '')}")
+            else:
+                set_bg(s, BLUE)
+                add_divider_text(s, d, rep, f"#{n} {d.get('label', '')}")
 
         for c in sec.get("slides", []):
             kind = kind_of(c)
@@ -609,11 +767,13 @@ def build(deck, out, notes=False, base_dir=".", bg_pt=24):
                 for pi, page in enumerate(pages):
                     s = prs.slides.add_slide(blank)
                     n += 1
+                    if RD["on"]:
+                        set_bg(s, RDC["canvas"])
                     if pi == 0:
                         ids[cid] = n
                         check_title(rep, f"#{n} {cid}", title)
                     add_title(s, title)
-                    add_bg_page(s, page, layout, bg_pt)
+                    add_bg_page(s, page, layout, bg_pt, bg_area(title))
                     slots["bg"] += 1
                     if notes and src_note:
                         s.notes_slide.notes_text_frame.text = src_note
@@ -621,6 +781,8 @@ def build(deck, out, notes=False, base_dir=".", bg_pt=24):
 
             s = prs.slides.add_slide(blank)
             n += 1
+            if RD["on"]:
+                set_bg(s, RDC["canvas"])
             ids[cid] = n
             where = f"#{n} {cid}"
             check_title(rep, where, title)
@@ -630,7 +792,7 @@ def build(deck, out, notes=False, base_dir=".", bg_pt=24):
             side = slot_side(c)
             path = img.get("path")
             apath = os.path.normpath(os.path.join(base_dir, path)) if path else None
-            if panel:
+            if panel and not RD["on"]:      # rd 不墊淺灰底（照片有白邊細框）
                 add_panel(s, IMG_X[side], IMG_Y, IMG_W, IMG_H)
                 add_panel(s, IMG_X["right" if side == "left" else "left"], IMG_Y, IMG_W, IMG_H)
             if apath and os.path.exists(apath):
@@ -648,7 +810,12 @@ def build(deck, out, notes=False, base_dir=".", bg_pt=24):
             else:
                 if path:
                     rep.add("rule", where, "圖檔不存在，先放淡灰空圖", 0, 0, path)
-                pic = s.shapes.add_picture(io.BytesIO(png), Inches(IMG_X[side]), Inches(IMG_Y), Inches(IMG_W), Inches(IMG_H))
+                if RD["on"]:
+                    _rect(s, IMG_X[side], IMG_Y, IMG_W, IMG_H, WHITE, f"白邊 {cid}", line=(MAT_W, RDC["mat"]))
+                    pic = s.shapes.add_picture(io.BytesIO(png), Inches(IMG_X[side] + MAT_PAD), Inches(IMG_Y + MAT_PAD),
+                                               Inches(IMG_W - 2 * MAT_PAD), Inches(IMG_H - 2 * MAT_PAD))
+                else:
+                    pic = s.shapes.add_picture(io.BytesIO(png), Inches(IMG_X[side]), Inches(IMG_Y), Inches(IMG_W), Inches(IMG_H))
                 pic.name = f"{SLOT_NAME[kind]} {cid}"
                 if kind == "shot":
                     shots += 1
@@ -685,11 +852,14 @@ def fit_slides(obj):
     return [obj]
 
 
-def fit(path, bg_pt, bullets=False):
+def fit(path, bg_pt, bullets=False, style=None):
     obj = json.load(open(path, encoding="utf-8"))
+    st = use_style(style or (obj.get("style") if isinstance(obj, dict) else None))
+    if bg_pt is None:
+        bg_pt = default_bg_pt()
     STYLE["bullets"] = bool(obj.get("bullets")) if isinstance(obj, dict) and "bullets" in obj else bullets
     rep = Report()
-    print(f"量字字型：{measure_font_info()}；背景張 {bg_pt}pt、說明句 {SZ['body']}pt")
+    print(f"量字字型：{measure_font_info()}；版面 {st}；背景張 {bg_pt}pt、說明句 {SZ['body']}pt、標題 {SZ['title']}pt")
     print("id｜kind｜標題行數｜需要高度/可用（吋）｜行數")
     for c in fit_slides(obj):
         kind = kind_of(c)
@@ -699,13 +869,13 @@ def fit(path, bg_pt, bullets=False):
         if kind == "bg":
             pages, layout = plan_bg(c, bg_pt, rep, where)
             for pi, p in enumerate(pages):
-                print(f"{cid}{'' if pi == 0 else f'（接續 {pi + 1}）'}｜bg｜{tk}｜{p['need']:.2f}/{BG_H}｜"
+                print(f"{cid}{'' if pi == 0 else f'（接續 {pi + 1}）'}｜bg｜{tk}｜{p['need']:.2f}/{bg_area(c.get('title', ''))[1]:.2f}｜"
                       f"條列 {len(p['bullets'])} 條、表格 {len(p['rows'])} 列")
             if len(pages) > 1:
                 rep.add("rule", where, "背景張接續成多張", len(pages), 1, c.get("title", ""))
         else:
             lines, need = check_side(rep, where, side_text(c))
-            print(f"{cid}｜{kind}｜{tk}｜{need:.2f}/{IMG_H}｜{lines} 行（上限 {BODY_MAX_LINES}）")
+            print(f"{cid}｜{kind}｜{tk}｜{need:.2f}/{IMG_H}｜{lines} 行（上限 {GEO['max_lines']}）")
     ov = [i for i in rep.items if i["kind"] == "overflow"]
     for i in rep.items:
         print(f"  [{i['kind']}] {i['slide']} {i['what']}（{i['need']} > {i['avail']}）：{i['text'][:60]}")
@@ -745,14 +915,16 @@ def main():
     ap.add_argument("--notes", action="store_true", help="把截圖說明與來源寫進備忘稿（預設不寫：硬規則 18，學生會看到）")
     ap.add_argument("--no-notes", action="store_true", help="舊選項，等於預設（備忘稿不寫字）")
     ap.add_argument("--src-list", metavar="MD", help="截圖說明與來源另寫成一份清單（給教師看，不發給學生）")
-    ap.add_argument("--bg-pt", type=float, default=24, help="背景知識張的條列與表格字級（預設 24）")
+    ap.add_argument("--bg-pt", type=float, default=None, help="背景知識張的條列字級（預設 rd 28、classic 24；classic 的表格同字級）")
+    ap.add_argument("--style", choices=("rd", "classic"), default=None,
+                    help="版面模式（預設 rd＝大堂課新預設的版面、字大一號；2026-11-24 以前交的講義要原樣用 classic）；不給就看 deck.json 的 style")
     ap.add_argument("--fit", metavar="JSON", help="只量字、不產檔（deck.json、節檔或張的清單）")
     ap.add_argument("--bullets", action="store_true", help="--fit 量單張或節檔時照「•」懸掛縮排量（deck.json 以檔裡的 bullets 為準）")
     ap.add_argument("--img-max-side", type=int, default=IMG_MAX_SIDE, help=f"放進 PPTX 的圖長邊上限 px（預設 {IMG_MAX_SIDE}）")
     ap.add_argument("--jpeg-quality", type=int, default=None, help="給了就把沒有透明的圖都重存成這個品質的 JPEG（例 82）")
     a = ap.parse_args()
     if a.fit:
-        return fit(a.fit, a.bg_pt, a.bullets)
+        return fit(a.fit, a.bg_pt, a.bullets, a.style)
     if not a.deck or not a.out:
         ap.error("要給 deck.json 與 --out（或用 --fit 只量字）")
     deck = json.load(open(a.deck, encoding="utf-8"))
@@ -761,15 +933,17 @@ def main():
     if os.path.exists(a.out):
         print(f"[注意] 覆寫既有檔：{a.out}")
     base = os.path.dirname(os.path.abspath(a.deck))
-    n, shots, rep, ids, slots = build(deck, a.out, notes=a.notes and not a.no_notes, base_dir=base, bg_pt=a.bg_pt)
+    n, shots, rep, ids, slots = build(deck, a.out, notes=a.notes and not a.no_notes, base_dir=base, bg_pt=a.bg_pt,
+                                      style=a.style)
     if a.src_list:
         k = write_src_list(deck, ids, a.src_list, os.path.basename(a.out))
         print(f"截圖說明與來源清單 {k} 列 -> {a.src_list}")
     rp = a.report or os.path.splitext(a.out)[0] + "_layout.json"
     with open(rp, "w", encoding="utf-8") as f:
-        json.dump({"measure_font": measure_font_info(), "slides": n, "image_slots": shots, "slots": slots,
+        json.dump({"measure_font": measure_font_info(), "style": "rd" if RD["on"] else "classic", "slides": n,
+                   "image_slots": shots, "slots": slots,
                    "ids": ids, "issues": rep.items}, f, ensure_ascii=False, indent=1)
-    print(f"OK {n} 張（截圖圖框 {shots} 格；{slots}）-> {a.out}")
+    print(f"OK {n} 張（版面 {'rd' if RD['on'] else 'classic'}；截圖圖框 {shots} 格；{slots}）-> {a.out}")
     ov = [i for i in rep.items if i["kind"] == "overflow"]
     for i in rep.items:
         print(f"  [{i['kind']}] {i['slide']} {i['what']}（{i['need']} > {i['avail']}）：{i['text'][:60]}")

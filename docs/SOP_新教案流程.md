@@ -86,7 +86,7 @@ cp "$KIT/templates/brief.template.md"    "$CD/brief.md"
 cp "$KIT/templates/gather.template.json" "$CD/gather.json"
 ```
 
-填 `course.yaml`（課程代碼、對象、日期、`textbook` 的 ref／page_offset／pages_dir（PDF 放 repo 外，`textbook.pdf` 寫絕對路徑）、`paths`、`decks`（節數、目標張數、每節範圍、國考題庫、國考題版式 `quiz_style`、檔名）、`sizes`（沒有字級明令就用範本註解裡「沒有明令時的預設」，不要照抄 immune 的明令值）、`bilingual: per_slide`（2026-10-14 起所有課；不要刪掉這一行，沒寫時程式會退回 `first_per_deck`）、`emphasis`、`cover`、`bilingual_whitelist`）；填 `brief.md` 的「教師已裁決」表（每列寫日期）；從 `templates/course.CLAUDE.template.md` 複製一份課程專屬的 `CLAUDE.md`（課程、裁決、單一事實來源、重產指令；檔名叫 CLAUDE.md，內容對所有工具都適用），從 `templates/handoff.template.md` 複製交接檔 `_archive/handoff.md`（`docs/多session做法.md`）：
+填 `course.yaml`（課程代碼、對象、日期、`textbook` 的 ref／page_offset／pages_dir（PDF 放 repo 外，`textbook.pdf` 寫絕對路徑）、`paths`、`decks`（節數、目標張數、每節範圍、國考題庫、國考題版式 `quiz_style`、檔名）、`sizes`、`layout`、`design`、`emphasis`（照範本：2026-11-24 起範本就是新課的預設，重設計版的版面、字大一號；教師對這門課另有字級明令時照明令）、`bilingual: per_slide`（2026-10-14 起所有課；不要刪掉這一行，沒寫時程式會退回 `first_per_deck`）、`emphasis`、`cover`、`bilingual_whitelist`）；填 `brief.md` 的「教師已裁決」表（每列寫日期）；從 `templates/course.CLAUDE.template.md` 複製一份課程專屬的 `CLAUDE.md`（課程、裁決、單一事實來源、重產指令；檔名叫 CLAUDE.md，內容對所有工具都適用），從 `templates/handoff.template.md` 複製交接檔 `_archive/handoff.md`（`docs/多session做法.md`）：
 
 ```bash
 cp "$KIT/templates/course.CLAUDE.template.md" "$CD/CLAUDE.md"

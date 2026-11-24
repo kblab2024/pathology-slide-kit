@@ -159,7 +159,9 @@ course.yaml 選填 `layout: {left_min_frac: 0.30}`：left 版型的條列都很�
 **版面設計開關**（2026-11-24；呼吸二重設計版，照 Gemini 的設計規範畫，教師「這個重設計版版面我倒是還滿中意的」；都在 course.yaml，沒寫就是原來的樣子，三門課逐張比對過輸出相同）：
 - `layout`：`body_line`（條列行距，預設 1.2）、`lead_line`（圖上方說明句的行距，預設同 body_line）、`table_lead_pt`（表格上方說明句的字級，預設 lead）、`divider_sub_line`（分隔張副標行距，預設 1.2）；`photo_mat: {pad: 0.08, line: CFD9E5, w: 0.75}`（照片的白邊細框，有標籤的示意圖不加，`labeled: true` 才加）；`table_style: medical`（整套表格統一：淡冰藍表頭、首欄粗字、頂底 1.5pt 深色線、列間細線、白底；蓋過每張的 `tbl: style=`）；`quiz_note_band: {fill: EAF1F8, bar: 2563A8}`（國考題的題下那一行放進淡底橫條，左邊一條細直線、不圓角）；`flow_style: axis`（流程圖雙軸式：節點在左欄、左緣色條、最後一個節點淡底粗字；箭頭說明在右欄，用細引線接過去）。
 - `design`：`title`（標題色）、`title_bar`（標題左邊直條）、`title_rule`／`title_rule_w`（標題下的細線與粗細 pt）、`lead`（說明句色）、`label`（圖上方標籤色）、`bullet`（條列符號色）、`cover_block`（封面與分隔張右側色塊，寫了就用實色）、`cover_bar`（封面與分隔張的直條）、`cover_sub`（封面副標與分隔張副標色）、`tbl_head`／`tbl_line`／`tbl_first`（medical 表格的表頭底色、列間線、首欄字色）。
-- 呼吸二重設計版用的整組值在私人 repo `courses/rs-a1-rd/_archive/build/build_rd.py`（內文 26pt、行距 1.3、說明句 1.25、標題 34pt、出處 15pt、主題橘 E06B1F）。
+- 呼吸二重設計版用的整組值在私人 repo `courses/rs-a1-rd/_archive/build/build_rd.py`（草稿2 是內文 26pt、標題 34pt、出處 15pt；草稿3 起大一號）。
+- **新課的預設**（2026-11-24 教師「之後的課都以這個版面的大一號字版本為default」）：`templates/course.template.yaml` 已經把整組寫好（字級大一號：內文 28、說明句 28、標題 36、表格 26／放不下 24、國考題 30、出處 16；`layout`、`design`、`emphasis` 同重設計版）。已經在做的課換過去以後，整套算圖逐張看，表格張尤其要看。
+- 字大了放不下時的兩個記號（2026-11-24；沒寫的張不變）：表格 `<!-- tbl: fill=off -->`（表格比可用高度矮時，不把多的高度分給各列；medical、clean、accent 預設會分，LibreOffice 實排比估算高時最後一列會被裁掉）、`line=1.0`（表格字的行距，預設 1.1）。分隔張的標題＋副標放不下時，程式自動把整組往上移（最高到 1.2 吋），放得下的照舊。
 單張的調整：素材池那一張寫 `<!-- left_frac: 0.52 -->`（2026-11-21），left 版型的文字欄就從這個比例起跳（0.30–0.65）。用在估算放得下、實排卻多折一行超出版面或留下孤字的張：欄窄、英文長詞多的張，估算差半個字就會多一行。圖跟著讓位，改完要算圖看。
 
 ## 版型（type）

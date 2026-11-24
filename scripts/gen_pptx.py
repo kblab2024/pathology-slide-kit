@@ -481,24 +481,28 @@ def L_title(slide, s):
 def L_divider(slide, s, sec_label=""):
     set_bg(slide, G.D["deep"])
     _dark_block(slide, 0.64)
-    if sec_label and not s["title"].startswith(sec_label):
-        _, ef = textbox(slide, G.M + 0.62, 1.95, G.SW - 2 * G.M, 0.5)
-        para(ef, sec_label, G.S["divider_sub"], color=DARK_TEXT["low"], bold=True, first=True)
-    vbar(slide, G.M + 0.32, 2.55, 1.8, hexc=G.D.get("cover_bar", G.D["terra"]), w=0.10)
     tw = G.SW - 2 * G.M - 0.7
     tsize = G.S["divider"]
     t_need = n_lines(s["title"], tsize, tw - TITLE_MARGIN, bold=True) * line_h(tsize, 1.2)
     if t_need > 2.7:   # 標題超過約 3 行：縮字，免得壓到副標
         tsize = max(G.S["title"], int(tsize * 0.8))
         t_need = n_lines(s["title"], tsize, tw - TITLE_MARGIN, bold=True) * line_h(tsize, 1.2)
-    _, tf = textbox(slide, G.M + 0.62, 2.5, tw, max(3.0, t_need + 0.1))
+    # 副標的高度照字數算（2026-11-24：兩條長的導讀句放不下 1.6 吋的框）；放不下就往上移
+    dsl = float(G.L.get("divider_sub_line", 1.2))     # course.yaml layout.divider_sub_line（預設 1.2）
+    sub_need = sum(n_lines(bullet_level(b)[1], G.S["divider_sub"], tw) * line_h(G.S["divider_sub"], dsl) + 6 / 72.0
+                   for b in s["bullets"][:2])
+    # 標題從 2.5 吋起；標題＋副標放不下時整組往上移（最高到 1.2 吋），放得下的照舊
+    # （2026-11-24 大一號字：三行標題加兩條長副標超出投影片底）
+    ty = max(1.2, min(2.5, G.SH - 0.35 - sub_need - 0.15 - t_need)) if s["bullets"] else 2.5
+    dy = ty - 2.5
+    if sec_label and not s["title"].startswith(sec_label):
+        _, ef = textbox(slide, G.M + 0.62, 1.95 + dy, G.SW - 2 * G.M, 0.5)
+        para(ef, sec_label, G.S["divider_sub"], color=DARK_TEXT["low"], bold=True, first=True)
+    vbar(slide, G.M + 0.32, 2.55 + dy, 1.8, hexc=G.D.get("cover_bar", G.D["terra"]), w=0.10)
+    _, tf = textbox(slide, G.M + 0.62, ty, tw, max(3.0, t_need + 0.1))
     para(tf, s["title"], tsize, color="FFFFFF", bold=True, first=True, line=1.2)
     if s["bullets"]:
-        # 副標的高度照字數算（2026-11-24：兩條長的導讀句放不下 1.6 吋的框）；放不下就往上移
-        dsl = float(G.L.get("divider_sub_line", 1.2))     # course.yaml layout.divider_sub_line（預設 1.2）
-        sub_need = sum(n_lines(bullet_level(b)[1], G.S["divider_sub"], tw) * line_h(G.S["divider_sub"], dsl) + 6 / 72.0
-                       for b in s["bullets"][:2])
-        sub_y = min(max(5.3, 2.5 + t_need + 0.25), max(2.5 + t_need + 0.15, G.SH - 0.35 - sub_need))
+        sub_y = min(max(5.3, ty + t_need + 0.25), max(ty + t_need + 0.15, G.SH - 0.35 - sub_need))
         note_fit(s, sub_y + max(1.0, sub_need), G.SH - 0.2, "分隔張標題＋副標")
         _, bf = textbox(slide, G.M + 0.62, sub_y, tw, max(1.6, sub_need + 0.1))
         for i, b in enumerate(s["bullets"][:2]):
@@ -681,7 +685,7 @@ def L_robbins(slide, s):
         place_fig(slide, s, G.M, y, G.SW - 2 * G.M, G.SH - y - 0.3)
 
 
-def set_cell(cell, text, size, color=None, bold=False, fill=None, align=PP_ALIGN.LEFT):
+def set_cell(cell, text, size, color=None, bold=False, fill=None, align=PP_ALIGN.LEFT, line=1.1):
     if fill:
         cell.fill.solid()
         cell.fill.fore_color.rgb = C(fill)
@@ -692,7 +696,7 @@ def set_cell(cell, text, size, color=None, bold=False, fill=None, align=PP_ALIGN
     cell.margin_bottom = Inches(0.04)
     tf = cell.text_frame
     tf.word_wrap = True
-    para(tf, text, size, color=color, bold=bold, align=align, first=True, line=1.1, space_after=0)
+    para(tf, text, size, color=color, bold=bold, align=align, first=True, line=line, space_after=0)
 
 
 NO_GRID_STYLE = "{2D5ABB26-0587-4C30-8999-92F81FD0307C}"   # PowerPoint 內建「無樣式、無格線」
@@ -743,7 +747,8 @@ def L_table3(slide, s):
             ｜accent（clean 加上每列首欄左側一條色帶、首欄淡色底，色依 colors）
       col_w=2,4,4（各欄相對寬度；不寫就依字數分）；colors=主色1,主色2,…（資料列依序；accent 的色帶與首欄字色）
       align=center（首欄以外置中）；fill=on/off（表格比可用高度矮時把多的高度平均加給各列，clean／accent 預設 on）
-      pad=tight（clean／accent 的列距收回 band 的大小，四列兩行的表才放得下）"""
+      pad=tight（clean／accent 的列距收回 band 的大小，四列兩行的表才放得下）
+      line=1.0（表格字的行距，預設 1.1；2026-11-24 大一號字：字多的表放不下時收緊，不必刪字）"""
     set_bg(slide, G.BG)
     y0 = content_title(slide, s)
     tbl = s.get("table") or []
@@ -777,10 +782,11 @@ def L_table3(slide, s):
     pad = 0.14 if (style == "band" or opt.get("pad") == "tight") else 0.22
     if style == "medical":
         pad = 0.13 if opt.get("pad") == "tight" else 0.18   # 儲存格上下邊界＋框線；clean／accent 多留一點呼吸，pad=tight 收回
+    tl = float(opt.get("line", 1.1))      # tbl: line=（表格字的行距）
     for cand in (G.S["table"], G.S["table_min"]):
         size = cand
         row_h = [max(n_lines(r[j], cand, widths[j] - 0.2, bold=(i == 0 or j == 0)) for j in range(ncol))
-                 * line_h(cand, 1.1) * TABLE_LINE_K + pad for i, r in enumerate(rows)]
+                 * line_h(cand, tl) * TABLE_LINE_K + pad for i, r in enumerate(rows)]
         need = sum(row_h)
         if need <= avail:
             break
@@ -806,10 +812,10 @@ def L_table3(slide, s):
         for i, r in enumerate(rows):
             for j, c in enumerate(r):
                 if i == 0:
-                    set_cell(t.cell(i, j), c, size, color="FFFFFF", bold=True, fill=G.D["cobaltd"], align=al(j))
+                    set_cell(t.cell(i, j), c, size, color="FFFFFF", bold=True, fill=G.D["cobaltd"], align=al(j), line=tl)
                 else:
                     set_cell(t.cell(i, j), c, size, color=(G.D["terrad"] if j == 0 else G.D["ink"]), bold=(j == 0),
-                             fill=("FFFFFF" if i % 2 else G.D["tint"]), align=al(j))
+                             fill=("FFFFFF" if i % 2 else G.D["tint"]), align=al(j), line=tl)
         return
     sid = t._tbl.tblPr.find(qn("a:tableStyleId"))
     if sid is not None:
@@ -824,10 +830,10 @@ def L_table3(slide, s):
             for j, c in enumerate(r):
                 cell = t.cell(i, j)
                 if i == 0:
-                    set_cell(cell, c, size, color=rule, bold=True, fill=head_fill, align=al(j))
+                    set_cell(cell, c, size, color=rule, bold=True, fill=head_fill, align=al(j), line=tl)
                     cell_borders(cell, L=None, R=None, T=(1.5, rule), B=(0.75, rule))
                     continue
-                set_cell(cell, c, size, color=(first_col if j == 0 else G.D["ink"]), bold=(j == 0), fill="FFFFFF", align=al(j))
+                set_cell(cell, c, size, color=(first_col if j == 0 else G.D["ink"]), bold=(j == 0), fill="FFFFFF", align=al(j), line=tl)
                 cell_borders(cell, L=None, R=None, T=None, B=((1.5, rule) if last else (0.6, thin)))
         return
     colors = [x.strip().lstrip("#").upper() for x in re.split(r"[,，\s]+", opt.get("colors", "")) if x.strip()]
@@ -838,7 +844,7 @@ def L_table3(slide, s):
             cell = t.cell(i, j)
             last = i == len(rows) - 1
             if i == 0:
-                set_cell(cell, c, size, color=G.D["cobaltd"], bold=True, fill=G.BG, align=al(j))
+                set_cell(cell, c, size, color=G.D["cobaltd"], bold=True, fill=G.BG, align=al(j), line=tl)
                 cell_borders(cell, L=None, R=None, T=None, B=(2.25, rule))
                 continue
             first = j == 0
@@ -848,7 +854,7 @@ def L_table3(slide, s):
                 col = main or G.D["terrad"]
                 if style == "accent" and main:
                     fill = _tint(main)
-            set_cell(cell, c, size, color=col, bold=first, fill=fill, align=al(j))
+            set_cell(cell, c, size, color=col, bold=first, fill=fill, align=al(j), line=tl)
             sides = {"T": None, "R": None, "B": ((1.5, rule) if last else (0.75, thin))}
             sides["L"] = (6.0, main) if (style == "accent" and first and main) else None
             cell_borders(cell, **sides)

@@ -54,58 +54,58 @@ slide:                    # 畫幅（英吋）：一律 16:9＝13.333×7.5（教
   margin: 0.5
   background: F4F8FB      # 內容張底色（十六進位，不加 #）
 
-# 字級（pt）。下面這組是 immune 的教師明令（「字不可小」：標題 36、內文 28、學生要讀的字 ≥20、只有出處 14），只管 immune。
-# 沒有明令的新課，把整段 sizes 換成下面「沒有明令時的預設」，開工問答第 6 項問過教師再定；在他既有的 deck 上改版則照該 deck 的字級階層（SIZE-11）。
-#   沒有明令時的預設（2026-10-14 晚教師裁決：內文 24–35pt 依版型、表格與標籤 24、只有出處行更小、不要單句張；
-#   docs/教師偏好與決策.md 第 4 節。數值取 uro-a3 照這條裁決設的 course.yaml；只有 img_rate_min 照 IMG-01 留 0.65，
-#   uro-a3 的 0.52 是那門課待裁決的調整，不外推）：
-#   title: 36, title_small: 32, cover: 54, cover_sub: 28, divider: 50, divider_sub: 24,
-#   body: 28, body_noimg: 30, lead: 30, big: 35, label: 24, table: 24, table_min: 24, quiz: 28, quiz_min: 24,
-#   stats_big: 44, credit: 18, min: 24, body_warn: 24, char_warn: 150, char_red: 200, title_warn_chars: 40,
-#   img_rate_min: 0.65, table_max_rows: 5
-#   （big 只是備用值，新課不用單句大字張；char_warn、char_red 是做 uro-a3 的代理定的，不是教師給的數字；
-#   table_max_rows 5 是因為表格 24pt 以後一張只放得下表頭＋5 列）
-#   2026-10-14 以前的預設（照 12_字級 他自製 4:3 deck 的習慣，已被上面取代）：body 30、lead 36、big 50、table 18、
-#   table_min 16、credit 18、min 16、body_warn 20、char_warn 120、char_red 150、table_max_rows 6
+# 字級（pt）：新課的預設（2026-11-24 教師「之後的課都以這個版面的大一號字版本為default」，docs/教師偏好與決策.md 第 4 節）。
+# 「這個版面」是呼吸二重設計版（照 Gemini 的設計規範畫；下面 layout、design、emphasis 的值一起），字級比重設計版大一號
+# （重設計版是 title 34、cover 42、cover_sub 25、divider 38、divider_sub 24、body 26、body_noimg 28、lead 26、table 24、
+# quiz 28、credit 15）。教師對某課另有字級明令時照明令；在他既有的 deck 上改版照該 deck 的字級階層（SIZE-11）。
+#   2026-10-14 晚到 11-24 的預設（內文 24–35pt 依版型、表格與標籤 24、只有出處行更小、不要單句張；數值取 uro-a3）：
+#   title 36, title_small 32, cover 54, cover_sub 28, divider 50, divider_sub 24, body 28, body_noimg 30, lead 30, big 35,
+#   label 24, table 24, table_min 24, quiz 28, quiz_min 24, stats_big 44, credit 18, min 24, body_warn 24, char_warn 150,
+#   char_red 200, title_warn_chars 40, img_rate_min 0.65, table_max_rows 5
+#   （char_warn、char_red 是做 uro-a3 的代理定的，不是教師給的數字；table_max_rows 5 是因為表格 24pt 以後一張只放得下表頭＋5 列）
+#   immune 的明令（「字不可小」：標題 36、內文 28、學生要讀的字 ≥20、只有出處 14）只管 immune：cover 44、cover_sub 28、
+#   divider 44、divider_sub 24、lead 28、big 44、table 22、table_min 20、credit 14、min 20、char_warn 120、char_red 160（其餘同上）
+#   2026-10-14 以前的預設（照 12_字級 他自製 4:3 deck 的習慣）：body 30、lead 36、big 50、table 18、table_min 16、credit 18、
+#   min 16、body_warn 20、char_warn 120、char_red 150、table_max_rows 6
 sizes:
   title: 36
   title_small: 32         # 標題估算超過 2 行時改用
   cover: 44
-  cover_sub: 28
-  divider: 44
-  divider_sub: 24
+  cover_sub: 26
+  divider: 40
+  divider_sub: 26
   body: 28                # 有圖張的條列；子層同字級
   body_noimg: 30          # 無圖張
   lead: 28                # pair／flash 的說明句
   big: 44                 # 單句大字張：2026-10-14 教師不要單句張（docs/教師偏好與決策.md 第 4 節），新課不用 big 版型
   label: 24               # 圖上／圖旁標籤、框架圖格子最低
-  table: 22
-  table_min: 20
-  quiz: 28
+  table: 26               # 放不下的表自動退到 table_min
+  table_min: 24
+  quiz: 30                # 放不下時每次退 2pt，到 quiz_min 為止
   quiz_min: 24
   stats_big: 44
-  credit: 14              # 「圖：…」「資料來源：…」：唯一允許小於 min 的文字
-  min: 20                 # 出處以外的下限（低於即 RED）
+  credit: 16              # 「圖：…」「資料來源：…」：唯一允許小於 min 的文字
+  min: 24                 # 出處以外的下限（低於即 RED）
   body_warn: 24           # 內文低於此值 WARN
-  char_warn: 120          # 每張可見字元超過即 WARN
-  char_red: 160           # 超過即 RED
+  char_warn: 150          # 每張可見字元超過即 WARN
+  char_red: 200           # 超過即 RED（每張 200 字）
   title_warn_chars: 40
   img_rate_min: 0.65      # 內容張有圖率下限（教師自製檔實測 65–71%）
   table_max_rows: 5       # 表格超過就自動拆成同標題連張（含表頭）
   # 頁碼：gen_pptx 從不放頁碼（他的 deck 不放；靜態頁碼 check_deck 判 RED），不必設定
 
-layout:                   # 選填：版型微調
+layout:                   # 版型微調
   left_min_frac: 0.47     # left 版型文字欄最窄比例；條列都很短（每條一行）時可設 0.30，圖放大（預設 0.47＝不縮）
-  # left_fit_image: true  # 16:9 用（預設關）：left 版型遇到直幅或正方形的圖，把右欄用不到的寬給文字欄，圖一樣大
-  # 版面設計開關（2026-11-24 呼吸二重設計版；沒寫＝原來的樣子；說明見 scripts/README.md「版面設計開關」）：
-  # body_line: 1.3        # 條列行距
-  # lead_line: 1.25       # 圖上方說明句的行距
-  # table_lead_pt: 24     # 表格上方說明句的字級
-  # divider_sub_line: 1.25  # 分隔張副標行距
-  # photo_mat: {pad: 0.08, line: CFD9E5, w: 0.75}   # 照片白邊細框
-  # table_style: medical  # 整套表格統一樣式
-  # quiz_note_band: {fill: EAF1F8, bar: 2563A8}     # 國考題題下橫條
-  # flow_style: axis      # 雙軸式流程圖
+  left_fit_image: true    # 16:9 用：left 版型遇到直幅或正方形的圖，把右欄用不到的寬給文字欄，圖一樣大
+  # 以下是重設計版的版面（2026-11-24 起新課的預設；拿掉就回到原來的樣子；說明見 scripts/README.md「版面設計開關」）
+  body_line: 1.3          # 條列行距
+  lead_line: 1.25         # 圖上方說明句的行距
+  table_lead_pt: 26       # 表格上方說明句的字級
+  divider_sub_line: 1.25  # 分隔張副標行距
+  photo_mat: {pad: 0.08, line: CFD9E5, w: 0.75}   # 照片白邊細框（有標籤的示意圖不加）
+  table_style: medical    # 整套表格統一樣式（蓋過每張的 tbl: style=）
+  quiz_note_band: {fill: EAF1F8, bar: 2563A8}     # 國考題題下那一行放進淡底橫條
+  flow_style: axis        # 雙軸式流程圖
 
 # rewrite:                 # 選填：請 Gemini 重寫句子的設定（每一講必做，AGENTS.md 硬規則 17；scripts/rewrite_pack.py 讀這一段）
 #   label: C免疫            # 重寫包檔名用的簡稱（預設：課程代碼＋deck 代號）
@@ -114,14 +114,31 @@ layout:                   # 選填：版型微調
 #   notes: [_archive/written/w_a_notes.md]     # 移下投影片的細節檔（預設讀講稿檔的【講義補充】）
 #   digest_dir: _archive/written/digest         # 各段事實摘要 <段>.md（沒有就從 facts_R.json 列出）
 
-design:                   # 選填：覆寫 scripts/common.py 的 DESIGN 色票（藍×赤陶）
-  cobaltd: "333F50"       # 此例：說明句底色改中性藍灰，讓 [[藍:]] 與國考正解才是藍
+design:                   # 覆寫 scripts/common.py 的 DESIGN 色票（藍×赤陶）；cobaltd 以下是重設計版的色票（2026-11-24 起新課的預設）
+  cobaltd: "333F50"       # 說明句底色改中性藍灰，讓 [[藍:]] 與國考正解才是藍
+  title: "10243A"         # 標題字
+  title_bar: "2563A8"     # 標題左邊的直條
+  title_rule: "D6E0EB"    # 標題下的細線
+  title_rule_w: 0.75      # 細線粗細（pt）
+  lead: "475569"          # 說明句
+  label: "10243A"         # 圖上方的標籤
+  ink: "1E2631"           # 內文
+  grey: "64748B"
+  bullet: "2563A8"        # 條列符號
+  deep: "14263B"          # 封面、分隔張的底色
+  cover_block: "182D45"   # 封面、分隔張右側的色塊
+  cover_bar: "E06B1F"     # 封面、分隔張的直條（主題橘）
+  cover_sub: "CBD5E1"     # 封面、分隔張的副標
+  tbl_head: "E8EFF7"      # medical 表格的表頭底色
+  tbl_line: "D6E0EB"      # medical 表格的列間線
+  tbl_first: "9A4618"     # medical 表格的首欄字色（赤棕）
+  snow: "F4F8FB"
   # quiz_stem: "1E2A35"   # 選填：乙式國考題題幹色（不寫＝deep，和標題同色）；正解色是 emphasis.藍
 
 emphasis:                 # 行內標記 [[藍:文字]] 等的色票（見 scripts/README.md）
   藍: 143F9C              # 本張最該記的東西、國考正解
   紅: FF0000              # 單字級強調
-  橘: ED7D31              # 關鍵字（教師主題色 ACCENT_2）
+  橘: E06B1F              # 關鍵字（重設計版的主題橘；2026-11-24 以前是教師主題色 ACCENT_2 的 ED7D31）
   青: 62A8BB              # 教科書章節對照
   灰: 2E414F              # 期刊引用
 

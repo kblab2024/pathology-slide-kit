@@ -156,6 +156,10 @@ def place(g, slide, s, img, x, y, w, h):
     M = {k: float((d.get("margins") or {}).get(k, 0)) for k in ("left", "right", "top", "bottom")}
     L, R, T, B = iw * M["left"], iw * M["right"], ih * M["top"], ih * M["bottom"]
     W, H = iw + L + R, ih + T + B
+    # course.yaml layout.photo_mat 的白邊只給照片；有標籤的示意圖（白底、標籤要寬度）不加，layout.photo_mat.labeled: true 才加
+    pm = (getattr(g.G, "L", None) or {}).get("photo_mat")
+    mat = g.mat_pad() if (hasattr(g, "mat_pad") and isinstance(pm, dict) and pm.get("labeled")) else 0.0
+    x, y, w, h = x + mat, y + mat, w - 2 * mat, h - 2 * mat
     cred = img.get("src") or ""
     ctext = cred if cred.startswith(("圖", "資料來源")) else "圖：" + cred
     cw_of = lambda dw: max(dw, min(w, 4.5))
@@ -174,6 +178,8 @@ def place(g, slide, s, img, x, y, w, h):
     dx, dy = x + (w - dw) / 2, y
     k = dw / W                               # 吋／母圖像素
     bx, by, bw, bh = dx + L * k, dy + T * k, iw * k, ih * k
+    if mat and hasattr(g, "draw_mat"):
+        g.draw_mat(slide, bx, by, bw, bh)
     pic = slide.shapes.add_picture(g.prep_image(d["image"]), Inches(bx), Inches(by), Inches(bw), Inches(bh))
     pic.name = "標籤圖 母圖"
     to_in = lambda fx, fy: (bx + fx * bw, by + fy * bh)
@@ -289,5 +295,5 @@ def place(g, slide, s, img, x, y, w, h):
         g.note_fit(s, 1.0, 0.0, "標籤：" + "；".join(bad))
     if cred:
         cw = cw_of(dw)
-        g.credit(slide, cred, x + (w - cw) / 2 if cw > dw else dx, cw, dy + dh + 0.04)
+        g.credit(slide, cred, x + (w - cw) / 2 if cw > dw else dx, cw, dy + dh + 0.04 + mat)
     return pic, dx, dy, dw, dh, (ch if cred else 0.0)

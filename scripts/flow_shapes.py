@@ -302,6 +302,136 @@ def _plan(g, fig, w, head, base):
     return {"bw": bw, "fw": fw, "fh": fh, "rows": rows, "wrapped": wrapped, "head": head, "base": base}
 
 
+# ---------------- 雙軸式（course.yaml layout.flow_style: axis；2026-11-24 rs2 重設計，Gemini 的設計規範）----------------
+# 左欄：節點由上而下，白底細框、左緣一條藍色直條，最後一個節點淡冰藍底、粗字；節點之間是直的箭頭（在節點欄的正中）。
+# 右欄：每個箭頭的說明，從箭頭中點拉一條水平細引線過去。沒有圓角、陰影、漸層。字級 26 或 24（取放得下的最大一級）。
+AX = {"bar": 0.07, "padl": 0.22, "padr": 0.14, "pady": 0.07, "col_gap": 0.55, "gap_min": 0.34,
+      "node_line": "CFD9E5", "last_fill": "E6EEF8", "arrow": "64748B", "leader": "A9B9CB"}
+
+
+def _axis_plan(g, fig, w, base, frac=0.62):
+    items = fig.get("items", [])
+    nodes = [it["node"] for it in items if "node" in it]
+    nat = max([_tw(g, t, base, n is nodes[-1]) for n in nodes for t in n] or [1.0]) + AX["bar"] + AX["padl"] + AX["padr"]
+    nw = min(nat, w * frac)
+    lab_nat = 0.0
+    for it in items:
+        for ln in it.get("arrow", []) if "arrow" in it else []:
+            lab_nat = max(lab_nat, sum(_tw(g, t, base, False) for t, _ in _runs(ln)))
+    if lab_nat == 0.0:
+        nw = min(nat, w * 0.75)
+    lw = max(1.5, min(lab_nat, w - nw - AX["col_gap"])) if lab_nat else 0.0
+    hs, kinds, labh = [], [], []
+    for it in items:
+        if "node" in it:
+            n = [g.n_lines(t, base, nw - AX["bar"] - AX["padl"] - AX["padr"], bold=True) for t in it["node"]]
+            hs.append(sum(n) * _lh(base) + 2 * AX["pady"])
+            kinds.append(("node", n))
+            labh.append(0.0)
+        else:
+            n = [g.n_lines("".join(t for t, _ in _runs(ln)), base, lw) for ln in it.get("arrow", [])] if lw else []
+            hs.append(AX["gap_min"])
+            kinds.append(("arrow", n))
+            labh.append(sum(n) * _lh(base))
+    # 說明的中心在箭頭中點；相鄰兩段說明至少隔 0.08 in，不夠就把兩個箭頭各拉長一半
+    arrows = [i for i, k in enumerate(kinds) if k[0] == "arrow" and labh[i] > 0]
+    for _ in range(3):
+        for p, q in zip(arrows, arrows[1:]):
+            dist = hs[p] / 2 + sum(hs[p + 1:q]) + hs[q] / 2
+            need = (labh[p] + labh[q]) / 2 + 0.04
+            if dist < need:
+                hs[p] += (need - dist) / 2
+                hs[q] += (need - dist) / 2
+    rows = [{"h": h, "n": k[1], "lab_h": lh} for h, k, lh in zip(hs, kinds, labh)]
+    fw = nw + (AX["col_gap"] + lw if lw else 0.0)
+    return {"nw": nw, "lw": lw, "fw": fw, "fh": sum(hs), "rows": rows, "base": base}
+
+
+def place_flow_axis(g, slide, s, x, y, w, h):
+    G = g.G
+    fig = s["flow"]["fig"]
+    floor = G.SH - getattr(G, "src_h", 0.0) - 0.10
+    avail = max(0.8, min(y + h, floor) - y)
+    # 先試 26pt、節點欄 62%；放不下就 24pt，再把節點欄加寬（節點少折行；說明欄窄、說明可以延伸到節點旁邊）
+    plans = [_axis_plan(g, fig, w, b, f) for b, f in ((26, 0.62), (24, 0.62), (24, 0.70), (24, 0.78))
+             if b >= min(24, G.S.get("label", 24))]
+    plan = next((p for p in plans if p["fh"] <= avail), min(plans, key=lambda p: p["fh"]))
+    g.note_fit(s, plan["fh"], avail, "流程圖")
+    G.layout[s["id"]][-1]["pt"] = plan["base"]
+    base, nw, lw, rows = plan["base"], plan["nw"], plan["lw"], plan["rows"]
+    items = fig.get("items", [])
+    extra = max(0.0, avail - plan["fh"])
+    n_gap = sum(1 for it in items if "arrow" in it)
+    add_gap = min(0.25, extra / n_gap) if n_gap else 0.0
+    blue, ink = G.EMPH.get("藍", "143F9C"), G.D["ink"]
+    bar = G.D.get("title_bar") or G.D["cobalt"]
+    col = {"blue": blue, "or": G.EMPH.get("橘", "ED7D31"), "red": G.EMPH.get("紅", "FF0000"), "ink": ink}
+    fx = x + max(0.0, (w - plan["fw"]) / 2)
+    cx = fx + nw / 2
+    lx = fx + nw + AX["col_gap"]
+    cy = y
+    kn = ka = 0
+    n_nodes = sum(1 for it in items if "node" in it)
+    for it, row in zip(items, rows):
+        if "node" in it:
+            kn += 1
+            last = kn == n_nodes
+            hh = row["h"]
+            box = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(fx), Inches(cy), Inches(nw), Inches(hh))
+            _plain(box)
+            box.fill.solid()
+            box.fill.fore_color.rgb = g.C(AX["last_fill"] if last else "FFFFFF")
+            box.line.color.rgb = g.C(AX["node_line"])
+            box.line.width = Pt(0.75)
+            box.name = f"流程圖 框{kn}"
+            b_ = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(fx), Inches(cy), Inches(AX["bar"]), Inches(hh))
+            _plain(b_)
+            b_.fill.solid()
+            b_.fill.fore_color.rgb = g.C(bar)
+            b_.line.fill.background()
+            b_.name = f"流程圖 框{kn} 直條"
+            tb, tf = g.textbox(slide, fx + AX["bar"] + AX["padl"], cy, nw - AX["bar"] - AX["padl"] - AX["padr"], hh,
+                               anchor=MSO_ANCHOR.MIDDLE)
+            for i, t in enumerate(it["node"]):
+                g.para(tf, t, base, color=blue, bold=last, first=(i == 0), line=1.0, space_after=0)
+            tb.name = f"流程圖 框{kn} 文字"
+            cy += hh
+            continue
+        ka += 1
+        hh = row["h"] + add_gap
+        ln = _line_shape(slide, cx, cy + 0.04, cx, cy + hh - 0.04)
+        ln.line.color.rgb = g.C(AX["arrow"])
+        ln.line.width = Pt(1.5)
+        e = ln.line._get_or_add_ln()
+        e.append(e.makeelement(qn("a:tailEnd"), {"type": "triangle", "w": "med", "len": "med"}))
+        ln.name = f"流程圖 箭頭{ka}"
+        lines = it.get("arrow", [])
+        if lines and lw:
+            my = cy + hh / 2
+            ld = _line_shape(slide, cx + 0.10, my, lx - 0.12, my)
+            ld.line.color.rgb = g.C(AX["leader"])
+            ld.line.width = Pt(0.75)
+            ld.name = f"流程圖 箭頭{ka} 引線"
+            th = row["lab_h"]
+            tb, tf = g.textbox(slide, lx, my - th / 2, lw, th, anchor=MSO_ANCHOR.MIDDLE)
+            for q, line in enumerate(lines):
+                p = tf.paragraphs[0] if q == 0 else tf.add_paragraph()
+                p.alignment = PP_ALIGN.LEFT
+                p._p.get_or_add_pPr().set("hangingPunct", "0")
+                p.space_after = Pt(0)
+                p.line_spacing = 1.0
+                for t, st in _runs(line):
+                    bold, ck = STYLE.get(st, STYLE[None])
+                    if isinstance(line, dict):
+                        ck = "red"
+                    r = p.add_run()
+                    r.text = t
+                    g._font(r, base, col[ck], bold and ck != "ink")
+            tb.name = f"流程圖 箭頭{ka} 說明"
+        cy += hh
+    return cy
+
+
 def place_flow(g, slide, s, x, y, w, h):
     """在 (x, y, w, h) 畫 s["flow"]["fig"]。g＝gen_pptx 模組（借它的量字、文字、出處行與 G 設定）。回傳圖的底緣 y。"""
     G = g.G
@@ -309,6 +439,8 @@ def place_flow(g, slide, s, x, y, w, h):
     fig = fl["fig"]
     if is_stages(fig):
         return place_stages(g, slide, s, x, y, w, h)
+    if (getattr(G, "L", None) or {}).get("flow_style") == "axis":
+        return place_flow_axis(g, slide, s, x, y, w, h)
     cred = fl.get("src") or next((i.get("src") for i in s.get("imgs", []) if i.get("src")), "")
     ctext = cred if cred.startswith(("圖", "資料來源")) else "圖：" + cred
     ch = (g.n_lines(ctext, G.S["credit"], max(w, 4.5)) * 0.25 + 0.06) if cred else 0.0

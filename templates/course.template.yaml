@@ -97,6 +97,15 @@ sizes:
 layout:                   # 選填：版型微調
   left_min_frac: 0.47     # left 版型文字欄最窄比例；條列都很短（每條一行）時可設 0.30，圖放大（預設 0.47＝不縮）
   # left_fit_image: true  # 16:9 用（預設關）：left 版型遇到直幅或正方形的圖，把右欄用不到的寬給文字欄，圖一樣大
+  # 版面設計開關（2026-11-24 呼吸二重設計版；沒寫＝原來的樣子；說明見 scripts/README.md「版面設計開關」）：
+  # body_line: 1.3        # 條列行距
+  # lead_line: 1.25       # 圖上方說明句的行距
+  # table_lead_pt: 24     # 表格上方說明句的字級
+  # divider_sub_line: 1.25  # 分隔張副標行距
+  # photo_mat: {pad: 0.08, line: CFD9E5, w: 0.75}   # 照片白邊細框
+  # table_style: medical  # 整套表格統一樣式
+  # quiz_note_band: {fill: EAF1F8, bar: 2563A8}     # 國考題題下橫條
+  # flow_style: axis      # 雙軸式流程圖
 
 # rewrite:                 # 選填：請 Gemini 重寫句子的設定（每一講必做，AGENTS.md 硬規則 17；scripts/rewrite_pack.py 讀這一段）
 #   label: C免疫            # 重寫包檔名用的簡稱（預設：課程代碼＋deck 代號）

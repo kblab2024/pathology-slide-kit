@@ -64,6 +64,10 @@ class G:
     S = {}
     D = {}
     EMPH = {}
+    L = {}          # course.yaml layout
+    BL = 1.2        # 條列的行距
+    LL = 1.2        # 說明句的行距
+    TLP = None      # 表格說明句的字級
     course = None
     layout = {}
     cur = None      # 正在畫的那一張（label_shapes 記版面問題時要它的 id）
@@ -77,6 +81,12 @@ def setup(course):
     G.D = course["design"]
     G.EMPH = course["emphasis"]
     G.BG = course["slide"].get("background", G.D["snow"])
+    # 2026-11-24 rs2 重設計（Gemini 的設計規範）：條列與說明句的行距（預設 1.2）、照片白邊細框、表格統一樣式等，
+    # 都寫在 course.yaml 的 layout／design，沒寫就是原來的樣子。
+    G.L = course.get("layout") or {}
+    G.BL = float(G.L.get("body_line", 1.2))
+    G.LL = float(G.L.get("lead_line", G.BL))          # 圖上方說明句的行距（行距大圖就小）
+    G.TLP = G.L.get("table_lead_pt")                  # 表格上方說明句的字級（沒寫＝lead）
 
 
 def C(h):
@@ -347,6 +357,8 @@ def place_image(slide, img, x, y, w, h, shadow=True):
         iw, ih = Image.open(img["abspath"]).size
     except Exception:
         return None
+    mat = mat_pad()
+    x, y, w, h = x + mat, y + mat, w - 2 * mat, h - 2 * mat
     cred = img.get("src") or ""
     ctext = cred if cred.startswith(("圖", "資料來源")) else "圖：" + cred
     cw_of = lambda dw: max(dw, min(w, 4.5))
@@ -363,11 +375,30 @@ def place_image(slide, img, x, y, w, h, shadow=True):
             break
         ch = need
     dx, dy = x + (w - dw) / 2, y
+    draw_mat(slide, dx, dy, dw, dh)
     pic = slide.shapes.add_picture(prep_image(img["abspath"]), Inches(dx), Inches(dy), Inches(dw), Inches(dh))
     if cred:
         cw = cw_of(dw)
-        credit(slide, cred, x + (w - cw) / 2 if cw > dw else dx, cw, dy + dh + 0.04)
+        credit(slide, cred, x + (w - cw) / 2 if cw > dw else dx, cw, dy + dh + 0.04 + mat)
     return pic, dx, dy, dw, dh, (ch if cred else 0.0)   # 最後一項＝圖下出處行的高度
+
+
+def mat_pad():
+    """course.yaml layout.photo_mat 的白邊寬（in）；沒開回 0。"""
+    m = G.L.get("photo_mat") if isinstance(G.L, dict) else None
+    return float(m.get("pad", 0.08)) if isinstance(m, dict) else 0.0
+
+
+def draw_mat(slide, x, y, w, h):
+    """照片的白邊細框（Gemini 設計規範：純白相紙邊＋0.75pt 淺灰藍線；硬規則 21 允許的白底細框）。圖要在它之後放，才會蓋在上面。"""
+    m = G.L.get("photo_mat") if isinstance(G.L, dict) else None
+    if not isinstance(m, dict):
+        return None
+    p = float(m.get("pad", 0.08))
+    r = rect(slide, x - p, y - p, w + 2 * p, h + 2 * p, hexc="FFFFFF", line_hex=m.get("line", "CFD9E5"),
+             line_w=float(m.get("w", 0.75)))
+    r.name = "圖 白邊"
+    return r
 
 
 def credit(slide, text, x, w, y):
@@ -416,31 +447,44 @@ def content_title(slide, s, size=None):
         size = G.S["title_small"]
         lines = n_lines(t, size, w - TITLE_MARGIN, bold=True)
     h = lines * line_h(size, 1.1)
-    vbar(slide, G.M, 0.36, h - 0.04)
+    vbar(slide, G.M, 0.36, h - 0.04, hexc=G.D.get("title_bar"))
     _, tf = textbox(slide, G.M + 0.26, 0.30, w, h + 0.1)
-    para(tf, t, size, color=G.D["deep"], bold=True, first=True, line=1.1)
+    para(tf, t, size, color=G.D.get("title", G.D["deep"]), bold=True, first=True, line=1.1)
+    if G.D.get("title_rule"):     # 標題下一條淡色細線（course.yaml design.title_rule）
+        r = rect(slide, G.M, 0.30 + h + 0.12, G.SW - 2 * G.M, float(G.D.get("title_rule_w", 0.75)) / 72.0,
+                 hexc=G.D["title_rule"])
+        r.name = "標題 分隔線"
+        return 0.30 + h + 0.31
     return 0.30 + h + 0.30
 
 
 # ---------------- 版型 ----------------
+def _dark_block(slide, frac):
+    """封面與分隔張右側的色塊：course.yaml design.cover_block 有寫就用實色，沒寫照舊（cobaltd 22% 透明）。"""
+    if G.D.get("cover_block"):
+        rect(slide, G.SW * frac, 0, G.SW * (1 - frac), G.SH, hexc=G.D["cover_block"])
+    else:
+        rect(slide, G.SW * frac, 0, G.SW * (1 - frac), G.SH, hexc=G.D["cobaltd"], alpha=22 if frac < 0.63 else 20)
+
+
 def L_title(slide, s):
     set_bg(slide, G.D["deep"])
-    rect(slide, G.SW * 0.62, 0, G.SW * 0.38, G.SH, hexc=G.D["cobaltd"], alpha=22)
-    vbar(slide, G.M + 0.1, 2.1, 1.9, hexc=G.D["terra"], w=0.10)
+    _dark_block(slide, 0.62)
+    vbar(slide, G.M + 0.1, 2.1, 1.9, hexc=G.D.get("cover_bar", G.D["terra"]), w=0.10)
     _, tf = textbox(slide, G.M + 0.42, 2.0, G.SW - 2 * G.M - 0.6, 4.6)
     para(tf, s["title"], G.S["cover"], color="FFFFFF", bold=True, first=True, line=1.08, space_after=14)
     for i, b in enumerate(s["bullets"][:4]):
         para(tf, bullet_level(b)[1], G.S["cover_sub"] if i == 0 else G.S["min"],
-             color=DARK_TEXT["mid"] if i == 0 else DARK_TEXT["low"], line=1.25, space_after=8)
+             color=G.D.get("cover_sub", DARK_TEXT["mid"]) if i == 0 else DARK_TEXT["low"], line=1.25, space_after=8)
 
 
 def L_divider(slide, s, sec_label=""):
     set_bg(slide, G.D["deep"])
-    rect(slide, G.SW * 0.64, 0, G.SW * 0.36, G.SH, hexc=G.D["cobaltd"], alpha=20)
+    _dark_block(slide, 0.64)
     if sec_label and not s["title"].startswith(sec_label):
         _, ef = textbox(slide, G.M + 0.62, 1.95, G.SW - 2 * G.M, 0.5)
         para(ef, sec_label, G.S["divider_sub"], color=DARK_TEXT["low"], bold=True, first=True)
-    vbar(slide, G.M + 0.32, 2.55, 1.8, hexc=G.D["terra"], w=0.10)
+    vbar(slide, G.M + 0.32, 2.55, 1.8, hexc=G.D.get("cover_bar", G.D["terra"]), w=0.10)
     tw = G.SW - 2 * G.M - 0.7
     tsize = G.S["divider"]
     t_need = n_lines(s["title"], tsize, tw - TITLE_MARGIN, bold=True) * line_h(tsize, 1.2)
@@ -450,18 +494,23 @@ def L_divider(slide, s, sec_label=""):
     _, tf = textbox(slide, G.M + 0.62, 2.5, tw, max(3.0, t_need + 0.1))
     para(tf, s["title"], tsize, color="FFFFFF", bold=True, first=True, line=1.2)
     if s["bullets"]:
-        sub_y = max(5.3, 2.5 + t_need + 0.25)
-        note_fit(s, sub_y + 1.0, G.SH - 0.2, "分隔張標題＋副標")
-        _, bf = textbox(slide, G.M + 0.62, sub_y, tw, 1.6)
+        # 副標的高度照字數算（2026-11-24：兩條長的導讀句放不下 1.6 吋的框）；放不下就往上移
+        dsl = float(G.L.get("divider_sub_line", 1.2))     # course.yaml layout.divider_sub_line（預設 1.2）
+        sub_need = sum(n_lines(bullet_level(b)[1], G.S["divider_sub"], tw) * line_h(G.S["divider_sub"], dsl) + 6 / 72.0
+                       for b in s["bullets"][:2])
+        sub_y = min(max(5.3, 2.5 + t_need + 0.25), max(2.5 + t_need + 0.15, G.SH - 0.35 - sub_need))
+        note_fit(s, sub_y + max(1.0, sub_need), G.SH - 0.2, "分隔張標題＋副標")
+        _, bf = textbox(slide, G.M + 0.62, sub_y, tw, max(1.6, sub_need + 0.1))
         for i, b in enumerate(s["bullets"][:2]):
-            para(bf, bullet_level(b)[1], G.S["divider_sub"], color=DARK_TEXT["mid"], first=(i == 0), line=1.2)
+            para(bf, bullet_level(b)[1], G.S["divider_sub"], color=G.D.get("cover_sub", DARK_TEXT["mid"]), first=(i == 0),
+                 line=dsl)
 
 
 def bullets_need(bullets, size, w):
     need = 0.0
     for b in bullets:
         lvl, text = bullet_level(b)
-        need += n_lines(text, size, (w - (0.32 + 0.38 * lvl)) * BULLET_W_K) * line_h(size) + 8 / 72.0
+        need += n_lines(text, size, (w - (0.32 + 0.38 * lvl)) * BULLET_W_K) * line_h(size, G.BL) + 8 / 72.0
     return need
 
 
@@ -472,12 +521,12 @@ def render_bullets(slide, s, bullets, x, y, w, h, size):
         lvl, text = bullet_level(b)
         ind = 0.32 + 0.38 * lvl
         mark = "• " if lvl == 0 else "– "
-        p = para(tf, text, size, first=(i == 0), line=1.2, space_after=8,
-                 prefix=(mark, G.D["cobalt"] if lvl == 0 else G.D["grey"]))
+        p = para(tf, text, size, first=(i == 0), line=G.BL, space_after=8,
+                 prefix=(mark, G.D.get("bullet", G.D["cobalt"]) if lvl == 0 else G.D["grey"]))
         pPr = p._p.get_or_add_pPr()
         pPr.set('marL', str(int(ind * 914400)))
         pPr.set('indent', str(int(-0.32 * 914400)))
-        need += n_lines(text, size, (w - ind) * BULLET_W_K) * line_h(size) + 8 / 72.0
+        need += n_lines(text, size, (w - ind) * BULLET_W_K) * line_h(size, G.BL) + 8 / 72.0
     note_fit(s, need, h, "條列")
 
 
@@ -552,8 +601,8 @@ def _lead(slide, s, lines_max=None):
         _, tf = textbox(slide, G.M + 0.26, y0, w, 2.4)
         for i, b in enumerate(s["bullets"] if lines_max is None else s["bullets"][:lines_max]):
             t = bullet_level(b)[1]
-            para(tf, t, G.S["lead"], color=G.D["cobaltd"], first=(i == 0), line=1.2, space_after=4)
-            need += n_lines(t, G.S["lead"], w) * line_h(G.S["lead"]) + 4 / 72.0
+            para(tf, t, G.S["lead"], color=G.D.get("lead", G.D["cobaltd"]), first=(i == 0), line=G.LL, space_after=4)
+            need += n_lines(t, G.S["lead"], w) * line_h(G.S["lead"], G.LL) + 4 / 72.0
     return y0 + need + (0.12 if need else 0)
 
 
@@ -620,7 +669,7 @@ def L_pair(slide, s):
         r = place_image(slide, img, x, y + lab_h, w, h)
         if img and img.get("label"):
             _, tf = textbox(slide, x, y, w, lab_h)
-            para(tf, img["label"], G.S["label"], color=G.D["cobaltd"], bold=True, align=PP_ALIGN.CENTER,
+            para(tf, img["label"], G.S["label"], color=G.D.get("label", G.D["cobaltd"]), bold=True, align=PP_ALIGN.CENTER,
                  first=True, line=1.0)
     note_fit(s, y, G.SH - 2.2, "說明句")
 
@@ -701,13 +750,15 @@ def L_table3(slide, s):
     if not tbl:
         return L_left(slide, s)
     opt = tbl_opts(s)
-    style = opt.get("style", "band")
+    style = G.L.get("table_style") or opt.get("style", "band")   # course.yaml layout.table_style：整套統一一種（例 medical）
     if s["bullets"]:   # 全部說明句都畫（不再只畫第一條）
         lw = G.SW - 2 * G.M - 0.26
-        need = sum(n_lines(bullet_level(b)[1], G.S["lead"], lw) * line_h(G.S["lead"]) + 4 / 72.0 for b in s["bullets"])
+        tlp = G.TLP or G.S["lead"]
+        need = sum(n_lines(bullet_level(b)[1], tlp, lw) * line_h(tlp, G.LL) + 4 / 72.0 for b in s["bullets"])
         _, tf = textbox(slide, G.M + 0.26, y0, lw, need + 0.1)
         for i, b in enumerate(s["bullets"]):
-            para(tf, bullet_level(b)[1], G.S["lead"], color=G.D["cobaltd"], first=(i == 0), space_after=4)
+            para(tf, bullet_level(b)[1], tlp, color=G.D.get("lead", G.D["cobaltd"]), first=(i == 0), space_after=4,
+                 line=G.LL)
         y0 += need + 0.1
     ncol = len(tbl[0])
     rows = [(r + [""] * ncol)[:ncol] for r in tbl]
@@ -723,7 +774,9 @@ def L_table3(slide, s):
     widths = [x * scale for x in widths]
     avail = G.SH - y0 - 0.45 - getattr(G, "src_h", 0.0)
     size = G.S["table"]
-    pad = 0.14 if (style == "band" or opt.get("pad") == "tight") else 0.22   # 儲存格上下邊界＋框線；clean／accent 多留一點呼吸，pad=tight 收回
+    pad = 0.14 if (style == "band" or opt.get("pad") == "tight") else 0.22
+    if style == "medical":
+        pad = 0.13 if opt.get("pad") == "tight" else 0.18   # 儲存格上下邊界＋框線；clean／accent 多留一點呼吸，pad=tight 收回
     for cand in (G.S["table"], G.S["table_min"]):
         size = cand
         row_h = [max(n_lines(r[j], cand, widths[j] - 0.2, bold=(i == 0 or j == 0)) for j in range(ncol))
@@ -761,6 +814,22 @@ def L_table3(slide, s):
     sid = t._tbl.tblPr.find(qn("a:tableStyleId"))
     if sid is not None:
         sid.text = NO_GRID_STYLE
+    if style == "medical":
+        # Gemini 設計規範（2026-11-24 rs2 重設計）：白底；表頭淡冰藍底、深藍粗字；首欄赤棕粗字；
+        # 頂、底 1.5pt 深藍橫線，列與列之間 0.6pt 淡線；沒有直線、沒有斑馬紋。
+        head_fill, rule = G.D.get("tbl_head", "E8EFF7"), G.D.get("title", G.D["deep"])
+        thin, first_col = G.D.get("tbl_line", "D6E0EB"), G.D.get("tbl_first", G.D["terrad"])
+        for i, r in enumerate(rows):
+            last = i == len(rows) - 1
+            for j, c in enumerate(r):
+                cell = t.cell(i, j)
+                if i == 0:
+                    set_cell(cell, c, size, color=rule, bold=True, fill=head_fill, align=al(j))
+                    cell_borders(cell, L=None, R=None, T=(1.5, rule), B=(0.75, rule))
+                    continue
+                set_cell(cell, c, size, color=(first_col if j == 0 else G.D["ink"]), bold=(j == 0), fill="FFFFFF", align=al(j))
+                cell_borders(cell, L=None, R=None, T=None, B=((1.5, rule) if last else (0.6, thin)))
+        return
     colors = [x.strip().lstrip("#").upper() for x in re.split(r"[,，\s]+", opt.get("colors", "")) if x.strip()]
     rule, thin = G.D["cobaltd"], "C9D3DD"
     for i, r in enumerate(rows):
@@ -857,8 +926,9 @@ def L_quiz(slide, s, qs):
     size = G.S["quiz_min"]
     # 題下那一行（quiz_note）與「本題一律給分」固定用 label 字級，也要算進去（2026-11-22：沒算時長選項的題會把題下那一行擠出投影片）
     extra = 0.0
+    band = G.L.get("quiz_note_band") if isinstance(G.L.get("quiz_note_band"), dict) else None
     if s.get("quiz_note"):
-        extra += n_lines(s["quiz_note"], G.S["label"], w) * line_h(G.S["label"], 1.1) + 0.05
+        extra += n_lines(s["quiz_note"], G.S["label"], w - (0.5 if band else 0)) * line_h(G.S["label"], 1.1) + (0.45 if band else 0.05)
     if "#" in ans:
         extra += line_h(G.S["label"], 1.0)
     for cand in range(G.S["quiz"], G.S["quiz_min"] - 1, -2):
@@ -872,6 +942,8 @@ def L_quiz(slide, s, qs):
     _, tf = textbox(slide, G.M + 0.05, y0, w, avail)
     para(tf, f"{q['題號']}. {q['question']}", size, color=G.D.get("quiz_stem", G.D["deep"]), first=True, line=1.15, space_after=10,
          markup=False)
+    body_h = n_lines(f"{q['題號']}. {q['question']}", size, w) * line_h(size, 1.15) + 0.15
+    body_h += sum(n_lines(f"({k}) {v}", size, w - 0.3) * line_h(size, 1.15) + 0.06 for k, v in opts)
     for k, v in opts:
         is_ans = k in ans
         p = para(tf, f"({k}) {v}", size, color=(G.EMPH.get("藍", "143F9C") if is_ans else G.D["ink"]),
@@ -881,7 +953,19 @@ def L_quiz(slide, s, qs):
         pPr.set('indent', str(int(-0.45 * 914400)))
     if "#" in ans:
         para(tf, "（本題一律給分）", G.S["label"], color=G.D["grey"], line=1.0)
-    if s.get("quiz_note"):
+        body_h += line_h(G.S["label"], 1.0)
+    if s.get("quiz_note") and band:
+        # 題下那一行：淡冰藍底、左邊一條藍色細直線的橫條（不圓角、不加外框；Gemini 設計規範）
+        nw = G.SW - 2 * G.M
+        nh = n_lines(s["quiz_note"], G.S["label"], nw - 0.5) * line_h(G.S["label"], 1.1) + 0.24
+        ny = min(y0 + body_h + 0.25, G.SH - 0.30 - nh)
+        r = rect(slide, G.M, ny, nw, nh, hexc=band.get("fill", "EAF1F8"))
+        r.name = "國考題 題下橫條"
+        b_ = rect(slide, G.M, ny, 0.06, nh, hexc=band.get("bar", G.D["cobalt"]))
+        b_.name = "國考題 題下橫條 直線"
+        _, nf = textbox(slide, G.M + 0.25, ny + 0.12, nw - 0.45, nh - 0.2)
+        para(nf, s["quiz_note"], G.S["label"], color=G.D.get("lead", G.D["cobaltd"]), first=True, line=1.1, space_after=0)
+    elif s.get("quiz_note"):
         para(tf, s["quiz_note"], G.S["label"], color=G.D["cobaltd"], line=1.1, space_after=0)
 
 
@@ -1087,8 +1171,8 @@ def L_diagram(slide, s):
         _, tf = textbox(slide, G.M + 0.26, y, bw, 2.4)
         for i, b in enumerate(bl):
             t = bullet_level(b)[1]
-            para(tf, t, bsz, color=G.D["cobaltd"], first=(i == 0), line=1.2, space_after=4)
-            y += n_lines(t, bsz, bw) * line_h(bsz) + 4 / 72.0
+            para(tf, t, bsz, color=G.D.get("lead", G.D["cobaltd"]), first=(i == 0), line=G.LL, space_after=4)
+            y += n_lines(t, bsz, bw) * line_h(bsz, G.LL) + 4 / 72.0
         y += 0.10
     if not imgs:
         note_fit(s, y, G.SH - 0.4, "框架圖下的條列")

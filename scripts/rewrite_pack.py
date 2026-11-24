@@ -207,12 +207,28 @@ def load_notes(course, cfg):
     return out
 
 
+EN_QUOTE = re.compile(r"「([^」]*)」")
+
+
+def en_quote_line(ln):
+    """這一行引了英文原文（「」裡幾乎都是英文：中文字 ≤2、英文字母 ≥20）：教科書的英文原句與引句不放進包
+    （2026-11-24 發現「前後不一」那一節整段是 Robbins 原句）。中文句子裡夾英文術語的引號不算。"""
+    for q in EN_QUOTE.findall(ln):
+        cjk = sum("\u4e00" <= ch <= "\u9fff" for ch in q)
+        if cjk <= 2 and sum(ch.isascii() and ch.isalpha() for ch in q) >= 20:
+            return True
+    return False
+
+
 def digest_text(cfg, seg, research):
-    """一段的事實：有摘要檔就用（留事實條目與「前後不一」的說明，不留圖說原文、表格轉錄與檔案路徑），沒有就從事實帳列出。"""
+    """一段的事實：有摘要檔就用（留事實條目；不留圖說原文、表格轉錄、檔案路徑與引英文原句的行，
+    「前後不一」的說明若都是原句就整節不放），沒有就從事實帳列出。"""
     p = os.path.join(cfg["digest_dir"], f"{seg}.md")
     if os.path.exists(p):
         out, keep = [], True
         for ln in rd(p).split("\n"):
+            if en_quote_line(ln):
+                continue
             if ln.startswith("# "):
                 out.append("### " + re.sub(r"；facts_R\.json 切出，(\d+) 條", r"；\1 條", ln[2:]))
                 continue
@@ -226,7 +242,15 @@ def digest_text(cfg, seg, research):
                 continue
             if keep:
                 out.append(ln)
-        return "\n".join(out).strip() + "\n"
+        # 標題底下什麼都沒留（例：「前後不一」整節都是原句）就連標題一起拿掉
+        tidy = []
+        for i, ln in enumerate(out):
+            if ln.startswith("#### "):
+                nxt = next((x for x in out[i + 1:] if x.strip()), "")
+                if not nxt or nxt.startswith("#"):
+                    continue
+            tidy.append(ln)
+        return "\n".join(tidy).strip() + "\n"
     rows = [(k, v) for k, v in research.items() if k.startswith(seg + "-")]
     if not rows:
         return ""
@@ -628,6 +652,19 @@ def cmd_make(a):
         hp = os.path.join(a.out, f"0_怎麼用_重寫包_{label}_{today}_草稿.md")
         open(hp, "w", encoding="utf-8", newline="\n").write(HOWTO.replace("{LABEL}", label).replace("{DATE}", today).replace("{KEEP}", keep_txt))
     print(f"-> {hp}")
+    # 最後再掃一次：包裡不可以有教科書的英文原句（2026-11-24 發現摘要的「前後不一」整節是 Robbins 原句，之前的包都帶出去了）
+    bad = []
+    for fn in sorted(os.listdir(a.out)):
+        if fn.endswith(".md"):
+            for i, ln in enumerate(rd(os.path.join(a.out, fn)).split("\n"), 1):
+                if re.search(r"([A-Za-z]+[ ,;]+){10,}", ln) or en_quote_line(ln):
+                    bad.append((fn, i, ln))
+    if bad:
+        print(f"[RED] 包裡有 {len(bad)} 行像教科書的英文原句（不可以交出去；先找出來源、拿掉再重出）：")
+        for fn, i, ln in bad[:8]:
+            print(f"   {fn}:{i}｜{ln[:100]}")
+    else:
+        print("包裡沒有英文原句（連續 10 個以上英文字、或「」裡引英文的行）")
 
 
 # ---------- 讀回覆 ----------

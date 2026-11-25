@@ -21,6 +21,9 @@
           [{"t": "TMPRSS2::ETS 融合基因(fusion gene)", "s": "o"}],                    s：b 粗、o 橘、red 紅、blue 藍
           {"inhibit": [{"t": "5α-還原酶抑制劑(5α-reductase inhibitor)", "s": "red"}]} 紅色 T 字線頂住箭頭（抑制）
       ]}]}}}
+2026-11-25 起規格可以另寫（只有 flow_shapes.py 畫 PPTX 時看；這支畫 PNG 時不看）："style"（timeline｜spine｜stack｜steps｜merge｜fork｜axis）、
+"end": false（這一頁的最後一格不是終點）、"carry": 1（第一格是上一頁的最後一格）、"pill": "mid"、"stack_en": true；節點一律不編號
+（AGENTS.md 硬規則 22，scripts/README.md「流程圖與表格的排法」）。
 2026-11-12 起（教師：「流程圖跟圖表盡量用powerpoint可編輯的排版」）：這支畫的 PNG 只給 HTML 版（html_deck.py）用；PPTX 上的流程圖由 gen_pptx 照同一份規格
 畫成 PowerPoint 原生圖形（flow_shapes.py；素材池寫 <!-- flow: 規格.json#圖名 -->），教師可以直接改字。規格改了，兩邊都要重產。
 

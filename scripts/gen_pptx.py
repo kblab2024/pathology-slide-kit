@@ -157,7 +157,7 @@ def _font(r, size, color, bold, italic=False):
 
 
 def para(tf, text, size, color=None, bold=False, align=PP_ALIGN.LEFT, space_after=6, line=1.2,
-         first=False, markup=True, prefix=None):
+         first=False, markup=True, prefix=None, mute=True):
     """text 可含 [[藍:…]] 標記；prefix=(文字, 色) 例如條列圓點。"""
     color = color or G.D["ink"]
     p = tf.paragraphs[0] if first else tf.add_paragraph()
@@ -181,15 +181,44 @@ def para(tf, text, size, color=None, bold=False, align=PP_ALIGN.LEFT, space_afte
             for part in _URL.split(piece):
                 if not part:
                     continue
-                r = p.add_run()
-                r.text = part
-                _font(r, size, col or color, bold)
                 if _URL.fullmatch(part):
+                    r = p.add_run()
+                    r.text = part
+                    _font(r, size, col or color, bold)
                     r.hyperlink.address = part          # 網址可點（教師原檔的下載網址是超連結）
+                    continue
+                mu = _en_muted(color) if (markup and mute) else None
+                for q, sub_ in enumerate(_EN_PAREN.split(part) if mu else [part]):
+                    if not sub_:
+                        continue
+                    r = p.add_run()
+                    r.text = sub_
+                    if mu and q % 2 == 1:
+                        _font(r, size, col or mu[0], mu[1])       # 上色記號裡的英文留原色，只拿掉粗體
+                    else:
+                        _font(r, size, col or color, bold)
     return p
 
 
 _URL = re.compile(r"(https?://[^\s，。、；）」]+)")
+# 括號裡的英文（中文(English) 的後半）：layout.en_muted 開了就用淡一階的顏色、不加粗。預設關。
+# 做樣張時試過（2026-11-25），這位教師不要：「括號裡的英文拜託不要變淡」（AGENTS.md 硬規則 22）；他的課不開，留著給別的老師用。
+_EN_PAREN = re.compile(r"([（(][^（）()\u4e00-\u9fff]*[A-Za-z][^（）()\u4e00-\u9fff]*[)）])")
+
+
+def _en_muted(base_color):
+    """回傳 (色, 粗體) 或 None。深色底上的白字（封面、分隔張）不套。"""
+    m = G.L.get("en_muted") if isinstance(G.L, dict) else None
+    if not m:
+        return None
+    try:
+        r_, g_, b_ = (int(base_color[k:k + 2], 16) for k in (0, 2, 4))
+        if (0.299 * r_ + 0.587 * g_ + 0.114 * b_) > 170:        # 淺色字＝深色底
+            return None
+    except Exception:
+        pass
+    m = m if isinstance(m, dict) else {}
+    return (str(m.get("color") or G.D.get("en_muted") or G.D.get("grey", "64748B")), bool(m.get("bold", False)))
 
 
 def rect(slide, x, y, w, h, hexc=None, line_hex=None, line_w=1.0, rounded=False, radius=0.06, alpha=None):
@@ -741,6 +770,26 @@ def tbl_opts(s):
     return o
 
 
+_STACK1 = re.compile(r"^([^（）()]*?)\s*([（(][^（）()\u4e00-\u9fff]*[A-Za-z][^（）()\u4e00-\u9fff]*[)）])([^（）()]{0,4})$")
+
+
+def _stack_first(cell):
+    """「膿胸(empyema)」→「膿胸⏎(empyema)」；已經手動換行、有兩個以上的括號、或不是單一名詞的格子不動。上色記號照留。"""
+    if not cell or SOFT_BREAK in cell:
+        return cell
+    marks = list(re.finditer(r"\[\[(.)[:：](.+?)\]\]", cell))
+    if len(marks) == 1 and marks[0].group(0) == cell.strip():
+        m = _STACK1.match(marks[0].group(2))
+        if m and m.group(1):
+            c = marks[0].group(1)
+            return f"[[{c}:{m.group(1)}{m.group(3)}]]{SOFT_BREAK}[[{c}:{m.group(2)}]]"
+        return cell
+    if marks:
+        return cell
+    m = _STACK1.match(cell.strip())
+    return f"{m.group(1)}{m.group(3)}{SOFT_BREAK}{m.group(2)}" if (m and m.group(1)) else cell
+
+
 def L_table3(slide, s):
     """表格。<!-- tbl: --> 可選（2026-10-20 教師：「表格要做得漂亮」「字要少」）：
       style=band（預設：深色表頭、斑馬紋、首欄粗體赭色）｜clean（表頭只有深色粗字與底下一條粗線、列與列之間細線、白底）
@@ -767,6 +816,11 @@ def L_table3(slide, s):
         y0 += need + 0.1
     ncol = len(tbl[0])
     rows = [(r + [""] * ncol)[:ncol] for r in tbl]
+    fs = tbl_opts(s).get("first") or ("stack" if G.L.get("table_first_stack") else "")
+    if fs == "stack":
+        # 首欄只有一個名詞「中文(English)」時，英文換到下一行（字不變，只多一個換行）。整套開：layout.table_first_stack；
+        # 單張開或關：<!-- tbl: first=stack --> ／ first=inline（教師 2026-11-25「各種方式交替使用」）
+        rows = [r if i == 0 else [_stack_first(r[0])] + r[1:] for i, r in enumerate(rows)]
     tw = G.SW - 2 * G.M
     wr = [max(em(r[j]) for r in rows) for j in range(ncol)]
     tot = sum(max(4, x) for x in wr)
@@ -1211,6 +1265,15 @@ RENDER = {"title": L_title, "left": L_left, "flash": L_flash, "big": L_big, "pai
 
 def build_pptx(course, deck, out_path, section=None):
     setup(course)
+    # decks.<deck>.layout／design：只蓋這一個 deck 的版面開關與色票（2026-11-25；同一門課的其他 deck 照 course.yaml 的整套設定）
+    dk = course.deck(deck) if deck in course.get("decks", {}) else {}
+    if isinstance(dk.get("layout"), dict):
+        G.L = {**G.L, **dk["layout"]}
+        G.BL = float(G.L.get("body_line", 1.2))
+        G.LL = float(G.L.get("lead_line", G.BL))
+        G.TLP = G.L.get("table_lead_pt")
+    if isinstance(dk.get("design"), dict):
+        G.D = {**G.D, **dk["design"]}
     G.layout = {}
     pool = parse_pool(course)
     built = build_deck(course, deck, pool=pool)

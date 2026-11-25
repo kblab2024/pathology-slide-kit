@@ -16,9 +16,9 @@
 不給 PPTX（對方改不回來源檔）。教師自己把包拿去跑、把回覆帶回來；本工具不連外。
 
 用法（在 <kit>/scripts；SLIDEKIT_MATERIALS 指向教材庫）：
-  python rewrite_pack.py make  --course <課程> --deck <deck> --out <雲端同步資料夾與 repo 以外的資料夾> [--only 12,13,20-25] [--per-pack 45]
+  python rewrite_pack.py make  --course <課程> --deck <deck> --out <雲端同步資料夾與 repo 以外的資料夾> [--only 12,13,20-25] [--per-pack 45] [--one-pack]
       一節寫一份 .md（節太長就平分），另寫「怎麼用」一份；每張的原文與上限記在 <課程>/_archive/revoice/rewrite_manifest_<deck>.json。
-      --only：只包這幾張（內容改過、要請對方再重寫時用）。
+      --only：只包這幾張（內容改過、要請對方再重寫時用）。--one-pack：整講一份（只包幾張時用，教師只要開一個對話）。
   python rewrite_pack.py apply --course <課程> --deck <deck> <回覆檔 …> [--tag gemini1] [--write] [--accept soft|9,13,20-25] [--keep-titles]
       不加 --write 只檢查：寫對照表 <課程>/_archive/revoice/rewrite_<tag>_<deck>_對照表.md（原來／改成／檢查／依據），
       有要對方自己修的張（超行、漏數字、漏英文、上色、沒有回、幾乎沒有改）另寫 …_退回給Gemini.md，請教師貼回同一個對話。
@@ -41,6 +41,8 @@ course.yaml 選填的設定：
     notes: [_archive/written/w_a_notes.md, …]   # 移下投影片的細節（「### 投影片 slug｜…」底下的條列）；預設讀講稿檔的【講義補充】
     digest_dir: _archive/written/digest   # 各段事實摘要 <段>.md（有就用，沒有就從 facts_R.json 列出那一段的事實）
     keep: ['^古文引句', '我覺得']          # 照抄的行（正規表示式，比對去掉上色記號後的字）：引句、教師自己的比喻與個人意見
+    keep_title: [slug-a, slug-b]          # 標題照抄的張（張的代號）。改編的講（沿用教師上過的張，只有新寫的句子送重寫）用
+    keep_rows: {slug-a: [0, 1, 2]}        # 表格照抄的列（張的代號 → 列號，表頭是 0）。包裡標「R1（照抄）」，套回時一律用原來的字
 對象讀 course.yaml 的 audience。數字卡片（stats 版型的「數字｜說明」）、封面、分隔張、國考題張一律不給重寫。
 """
 import argparse
@@ -123,6 +125,8 @@ def settings(course):
     c["notes"] = [ab(p) for p in (c.get("notes") or [])]
     c["digest_dir"] = ab(c["digest_dir"]) if c.get("digest_dir") else os.path.join(course["dir"], "_archive", "written", "digest")
     c["keep"] = [re.compile(x) for x in (c.get("keep") or [])]
+    c["keep_title"] = set(c.get("keep_title") or [])                       # 標題照抄的張（張的代號）
+    c["keep_rows"] = {k: sorted({int(x) for x in v}) for k, v in (c.get("keep_rows") or {}).items()}   # 表格照抄的列（代號 → 列號，表頭是 0）
     c["rv"] = os.path.join(course["dir"], "_archive", "revoice")
     return c
 
@@ -299,6 +303,11 @@ def record(cfg, e):
     n = sum(len(visible(t)) for t in bullets) + sum(len(visible(c)) for cs in rows for c in cs)
     rec = {"slug": s["slug"], "type": s["type"], "title": s["title"], "bullets": bullets, "rows": rows,
            "keep": [t for t in bullets if keep_why(cfg, s["type"], t)], "n": n, "limit": int(math.ceil(n * 1.1)), "lines": None}
+    if s["slug"] in cfg.get("keep_title", ()):
+        rec["keep_title"] = True
+    kr = [r for r in cfg.get("keep_rows", {}).get(s["slug"], []) if 0 <= r < len(rows)]
+    if kr:
+        rec["keep_rows"] = kr
     if s["type"] in TIGHT and bullets:
         ll = [lead_metrics(t, s["type"]) for t in bullets]
         rec["lines"] = sum(a for a, _ in ll)
@@ -312,7 +321,7 @@ RULES = """## 一、請你做的事
 - 內容以 {TEXTBOOK}為準：事實、數字、頁碼都逐條查核過，每一張要教哪幾件事也已經定了。
 - 現在的句子是另一個 AI 起草的，教師不滿意它的文法與用字；他喜歡你寫中文的方式。
 - 所以請你**用你自己的話，把每一張投影片上的字整個重寫**。這是重寫，不是校對，也不是潤飾：
-  - 每一條條列、每一格表格都請你重新造句。只換幾個詞、只調語序，或把原句照抄回來，都不算重寫。
+  - 每一條條列、每一格表格都請你重新造句（標了「（照抄）」的行除外）。只換幾個詞、只調語序，或把原句照抄回來，都不算重寫。
   - 不必保留原文的句型、語序、語氣與用詞，也不必模仿任何人的文風。照你自己認為最清楚、最自然的中文寫。
   - 同一張裡的條列可以重新安排：合併、拆開、調整先後都可以。
   - 原文的用處，只是告訴你這一張要教哪幾件事。請先讀懂研究資料，再用你的話把這幾件事講清楚。
@@ -326,7 +335,7 @@ RULES = """## 一、請你做的事
 3. **專有名詞**：一律寫成「中文(English)」，括號用半形，括號裡的英文與縮寫照抄。中文名稱照原文，不換成別的譯名（例：分化不良(dysplasia)不要寫成異型增生；研究資料裡的譯名和原文不同時以原文為準）。同一個名詞在一張裡出現幾次，每一次都要帶著括號裡的英文。不要新增原文沒有的專有名詞。
 4. **肯定的程度**：原文與研究資料寫「通常、大多、常、很少、有可能、目前認為」的地方，重寫後要一樣保留，不要寫成「一定、都會、不會」，也不要把「常」寫成「多數」、「可能」寫成「容易」；過去的事不要寫成現在還是這樣。
 5. **上色的記號**：`[[橘:名詞]]`、`[[藍:重點]]` 這種雙中括號是上色（冒號前面是顏色）。原文包起來的名詞，重寫後這個名詞還要在，照樣用同一種顏色包起來。原文包起來的是一句重點的，重寫後也要有一處同色的重點，標在同一件事上（裡面的字跟著你的新句子寫）。每一種顏色的處數和原文一樣，原文沒有上色的地方不要自己加。
-6. **標了「（照抄）」的行**：引句、教師自己的比喻與個人意見、數字卡片。一個字都不要改，原樣抄回來（放在這一張的第幾條可以調）。
+6. **標了「（照抄）」的行**（標題 `T`、條列 `B`、表格列 `R` 都可能有）：引句、教師自己的比喻與個人意見、數字卡片，或教師自己寫定的字。一個字都不要改，原樣抄回來（條列放在這一張的第幾條可以調；表格列的位置不變）。同一張其他的行照常重寫，並和照抄的行接得上。
 7. **並陳句**：有些句子或格子寫「Robbins p.xxx 寫…，p.yyy 寫…」，是刻意把教科書前後不一的兩種說法並列給學生看（那一張會註明）。句型可以換，但是兩種說法與兩個頁碼都要留著，不要合併成一種，也不要替教科書下結論。
 8. **講圖的句子**：圖沒有換。原文說「左圖、右圖、箭頭指的是…」的地方，方位與所指的東西照原文。
 9. **表格**：列數、欄數不變，每一格還是講原來那一格的事；格子可以是短語。格子裡要換行的地方寫 `⏎`（一行大約不超過原來最長的那一行）；條列裡不要寫 `⏎`。
@@ -514,7 +523,7 @@ def cmd_make(a):
         k = max(1, math.ceil(len(p["items"]) / max(1, a.per_pack)))
         size = math.ceil(len(p["items"]) / k)
         split += [{"section": p["section"], "items": p["items"][i:i + size]} for i in range(0, len(p["items"]), size)]
-    if fuse and not fuse_rw:                   # 融合包張數少：整講一份，教師只要開一個對話
+    if (fuse and not fuse_rw) or getattr(a, "one_pack", False):     # 張數少（融合包、只包幾張的重寫包）：整講一份，教師只要開一個對話
         split = [{"section": "全講", "items": entries}]
     mp = os.path.join(cfg["rv"], f"rewrite_manifest_{a.deck}.json")
     os.makedirs(cfg["rv"], exist_ok=True)
@@ -536,10 +545,11 @@ def cmd_make(a):
         all_titles[e["num"]] = (e["s"]["title"] == prev)
         prev = e["s"]["title"]
     keep_all = []
+    keep_units = []                             # 標題或表格列標了照抄的張：(張號, 標題照抄, [列號])
     for k, p in enumerate(split, 1):
         nums = [e["num"] for e in p["items"]]
         sec = re.sub(r"\([^)]*\)", "", p["section"]).split("｜")[-1].strip() or f"第{k}份"
-        sec = re.sub(r"[\\/:*?\"<>|\s]+", "", sec)
+        sec = re.sub(r"[\\/:*?\"<>|\s]+", "", sec).replace(SOFT_BREAK, "")      # 分隔張標題裡的手動換行不進檔名
         if fuse and not fuse_rw:
             title_line = f"# 請把中醫的對照融合進這幾張投影片：{deck_name}（{sec}，第 {min(nums)}–{max(nums)} 張）\n\n"
         elif fuse_rw:
@@ -610,15 +620,18 @@ def cmd_make(a):
                            + "".join(f"  - {m.get('fact', '')}（{m.get('source', '')}）\n" for m in fz.get("materials", []))
                            + (f"建議的一行（我們起草的，請用你自己的話寫，放在這一張最適合的位置）：{fz.get('suggest', '')}\n" if fz.get("suggest") else ""))
             out.append("原文：\n")
-            out.append(f"T｜{show(rec['title'])}\n")
+            out.append(("T（照抄）｜" if rec.get("keep_title") else "T｜") + show(rec["title"]) + "\n")
+            if rec.get("keep_title") or rec.get("keep_rows"):
+                keep_units.append((e["num"], bool(rec.get("keep_title")), rec.get("keep_rows") or []))
             for t in rec["bullets"]:
                 out.append(("B（照抄）｜" if t in rec["keep"] else "B｜") + show(t) + "\n")
                 n_units += 1
                 if t in rec["keep"]:
                     keep_all.append((e["num"], t))
             for r, cs in enumerate(rec["rows"]):
-                out.append(f"R{r}｜" + "｜".join(show(c, True) for c in cs) + "\n")
-                n_units += len(cs)
+                kept = r in (rec.get("keep_rows") or [])
+                out.append((f"R{r}（照抄）｜" if kept else f"R{r}｜") + "｜".join(show(c, True) for c in cs) + "\n")
+                n_units += 0 if kept else len(cs)
         if qassign.get(k):
             out.append("\n## 六、國考題下面那一行說明\n\n國考題的題目與選項照考選部原文，不能改；題目下面有一行藍灰色的小字說明（我們寫的），"
                        "請把它改寫成「方劑（關鍵組成）→ 證型 → 西醫病理」的一句或兩句（最多約 70 個全形字，英文兩個字母算一個字），"
@@ -642,6 +655,10 @@ def cmd_make(a):
         print(f"   照抄 第 {n} 張｜{t[:60]}")
     today = datetime.date.today().strftime("%Y%m%d")
     keep_txt = ("照抄、不給它重寫的行（共 %d 行）：\n" % len(keep_all) + "".join(f"- 第 {n} 張：{visible(t)[:50]}\n" for n, t in keep_all)) if keep_all else "這一講沒有指定照抄的行。\n"
+    if keep_units:
+        keep_txt += ("\n標題或表格列也標了照抄的張（套回時這些行一律用原來的字）：\n"
+                     + "".join(f"- 第 {n} 張：" + "、".join(x for x in (("標題" if kt else ""), ("表格第 " + ",".join(str(r) for r in kr) + " 列（0 是表頭）" if kr else "")) if x) + "\n"
+                               for n, kt, kr in keep_units))
     if fuse and not fuse_rw:
         hp = os.path.join(a.out, f"0_怎麼用_融合包_{label}_{today}_草稿.md")
         open(hp, "w", encoding="utf-8", newline="\n").write(FUSE_HOWTO.replace("{LABEL}", label).replace("{DATE}", today))
@@ -932,7 +949,12 @@ def cmd_apply(a):
         back = {show(t): t for t in rec["bullets"]}            # 和原句（去掉手動換行）一樣的條列用原來的寫法，手動換行才留得住
         bullets = [back.get(b, b) for b in bullets]
         rows = [rp["rows"].get(i, []) for i in range(max(len(rec["rows"]), (max(rp["rows"]) + 1) if rp["rows"] else 0))]
-        title = rec["title"] if (a.keep_titles or not rp["title"] or rp["title"] == show(rec["title"])) else rp["title"]
+        title = rec["title"] if (a.keep_titles or rec.get("keep_title") or not rp["title"] or rp["title"] == show(rec["title"])) else rp["title"]
+        for r_ in rec.get("keep_rows") or []:               # 照抄的表格列：一律用原來的字（它改了就記一筆）
+            if r_ < len(rows) and r_ < len(rec["rows"]):
+                if rows[r_] and [norm(show(c, True), True) for c in rec["rows"][r_]] != [norm(c, True) for c in rows[r_]]:
+                    kn.append(f"照抄的表格第 {r_} 列被改了，已換回原字")
+                rows[r_] = list(rec["rows"][r_])
         new = {"title": title, "bullets": bullets, "rows": rows}
         c = check_slide(rec, new, same_prev, prev_new_title)
         c["soft"] = kn + c["soft"]
@@ -1098,6 +1120,7 @@ def main():
     m.add_argument("--out", required=True, help="輸出資料夾（雲端同步資料夾與 repo 以外；做好再一次複製過去）")
     m.add_argument("--only", default="", help="只包這幾張，例 12,13,20-25")
     m.add_argument("--per-pack", type=int, default=45, help="一份包最多幾張（一節超過就平分）")
+    m.add_argument("--one-pack", action="store_true", help="整講一份（只包幾張時用：教師只要開一個對話）")
     m.add_argument("--fuse", help="融合包：JSON（slides：[{slug, materials:[{fact, source}], suggest, extra_chars, extra_lines}]、quiz：[{slug, key, note, materials}]）；"
                                   "只包表上的張，請 Gemini 把素材融合進原來的投影片（不新增張、不整張重寫），上限照 extra_chars 放寬")
     m.add_argument("--rewrite", action="store_true", help="和 --fuse 一起用：整講照一般重寫包分節、每張整張重寫，附了素材的張同時融合，"

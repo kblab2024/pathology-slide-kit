@@ -105,7 +105,7 @@ layout:                   # 版型微調
   photo_mat: {pad: 0.08, line: CFD9E5, w: 0.75}   # 照片白邊細框（有標籤的示意圖不加）
   table_style: medical    # 整套表格統一樣式（蓋過每張的 tbl: style=）
   quiz_note_band: {fill: EAF1F8, bar: 2563A8}     # 國考題題下那一行放進淡底橫條
-  flow_style: axis        # 雙軸式流程圖
+  flow_style: stack       # 流程圖沒有在規格寫 "style" 時的排法；同一份講義要輪流用幾種（timeline｜spine｜stack｜steps｜merge｜fork；硬規則 22）
 
 # rewrite:                 # 選填：請 Gemini 重寫句子的設定（每一講必做，AGENTS.md 硬規則 17；scripts/rewrite_pack.py 讀這一段）
 #   label: C免疫            # 重寫包檔名用的簡稱（預設：課程代碼＋deck 代號）

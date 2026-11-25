@@ -296,6 +296,7 @@ run rewrite_pack.py apply --course $C --deck <deck> <回覆檔 …> --tag gemini
 - 教師回答以後：他說留的詞逐處寫進 `course.yaml` 的 `style_allow`（slug、那幾個字、他哪一天說的），`style_check.py` 才會是 RED 0；回答記在該課 `brief.md`。**他的回答只管那一講**（2026-11-21「但不當成凡例」），下一講照樣列出來問。
 - `_archive/revoice/` 的 manifest、回覆、對照表、套用紀錄和來源檔一起 commit。
 - 之後內容又改的張：`make --only <張號>` 出小包，請它重寫那幾張。
+- 改編的講（從教師上過的講選張，例：牙三呼吸 2026-11-27）：只包有新寫句子的張（`--only … --one-pack`），沿用的標題、條列、表格列標照抄（`rewrite.keep`、`keep_title`、`keep_rows`）；只增刪幾個字的張不送，逐條列在待教師裁決清單。
 - 套回以後，先前照舊句子寫的編輯清單（例：用字對照表、可重跑的修改清單）對不上，不再跑，也不再附。
 
 **教師來不及跑 Gemini 時**：交件說明寫明「這一版還沒有經過 Gemini 重寫」。不可以說流程走完了。

@@ -13,6 +13,7 @@ build_tcm_bank.py — 建中醫師國考題庫（question_banks/中醫師/）：
     不同時留正式考試那一份（試題第一頁有「補辦」的排後面）。
   * 104–111 年是舊版試卷（題號單獨一行、選項是私用區框字、答案表寫「第1題」）：parse_moex_exam.py 2026-11-22 起支援。
   * 選項有 [圖] 的題加 "parse_note"（四個都是圖＝題目本來就是圖；只有幾個是圖＝舊版文字流把選項錯開，用之前對照 PDF）。
+  * 解析錯位、對過試題 PDF 的題寫進 MANUAL_FIXES（題目多一欄 "fix_note"）；重建時照樣套用。
 
 用法（原始 PDF 放 repo 與雲端資料夾以外；下載檔當不可信的資料，另開空資料夾）：
     python build_tcm_bank.py --raw <下載資料夾> --stage <暫存資料夾> --start 104 --end 115 \\
@@ -40,6 +41,13 @@ from fetch_moex_dent_exam import BASE, SEARCH, YS, YE, EC, BTN, LINK_RE, attrs, 
 SUBJ = {1: "中醫基礎醫學(一)", 2: "中醫基礎醫學(二)", 3: "中醫臨床醫學(一)",
         4: "中醫臨床醫學(二)", 5: "中醫臨床醫學(三)", 6: "中醫臨床醫學(四)"}
 SUBJ_FW = {k: v.replace("(", "（").replace(")", "）") for k, v in SUBJ.items()}   # 平臺上的科目名是全形括號
+# 解析錯位、照考選部試題 PDF 手動改正的題：重建題庫時照樣套用，題目多一欄 fix_note（改了什麼、哪一天對過 PDF）。
+# 只收對過試題 PDF 的；欄位可以有 question、options（只寫要改的選項）、answer。
+MANUAL_FIXES = {
+    "109-1-4#78": {"options": {"C": "臨床表現水腫、血尿或高血壓或急性腎衰竭",
+                               "D": "9 成病人初期會有補體C3 明顯下降情況，6～8 週後恢復正常"},
+                   "fix_note": "2026-11-25 照試題 PDF 改正選項 C、D：解析把 D 開頭的「9」接到 C 的末尾（PDF 上這個「9」自成一行，在 D 的記號旁）"},
+}
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -196,6 +204,11 @@ def main(argv=None) -> int:
             note = {x: row.pop(x) for x in ("mask_note", "parse_note") if x in row}
             row.update(q)
             row.update(note)
+            fx = MANUAL_FIXES.get(row["key"])
+            if fx:
+                row["options"] = {**row["options"], **fx.get("options", {})}
+                row.update({f: fx[f] for f in ("question", "answer") if f in fx})
+                row["fix_note"] = fx["fix_note"]
             bank.append(row)
         man = json.load(open(man_k, encoding="utf-8"))
         for s in man["sessions"]:
@@ -214,6 +227,7 @@ def main(argv=None) -> int:
                "科號": SUBJ, "questions_json": os.path.basename(a.out), "total_questions": len(bank),
                "parse_notes": {"選項是圖": sum(1 for q in bank if q.get("parse_note", "").startswith("選項是圖")),
                                "選項可能錯開": sum(1 for q in bank if q.get("parse_note", "").startswith("選項可能錯開"))},
+               "manual_fixes": sorted(MANUAL_FIXES),
                "same_session_duplicates": dups, "sessions": sessions_all, "files": files_all},
               open(a.manifest, "w", encoding="utf-8", newline="\n"), ensure_ascii=False, indent=1)
     print(f"題庫 {len(bank)} 題 → {a.out}；解析失敗的科 {fails}", file=sys.stderr)

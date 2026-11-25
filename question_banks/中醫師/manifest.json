@@ -15,6 +15,9 @@
   "選項是圖": 9,
   "選項可能錯開": 11
  },
+ "manual_fixes": [
+  "109-1-4#78"
+ ],
  "same_session_duplicates": [
   {
    "科號": 1,

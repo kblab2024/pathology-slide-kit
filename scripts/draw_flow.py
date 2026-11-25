@@ -147,9 +147,33 @@ def draw_stages(name, spec):
     return not warn
 
 
+def _no_soft_breaks(spec):
+    """規格裡的段內換行「⏎」（flow_shapes.py 畫 PPTX 時用來指定框裡在哪裡折行）：這支畫 PNG 時，節點裡的當成另起一行，
+    箭頭說明裡的換成空格（2026-11-25；原來會把這個字畫成方框、整行超出畫布）。不改傳進來的規格。"""
+    SB = "\u23ce"
+
+    def run(r):
+        if isinstance(r, str):
+            return r.replace(SB, " ")
+        if isinstance(r, dict):
+            return {k: (run(v) if k == "t" else ([run(x) for x in v] if k == "inhibit" and isinstance(v, list) else v)) for k, v in r.items()}
+        if isinstance(r, list):
+            return [run(x) for x in r]
+        return r
+
+    items = []
+    for it in spec.get("items", []):
+        if "node" in it:
+            items.append({**it, "node": [p for t in it["node"] for p in str(t).split(SB) if p != ""]})
+        else:
+            items.append({**it, "arrow": [run(ln) for ln in it.get("arrow", [])]})
+    return {**spec, "items": items}
+
+
 def draw_fig(name, spec):
     if spec.get("kind") == "stages":
         return draw_stages(name, spec)
+    spec = _no_soft_breaks(spec)
     H = int(spec["slot_h"] * 3 * EM * 1.6)
     im = Image.new("RGB", (W, H), "white")
     d = ImageDraw.Draw(im)

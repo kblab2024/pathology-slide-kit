@@ -214,14 +214,19 @@ def load_notes(course, cfg):
 EN_QUOTE = re.compile(r"「([^」]*)」")
 
 
+EN_RUN = re.compile(r"([A-Za-z]+[ ,;]+){10,}")      # 連續 10 個以上英文字：英文句子（術語、圖名不會這麼長）
+
+
 def en_quote_line(ln):
     """這一行引了英文原文（「」裡幾乎都是英文：中文字 ≤2、英文字母 ≥20）：教科書的英文原句與引句不放進包
-    （2026-11-24 發現「前後不一」那一節整段是 Robbins 原句）。中文句子裡夾英文術語的引號不算。"""
+    （2026-11-24 發現「前後不一」那一節整段是 Robbins 原句）。中文句子裡夾英文術語的引號不算。
+    2026-11-25：前後不一的說明也有用單引號引原句的（例：p.870 … MORPHOLOGY 寫 'Cystoscopically, …'），「」比對不到；
+    所以連續 10 個以上英文字的行也算（章節標題那種「#」開頭的行不算：那是書的節名，不是句子）。"""
     for q in EN_QUOTE.findall(ln):
         cjk = sum("\u4e00" <= ch <= "\u9fff" for ch in q)
         if cjk <= 2 and sum(ch.isascii() and ch.isalpha() for ch in q) >= 20:
             return True
-    return False
+    return bool(EN_RUN.search(ln)) and not ln.lstrip().startswith("#")
 
 
 def digest_text(cfg, seg, research):
@@ -674,7 +679,7 @@ def cmd_make(a):
     for fn in sorted(os.listdir(a.out)):
         if fn.endswith(".md"):
             for i, ln in enumerate(rd(os.path.join(a.out, fn)).split("\n"), 1):
-                if re.search(r"([A-Za-z]+[ ,;]+){10,}", ln) or en_quote_line(ln):
+                if en_quote_line(ln):          # 含連續 10 個以上英文字的行；「#」開頭的節名不算（en_quote_line）
                     bad.append((fn, i, ln))
     if bad:
         print(f"[RED] 包裡有 {len(bad)} 行像教科書的英文原句（不可以交出去；先找出來源、拿掉再重出）：")

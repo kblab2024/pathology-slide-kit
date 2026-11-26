@@ -106,6 +106,8 @@ def main(course, pptx_path, deck, section=None):
             if "圖片待補" in ptxt or "▦" in ptxt:
                 placeholder.append(idx)
             is_credit = ptxt.startswith(CREDIT_PREFIX)
+            if ptxt.strip() == "承上頁":            # 流程圖拆兩頁時重複那一格的小標（flow_look: slate）：和出處行一樣可以小
+                is_credit = True
             if is_credit and re.search(r"runway|expertpath", ptxt, re.I):
                 bad_credit.append((idx, ptxt[:24]))
             elif is_credit and "繪製" in ptxt:

@@ -7,12 +7,18 @@
               說明句 24pt；背景張條列 28pt、表格 26pt（medical 樣式：淡冰藍表頭、首欄赤棕粗字、頂底深藍線、列間細線）；
               出處 16pt；封面與分隔張深藍底、右側色塊、橘色直條（封面 44pt、分隔張主題 40pt、玻片行 28pt）。
               截圖註記（紅箭頭、紅圈、24pt 標籤）不變。
+  slate       2026-11-26 教師核准的新設計（大堂課 gen_pptx 的 table_style: slate 那一組色票）：幾何、字級、行數上限全部同 rd，
+              只換顏色與表格樣式。內容張淡灰白底 F8FAFC、標題與內文 0F172A、標題直條與第一層「•」2563EB、標題細線與照片細框 CBD5E1；
+              封面與分隔張 0F172A 底、右側色塊 1E293B、橘色直條 EA580C；表格同 gen_pptx 的 slate：深色表頭 1E293B 白色粗字、
+              資料列白底與 F1F5F9 隔列、沒有直線、表頭下 2pt 深線、列間 1pt E2E8F0、表底 1.5pt 94A3B8、首欄粗體深色字。
+              括號裡的英文和中文同色同粗細（硬規則 22）。實驗講義的說明句在圖的另一邊、不在標題下，所以不畫大堂課的說明句色條（lead_bar）。
+              deck.json 寫 "style": "slate"，或加 --style slate。
   classic     照教師 2026 自製實驗講義（〈病理學實驗_A1_發炎〉）的原樣（下面「版型」那一段）。
               2026-11-24 以前交的講義重產要原來的樣子：deck.json 寫 "style": "classic"，或加 --style classic。
 
 用法：python gen_lab_pptx.py <deck.json> --out <輸出.pptx> [--report <報告.json>] [--src-list <清單.md>] [--notes] [--bg-pt N]
-                              [--style rd|classic] [--img-max-side 1600] [--jpeg-quality 82]
-      python gen_lab_pptx.py --fit <deck.json 或節檔.json> [--bg-pt N] [--bullets] [--style rd|classic]
+                              [--style rd|slate|classic] [--img-max-side 1600] [--jpeg-quality 82]
+      python gen_lab_pptx.py --fit <deck.json 或節檔.json> [--bg-pt N] [--bullets] [--style rd|slate|classic]
         只量字、不產檔：逐張印出需要的高度對可用高度（撰寫代理自查用；量法和正式產檔同一套）
 
 deck.json（實驗講義工作流的輸出）：
@@ -42,7 +48,7 @@ deck.json 最上層 "panel": true：圖框與說明句底下各墊一塊淺灰�
   沒寫就不墊（骨與關節實驗講義是不墊的版本）。"bullets": true：說明句每段前加「•」（懸掛縮排 0.27 吋、段距 14pt），
   也是發炎講義的原樣。--fit 量 deck.json 時照檔裡的 bullets 量；量單張或節檔時用 --bullets。
 
-classic 的版型（幾何取自教師的發炎講義，單位吋，投影片 13.33×7.5；rd 的圖框與說明句位置相同）：
+classic 的版型（幾何取自教師的發炎講義，單位吋，投影片 13.33×7.5；rd、slate 的圖框與說明句位置相同）：
   封面      一行 54pt，置中
   分隔張    藍底 143F9C、白字：「Section N」13.5pt，主題 45pt（一到兩行），玻片行 42pt；左緣 1.24、寬 10.86
   內容張    標題一行 30pt 置中（y 0.44）；圖框 6.14×5.32 在 (0.52,1.66)（左）或 (6.67,1.66)（右），
@@ -56,7 +62,7 @@ classic 的版型（幾何取自教師的發炎講義，單位吋，投影片 13
 量字：沿用 gen_pptx 的字型量測（Windows 微軟正黑體；Mac 用 PowerPoint 內建的 MSJH；雲端 Noto Sans CJK TC）。
 報出：
   overflow  放不下（說明句或背景條列總高超過可用高度、表格單列放不下、分隔張主題或玻片行超過一行）
-  rule      違反版型規則但仍放得下（classic：標題超過一行、說明句超過 6 行；rd：說明句超過 8 行，標題到兩行都可以、三行算放不下）
+  rule      違反版型規則但仍放得下（classic：標題超過一行、說明句超過 6 行；rd 與 slate：說明句超過 8 行，標題到兩行都可以、三行算放不下）
 標題裡的「\n」是手動換行（例：「DS22 瀰漫性大 B 細胞淋巴瘤\n(DIFFUSE LARGE B-CELL LYMPHOMA)低倍」），兩行仍算 rule。
 有 overflow 時結束碼 1。報告另寫 ids（id → 張號；背景張接續時寫第一張）與各種圖位的格數。
 """
@@ -111,24 +117,38 @@ SLOT_NAME = {"shot": "截圖待補", "gx": "圖待補", "sc": "示意圖待換"}
 # ---------------- 版面模式（2026-11-24 教師：「把以後的實驗講義都改成這個mode」） ----------------
 SZ_CLASSIC = dict(SZ)
 SZ_RD = {"cover": 44, "label": 20, "theme": 40, "glass": 28, "title": 32, "body": 24, "credit": 16, "table": 26}
-RDC = {"canvas": "F4F8FB", "title": "10243A", "bar": "2563A8", "rule": "D6E0EB", "ink": "1E2631", "grey": "64748B",
-       "bullet": "2563A8", "deep": "14263B", "block": "182D45", "accent": "E06B1F", "sub": "CBD5E1",
-       "tbl_head": "E8EFF7", "tbl_line": "D6E0EB", "tbl_first": "9A4618", "mat": "CFD9E5"}   # 同 kit 課程範本的 design
-RD = {"on": False}
+RDC_RD = {"canvas": "F4F8FB", "title": "10243A", "bar": "2563A8", "rule": "D6E0EB", "ink": "1E2631", "grey": "64748B",
+          "bullet": "2563A8", "deep": "14263B", "block": "182D45", "accent": "E06B1F", "sub": "CBD5E1",
+          "tbl_head": "E8EFF7", "tbl_line": "D6E0EB", "tbl_first": "9A4618", "mat": "CFD9E5"}   # 同 kit 課程範本的 design
+# slate（2026-11-26 教師核准的新設計；同 gen_pptx 的 table_style: slate）：幾何與字級同 rd，只換顏色。
+# tbl_head 是深色表頭底（白色粗字）；tbl_rule 表頭下 2pt 線、tbl_zebra 隔列底、tbl_foot 表底 1.5pt 線。
+RDC_SLATE = {"canvas": "F8FAFC", "title": "0F172A", "bar": "2563EB", "rule": "CBD5E1", "ink": "0F172A", "grey": "64748B",
+             "bullet": "2563EB", "deep": "0F172A", "block": "1E293B", "accent": "EA580C", "sub": "CBD5E1",
+             "tbl_head": "1E293B", "tbl_line": "E2E8F0", "tbl_first": "0F172A", "mat": "CBD5E1",
+             "tbl_rule": "0F172A", "tbl_zebra": "F1F5F9", "tbl_foot": "94A3B8"}
+RDC = dict(RDC_RD)              # 目前用的色票（use_style 換）
+RD = {"on": False, "slate": False, "name": "rd"}   # on＝rd 的幾何與字級（rd、slate 都是）；slate＝slate 的色票與表格
 GEO = {"bg_line": BG_LINE, "max_lines": BODY_MAX_LINES}   # rd 說明句上限 8 行：24pt 八行約等於 20.2pt 六行的字數
 MAT_PAD, MAT_W = 0.08, 0.75     # 照片白邊（吋）、細框與標題細線（pt）
 RD_TITLE_X, RD_TITLE_Y = 0.52, 0.30
+STYLES = ("rd", "slate", "classic")
 
 
 def use_style(name):
-    """設定版面模式（沒寫＝rd）；回傳實際用的名字。"""
-    on = (name or "rd") != "classic"
+    """設定版面模式（沒寫或不認得＝slate；2026-11-26 起預設從 rd 改成 slate：教師「根據這個設計思維重新整理整個slidekit的設計吧」）；
+    回傳實際用的名字。slate 的幾何、字級、行數上限都同 rd，只換色票與表格樣式。2026-11-24 到 11-26 之間產的講義要原樣重產寫 "style": "rd"。"""
+    st = name if name in ("rd", "classic") else "slate"
+    on = st != "classic"
     RD["on"] = on
+    RD["slate"] = st == "slate"
+    RD["name"] = st
+    RDC.clear()
+    RDC.update(RDC_SLATE if st == "slate" else RDC_RD)
     SZ.clear()
     SZ.update(SZ_RD if on else SZ_CLASSIC)
     GEO["bg_line"] = 1.3 if on else BG_LINE
     GEO["max_lines"] = 8 if on else BODY_MAX_LINES
-    return "rd" if on else "classic"
+    return st
 
 
 def default_bg_pt():
@@ -624,7 +644,7 @@ def add_bg_page(s, page, layout, size, area=None):
         t = s.shapes.add_table(len(idx), len(widths), Inches(BG_X), Inches(y), Inches(BG_W), Inches(sum(hs))).table
         t.first_row = False
         t.horz_banding = False
-        if RD["on"]:     # medical 樣式：不要內建的格線
+        if RD["on"]:     # medical、slate 樣式：不要內建的格線
             sid = t._tbl.tblPr.find(qn("a:tableStyleId"))
             if sid is not None:
                 sid.text = NO_GRID_STYLE
@@ -636,7 +656,10 @@ def add_bg_page(s, page, layout, size, area=None):
             for j, txt in enumerate(rows[i]):
                 cell = t.cell(k, j)
                 cell.fill.solid()
-                if RD["on"]:
+                if RD["slate"]:   # slate：深色表頭；資料列白底與淡灰隔列（每頁從表頭下第一列算起）
+                    cell.fill.fore_color.rgb = RGBColor.from_string(
+                        RDC["tbl_head"] if i == 0 else (WHITE if k % 2 else RDC["tbl_zebra"]))
+                elif RD["on"]:
                     cell.fill.fore_color.rgb = RGBColor.from_string(RDC["tbl_head"] if i == 0 else WHITE)
                 else:
                     cell.fill.fore_color.rgb = RGBColor.from_string(BLUE if i == 0 else (WHITE if k % 2 else TINT))
@@ -646,12 +669,18 @@ def add_bg_page(s, page, layout, size, area=None):
                 tf = cell.text_frame
                 tf.word_wrap = True
                 if RD["on"]:
-                    col = RDC["title"] if i == 0 else (RDC["tbl_first"] if j == 0 else RDC["ink"])
+                    col = (WHITE if RD["slate"] else RDC["title"]) if i == 0 else (RDC["tbl_first"] if j == 0 else RDC["ink"])
                 else:
                     col = WHITE if i == 0 else INK
                 p = add_para(tf, txt, tsize, col, first=True, line=1.1, bold=(i == 0 or j == 0))
                 p._p.get_or_add_pPr().set("hangingPunct", "0")   # 全形標點不懸到格外（2026-10-16 實排）
-                if RD["on"]:   # 頂、底 1.5pt 深藍線，表頭下 0.75pt，列與列之間 0.6pt 淡線，沒有直線
+                if RD["slate"]:   # 同 gen_pptx 的 slate：表頭下 2pt 深線、列間 1pt 淡線、表底 1.5pt 灰線，沒有頂線與直線
+                    if i == 0:
+                        cell_borders(cell, L=None, R=None, T=None, B=(2.0, RDC["tbl_rule"]))
+                    else:
+                        cell_borders(cell, L=None, R=None, T=None,
+                                     B=((1.5, RDC["tbl_foot"]) if last else (1.0, RDC["tbl_line"])))
+                elif RD["on"]:   # 頂、底 1.5pt 深藍線，表頭下 0.75pt，列與列之間 0.6pt 淡線，沒有直線
                     if i == 0:
                         cell_borders(cell, L=None, R=None, T=(1.5, RDC["title"]), B=(0.75, RDC["title"]))
                     else:
@@ -915,9 +944,10 @@ def main():
     ap.add_argument("--notes", action="store_true", help="把截圖說明與來源寫進備忘稿（預設不寫：硬規則 18，學生會看到）")
     ap.add_argument("--no-notes", action="store_true", help="舊選項，等於預設（備忘稿不寫字）")
     ap.add_argument("--src-list", metavar="MD", help="截圖說明與來源另寫成一份清單（給教師看，不發給學生）")
-    ap.add_argument("--bg-pt", type=float, default=None, help="背景知識張的條列字級（預設 rd 28、classic 24；classic 的表格同字級）")
-    ap.add_argument("--style", choices=("rd", "classic"), default=None,
-                    help="版面模式（預設 rd＝大堂課新預設的版面、字大一號；2026-11-24 以前交的講義要原樣用 classic）；不給就看 deck.json 的 style")
+    ap.add_argument("--bg-pt", type=float, default=None, help="背景知識張的條列字級（預設 rd、slate 28，classic 24；classic 的表格同字級）")
+    ap.add_argument("--style", choices=STYLES, default=None,
+                    help="版面模式（預設 slate＝2026-11-26 的新設計，幾何與字級同 rd、色票與表格是 slate；rd＝2026-11-24 的版面；"
+                         "2026-11-24 以前交的講義要原樣用 classic）；不給就看 deck.json 的 style")
     ap.add_argument("--fit", metavar="JSON", help="只量字、不產檔（deck.json、節檔或張的清單）")
     ap.add_argument("--bullets", action="store_true", help="--fit 量單張或節檔時照「•」懸掛縮排量（deck.json 以檔裡的 bullets 為準）")
     ap.add_argument("--img-max-side", type=int, default=IMG_MAX_SIDE, help=f"放進 PPTX 的圖長邊上限 px（預設 {IMG_MAX_SIDE}）")
@@ -940,10 +970,10 @@ def main():
         print(f"截圖說明與來源清單 {k} 列 -> {a.src_list}")
     rp = a.report or os.path.splitext(a.out)[0] + "_layout.json"
     with open(rp, "w", encoding="utf-8") as f:
-        json.dump({"measure_font": measure_font_info(), "style": "rd" if RD["on"] else "classic", "slides": n,
+        json.dump({"measure_font": measure_font_info(), "style": RD["name"], "slides": n,
                    "image_slots": shots, "slots": slots,
                    "ids": ids, "issues": rep.items}, f, ensure_ascii=False, indent=1)
-    print(f"OK {n} 張（版面 {'rd' if RD['on'] else 'classic'}；截圖圖框 {shots} 格；{slots}）-> {a.out}")
+    print(f"OK {n} 張（版面 {RD['name']}；截圖圖框 {shots} 格；{slots}）-> {a.out}")
     ov = [i for i in rep.items if i["kind"] == "overflow"]
     for i in rep.items:
         print(f"  [{i['kind']}] {i['slide']} {i['what']}（{i['need']} > {i['avail']}）：{i['text'][:60]}")

@@ -23,6 +23,7 @@ import math
 import os
 import re
 
+from pptx.enum.dml import MSO_LINE
 from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.oxml.ns import qn
@@ -506,10 +507,12 @@ def _ns_pill(g, slide, lines, x, y, w, size, col, name, center=True):
     pw = min(nat, w)
     n = sum(g.n_lines(t_, size, pw - 2 * NS["pill_pad"], bold=True) for t_ in lines)
     ph = n * _lh(size) + 2 * NS["pill_h_pad"]
-    shp = _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, pw, ph, col["orange"], name=name + "框", radius=ph / 2)
+    sl = _slate(g)
+    shp = _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, pw, ph, SL["pill_bg"] if sl else col["orange"],
+                    SL["pill_bd"] if sl else None, 1.0, name=name + "框", radius=ph / 2)
     tb, tf = g.textbox(slide, x + NS["pill_pad"], y, pw - 2 * NS["pill_pad"], ph, anchor=MSO_ANCHOR.MIDDLE)
     for q, t_ in enumerate(lines):
-        g.para(tf, t_, size, color="FFFFFF", bold=True, align=PP_ALIGN.CENTER if center else PP_ALIGN.LEFT, first=(q == 0),
+        g.para(tf, t_, size, color=SL["pill_ink"] if sl else "FFFFFF", bold=True, align=PP_ALIGN.CENTER if center else PP_ALIGN.LEFT, first=(q == 0),
                line=1.0, space_after=0)
     tb.name = name
     return pw, ph
@@ -551,6 +554,58 @@ def _ns_opt(g, fig):
 
 GHOST = {"fill": "EEF2F6", "ink": "64748B", "bar": "A8B4C3"}       # 上一頁重複的那一格：淡灰底、灰字
 
+# ---- slate 樣式（course.yaml layout.flow_look: slate；2026-11-26 教師看了 Gemini 給腎臟一的視覺設計：「這設計看起來不錯
+#      以後把這組設計當成default」）。只換樣子，排法與量字不變：
+#      說明膠囊＝淺杏底、細橘框、深赤陶字（原來是橘底白字）；卡片細框 1.5pt；箭頭＝灰色線加箭頭，膠囊壓在線上；
+#      承上頁的那一格＝淡冰藍底、藍色虛線框、左緣藍色帶，右上角寫「承上頁」；時間軸的點是藍色、終點橘色。
+#      括號裡的英文照舊不變淡（硬規則 22）。另有三種排法只在這裡畫：cycle（左側回頭箭頭）、diamond（分成兩支再合）、sieve（兩道關卡）。
+SL = {"pill_bg": "FFF7ED", "pill_bd": "FDBA74", "pill_ink": "9A3412", "card_bd": "CBD5E1", "arrow": "64748B",
+      "ov_bg": "EFF6FF", "ov_bd": "60A5FA", "ov_bar": "2563EB", "ov_ink": "334155", "axis": "94A3B8", "dot": "2563EB", "dot_end": "EA580C",
+      "loop": "DC2626", "loop_bg": "FEF2F2", "loop_ink": "B91C1C", "gate2_bg": "FFFBEB", "gate2_bd": "EA580C", "gate1_bd": "3B82F6",
+      "plasma": "FEF2F2", "plasma_bd": "FCA5A5"}
+
+
+def _slate(g):
+    return (getattr(g.G, "L", None) or {}).get("flow_look") == "slate"
+
+
+def _varrow(g, slide, cx, y1, y2, name, color=None, pt=2.25, head=True):
+    ln = _line_shape(slide, cx, y1, cx, y2)
+    ln.line.color.rgb = g.C(color or SL["arrow"])
+    ln.line.width = Pt(pt)
+    if head:
+        e = ln.line._get_or_add_ln()
+        e.append(e.makeelement(qn("a:tailEnd"), {"type": "triangle", "w": "med", "len": "med"}))
+    ln.name = name
+    return ln
+
+
+def _hline(g, slide, x1, x2, yy, name, color=None, pt=2.25, head=False):
+    ln = _line_shape(slide, x1, yy, x2, yy)
+    ln.line.color.rgb = g.C(color or SL["arrow"])
+    ln.line.width = Pt(pt)
+    if head:
+        e = ln.line._get_or_add_ln()
+        e.append(e.makeelement(qn("a:tailEnd"), {"type": "triangle", "w": "med", "len": "med"}))
+    ln.name = name
+    return ln
+
+
+def _carry_tag(g, slide, x_right, y, name):
+    """承上頁的小字（16pt、藍），右緣對齊 x_right。"""
+    tw = _tw(g, "承上頁", 16, True) + 0.10
+    tb, tf = g.textbox(slide, x_right - tw, y, tw, 0.30)
+    g.para(tf, "承上頁", 16, color=SL["ov_bar"], bold=True, align=PP_ALIGN.RIGHT, first=True, line=1.0, space_after=0, markup=False)
+    tb.name = name
+    return tw
+
+
+def _ov_card(g, slide, kind, x, y, w, h, name, radius=None):
+    """承上頁的卡片：淡冰藍底、藍色虛線框。"""
+    shp = _ns_shape(g, slide, kind, x, y, w, h, SL["ov_bg"], SL["ov_bd"], 1.75, name, radius=radius)
+    shp.line.dash_style = MSO_LINE.DASH
+    return shp
+
 
 def _orphan(g, text, size, width_in, bold=True):
     """這一段字折行以後，最後一行是不是只剩一兩個字（孤字）。回傳 1 或 0。量法和 gen_pptx.n_lines 相同。"""
@@ -587,8 +642,8 @@ def _ns_fit_cards(cands, avail):
     return (fit or [cands[-1]])[0]
 
 
-def place_flow_stack(g, slide, s, x, y, w, h):
-    """直式卡片。"""
+def place_flow_stack(g, slide, s, x, y, w, h, _geom=None):
+    """直式卡片。_geom（list）有給時，把每一格的 (x, y, w, h) 記進去（cycle 用）。"""
     G = g.G
     fig = s["flow"]["fig"]
     items = fig.get("items", [])
@@ -612,7 +667,7 @@ def place_flow_stack(g, slide, s, x, y, w, h):
                     hs.append(sum(c * _lh(sz) * 1.05 for c, (_, sz, _) in zip(n, nl)) + 2 * pady + 0.06)
                 else:
                     lab = _ns_label(it.get("arrow", []))
-                    hs.append(max(gap, (_ns_pill_size(g, lab, w * 0.55, 24)[1] + 0.16) if lab else 0.0))
+                    hs.append(max(gap, (_ns_pill_size(g, lab, w * 0.55, 24)[1] + (0.30 if _slate(g) else 0.16)) if lab else 0.0))
             cands.append((base, sum(hs), wraps, pady, gap, nls, nw, hs))
     base, fh, _, pady, gap, nls, nw, hs = _ns_fit(cands, avail)
     g.note_fit(s, fh, avail, "流程圖")
@@ -627,16 +682,31 @@ def place_flow_stack(g, slide, s, x, y, w, h):
             kn += 1
             solid = kn == n_nodes and n_nodes > 1 and opt.get("end", True)
             ghost = kn <= int(opt.get("carry", 0) or 0)
-            _ns_shape(g, slide, MSO_SHAPE.RECTANGLE, fx, cy, nw, hh, col["navy"] if solid else (GHOST["fill"] if ghost else "FFFFFF"),
-                      None if solid else col["line"], 0.75, f"流程圖 框{kn}" + ("（承上頁）" if ghost else ""))
-            _ns_shape(g, slide, MSO_SHAPE.RECTANGLE, fx, cy, BAR, hh, col["orange"] if solid else (GHOST["bar"] if ghost else col["blue"]), name=f"流程圖 框{kn} 色帶")
+            sl = _slate(g)
+            if _geom is not None:
+                _geom.append((fx, cy, nw, hh))
+            if sl and ghost:
+                _ov_card(g, slide, MSO_SHAPE.RECTANGLE, fx, cy, nw, hh, f"流程圖 框{kn}（承上頁）")
+                _ns_shape(g, slide, MSO_SHAPE.RECTANGLE, fx, cy, BAR, hh, SL["ov_bar"], name=f"流程圖 框{kn} 色帶")
+                _carry_tag(g, slide, fx + nw - 0.10, cy + 0.04, f"流程圖 框{kn} 承上頁")
+            else:
+                _ns_shape(g, slide, MSO_SHAPE.RECTANGLE, fx, cy, nw, hh, col["navy"] if solid else (GHOST["fill"] if ghost else "FFFFFF"),
+                          None if solid else (SL["card_bd"] if sl else col["line"]), 1.5 if sl else 0.75, f"流程圖 框{kn}" + ("（承上頁）" if ghost else ""))
+                _ns_shape(g, slide, MSO_SHAPE.RECTANGLE, fx, cy, BAR, hh, col["orange"] if solid else (GHOST["bar"] if ghost else col["blue"]), name=f"流程圖 框{kn} 色帶")
             tb, tf = g.textbox(slide, fx + BAR + PADX, cy, nw - BAR - 2 * PADX, hh, anchor=MSO_ANCHOR.MIDDLE)
-            _ns_text(g, tf, nls[kn - 1], dict(col, ink=GHOST["ink"]) if ghost else col, solid, bold_zh=False)
+            _ns_text(g, tf, nls[kn - 1], dict(col, ink=(SL["ov_ink"] if sl else GHOST["ink"])) if ghost else col, solid, bold_zh=False)
             tb.name = f"流程圖 框{kn} 文字"
             cy += hh
             continue
         ka += 1
         lab = _ns_label(it.get("arrow", []))
+        if _slate(g):
+            _varrow(g, slide, cx, cy + 0.03, cy + hh - 0.03, f"流程圖 箭頭{ka}")          # 線在下面，膠囊（不透明）壓在線上
+            if lab:
+                pw, ph = _ns_pill_size(g, lab, w * 0.55, 24)
+                _ns_pill(g, slide, lab, cx - pw / 2, cy + (hh - ph) / 2 - 0.04, w * 0.55, 24, col, f"流程圖 箭頭{ka} 說明")
+            cy += hh
+            continue
         tri = _ns_shape(g, slide, MSO_SHAPE.ISOSCELES_TRIANGLE, cx - 0.17, cy + hh / 2 - 0.10, 0.34, 0.20, col["blue"], name=f"流程圖 箭頭{ka}")
         tri.rotation = 180
         if lab:
@@ -708,25 +778,29 @@ def place_flow_steps(g, slide, s, x, y, w, h):
 
     def harrow(x1, x2, ay, name, pt=3.5, color=None):
         ln = _line_shape(slide, x1, ay, x2, ay)
-        ln.line.color.rgb = g.C(color or col["navy"])
+        ln.line.color.rgb = g.C(color or (SL["arrow"] if _slate(g) else col["navy"]))
         ln.line.width = Pt(pt)
         e = ln.line._get_or_add_ln()
         e.append(e.makeelement(qn("a:tailEnd"), {"type": "triangle", "w": "med", "len": "med"}))
         ln.name = name
 
     if carry:
-        _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, top, GW, ch, GHOST["fill"], col["line"], 0.75, "流程圖 框1（承上頁）", radius=0.10)
+        if _slate(g):
+            _ov_card(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, top, GW, ch, "流程圖 框1（承上頁）", radius=0.10)
+            _carry_tag(g, slide, x + GW - 0.08, top + 0.03, "流程圖 框1 承上頁")
+        else:
+            _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, top, GW, ch, GHOST["fill"], col["line"], 0.75, "流程圖 框1（承上頁）", radius=0.10)
         tb, tf = g.textbox(slide, x + 0.22, top, GW - 0.44, ch, anchor=MSO_ANCHOR.MIDDLE)
         for q, t_ in enumerate(nodes[0]):
-            g.para(tf, t_, 24, color=GHOST["ink"], first=(q == 0), line=1.05, space_after=0, mute=False)
+            g.para(tf, t_, 24, color=SL["ov_ink"] if _slate(g) else GHOST["ink"], first=(q == 0), line=1.05, space_after=0, mute=False)
         tb.name = "流程圖 框1 文字"
         harrow(x + GW + 0.16, x0 - 0.16, top + ch / 2, "流程圖 箭頭1", pt=2.5, color=GHOST["bar"])
     for i, nl in enumerate(nls):
         solid = i == 1 and opt.get("end", True)
         bx = x0 + i * (cw + GAP)
         k = i + 1 + carry
-        _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, bx, top, cw, ch, col["navy"] if solid else "FFFFFF", None if solid else col["line"], 1.0,
-                  f"流程圖 框{k}", radius=0.10)
+        _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, bx, top, cw, ch, col["navy"] if solid else "FFFFFF",
+                  None if solid else (SL["card_bd"] if _slate(g) else col["line"]), 1.5 if _slate(g) else 1.0, f"流程圖 框{k}", radius=0.10)
         _ns_shape(g, slide, MSO_SHAPE.RECTANGLE, bx + PADX, top + PADY, 0.9, ACC, col["orange"] if solid else col["blue"], name=f"流程圖 框{k} 色條")
         tb, tf = g.textbox(slide, bx + PADX, top + PADY + ACC + 0.22, cw - 2 * PADX, ch - 2 * PADY - ACC - 0.22)
         _ns_text(g, tf, nl, col, solid, bold_zh=False)
@@ -784,8 +858,8 @@ def place_flow_timeline(g, slide, s, x, y, w, h):
     y1 = ys[0] if "node" in items[0] else cy
     y2 = (cy + fh + 0.10) if cont else ys[-1]
     ln = _line_shape(slide, fx + LX, y1, fx + LX, y2)
-    ln.line.color.rgb = g.C(col["navy"])
-    ln.line.width = Pt(2.5)
+    ln.line.color.rgb = g.C(SL["axis"] if _slate(g) else col["navy"])
+    ln.line.width = Pt(3.0 if _slate(g) else 2.5)
     if cont:
         e = ln.line._get_or_add_ln()
         e.append(e.makeelement(qn("a:tailEnd"), {"type": "triangle", "w": "med", "len": "med"}))
@@ -798,8 +872,16 @@ def place_flow_timeline(g, slide, s, x, y, w, h):
             last = kn == n_nodes and n_nodes > 1 and opt.get("end", True)
             ghost = kn <= int(opt.get("carry", 0) or 0)
             r = 0.19 if last else 0.11
-            _ns_shape(g, slide, MSO_SHAPE.OVAL, fx + LX - r, ys[kn - 1] - r, 2 * r, 2 * r, col["orange"] if last else ("FFFFFF" if ghost else col["navy"]),
-                      GHOST["bar"] if ghost else "FFFFFF", 1.5, f"流程圖 點{kn}")
+            if _slate(g):
+                r = 0.19 if last else 0.14
+                _ns_shape(g, slide, MSO_SHAPE.OVAL, fx + LX - r, ys[kn - 1] - r, 2 * r, 2 * r, SL["dot_end"] if last else ("FFFFFF" if ghost else SL["dot"]),
+                          SL["ov_bd"] if ghost else "FFFFFF", 2.25, f"流程圖 點{kn}")
+                if ghost:
+                    wmax = max(_tw(g, t_, sz, False) for t_, sz, _ in nls[kn - 1])
+                    _carry_tag(g, slide, min(fx + TX + wmax + 0.95, x + w), yy + 0.06, f"流程圖 框{kn} 承上頁")
+            else:
+                _ns_shape(g, slide, MSO_SHAPE.OVAL, fx + LX - r, ys[kn - 1] - r, 2 * r, 2 * r, col["orange"] if last else ("FFFFFF" if ghost else col["navy"]),
+                          GHOST["bar"] if ghost else "FFFFFF", 1.5, f"流程圖 點{kn}")
             tb, tf = g.textbox(slide, fx + TX, yy, tw - (fx - x), hh)
             for q, (t_, sz, kind) in enumerate(nls[kn - 1]):
                 if kind == "en":
@@ -855,8 +937,8 @@ def place_flow_spine(g, slide, s, x, y, w, h):
 
     def vline(y1, y2, head, name):
         ln = _line_shape(slide, cx, y1, cx, y2)
-        ln.line.color.rgb = g.C(col["navy"])
-        ln.line.width = Pt(2.0)
+        ln.line.color.rgb = g.C(SL["arrow"] if _slate(g) else col["navy"])
+        ln.line.width = Pt(2.25 if _slate(g) else 2.0)
         if head:
             e = ln.line._get_or_add_ln()
             e.append(e.makeelement(qn("a:tailEnd"), {"type": "triangle", "w": "med", "len": "med"}))
@@ -867,15 +949,25 @@ def place_flow_spine(g, slide, s, x, y, w, h):
             kn += 1
             last = kn == n_nodes and n_nodes > 1 and opt.get("end", True)
             ghost = kn <= int(opt.get("carry", 0) or 0)
-            _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, fx, cy, nw, hh, "E6EEF8" if last else (GHOST["fill"] if ghost else "FFFFFF"),
-                      col["blue"] if last else col["line"], 1.75 if last else 0.75, f"流程圖 框{kn}" + ("（承上頁）" if ghost else ""), radius=0.08)
+            sl = _slate(g)
+            if sl and ghost:
+                _ov_card(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, fx, cy, nw, hh, f"流程圖 框{kn}（承上頁）", radius=0.08)
+                _carry_tag(g, slide, fx + nw - 0.10, cy + 0.03, f"流程圖 框{kn} 承上頁")
+            elif sl:                                   # slate：最後一格和其他排法一樣是實心深色、白字
+                _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, fx, cy, nw, hh, col["navy"] if last else "FFFFFF",
+                          None if last else SL["card_bd"], 1.5, f"流程圖 框{kn}", radius=0.08)
+            else:
+                _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, fx, cy, nw, hh, "E6EEF8" if last else (GHOST["fill"] if ghost else "FFFFFF"),
+                          col["blue"] if last else col["line"], 1.75 if last else 0.75, f"流程圖 框{kn}" + ("（承上頁）" if ghost else ""), radius=0.08)
             tb, tf = g.textbox(slide, fx + PADX, cy, nw - 2 * PADX, hh, anchor=MSO_ANCHOR.MIDDLE)
             for q, (t_, sz, kind) in enumerate(nls[kn - 1]):
                 if kind == "en":
                     g.para(tf, t_, sz, color=col["en"], align=PP_ALIGN.CENTER, first=(q == 0), line=1.05, space_after=0, markup=False, mute=False)
+                elif sl and last:
+                    g.para(tf, t_, sz, color="FFFFFF", bold=True, align=PP_ALIGN.CENTER, first=(q == 0), line=1.05, space_after=0, markup=False)
                 else:
-                    g.para(tf, t_, sz, color=(GHOST["ink"] if ghost else col["ink"]), bold=last, align=PP_ALIGN.CENTER, first=(q == 0), line=1.05,
-                           space_after=0, mute=not ghost)
+                    g.para(tf, t_, sz, color=((SL["ov_ink"] if sl else GHOST["ink"]) if ghost else col["ink"]), bold=last, align=PP_ALIGN.CENTER,
+                           first=(q == 0), line=1.05, space_after=0, mute=not ghost)
             tb.name = f"流程圖 框{kn} 文字"
             cy += hh
             continue
@@ -887,10 +979,11 @@ def place_flow_spine(g, slide, s, x, y, w, h):
             if cy > y + 0.01 or kn:
                 vline(cy + 0.02, ty, False, f"流程圖 箭頭{ka} 上段")
             vline(ty + ph, cy + hh - 0.03, True, f"流程圖 箭頭{ka}")
-            _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, cx - pw / 2, ty, pw, ph, "FFFFFF", col["orange"], 1.25, f"流程圖 箭頭{ka} 說明框", radius=ph / 2)
+            _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, cx - pw / 2, ty, pw, ph, SL["pill_bg"] if _slate(g) else "FFFFFF",
+                      SL["pill_bd"] if _slate(g) else col["orange"], 1.0 if _slate(g) else 1.25, f"流程圖 箭頭{ka} 說明框", radius=ph / 2)
             tb, tf = g.textbox(slide, cx - pw / 2 + NS["pill_pad"], ty, pw - 2 * NS["pill_pad"], ph, anchor=MSO_ANCHOR.MIDDLE)
             for q, t_ in enumerate(lab):
-                g.para(tf, t_, 24, color=tag_ink, bold=True, align=PP_ALIGN.CENTER, first=(q == 0), line=1.0, space_after=0)
+                g.para(tf, t_, 24, color=SL["pill_ink"] if _slate(g) else tag_ink, bold=True, align=PP_ALIGN.CENTER, first=(q == 0), line=1.0, space_after=0)
             tb.name = f"流程圖 箭頭{ka} 說明"
         else:
             vline(cy + 0.03, cy + hh - 0.03, True, f"流程圖 箭頭{ka}")
@@ -948,7 +1041,7 @@ def _place_flow_branch(g, slide, s, x, y, w, h, fork):
 
     def harrow(x1, x2, ay, name, pt=3.5, color=None):
         ln = _line_shape(slide, x1, ay, x2, ay)
-        ln.line.color.rgb = g.C(color or col["navy"])
+        ln.line.color.rgb = g.C(color or (SL["arrow"] if _slate(g) else col["navy"]))
         ln.line.width = Pt(pt)
         e = ln.line._get_or_add_ln()
         e.append(e.makeelement(qn("a:tailEnd"), {"type": "triangle", "w": "med", "len": "med"}))
@@ -957,25 +1050,29 @@ def _place_flow_branch(g, slide, s, x, y, w, h, fork):
     if carry:
         gh = min(body_h, max(1.6, sum(g.n_lines(t_, 24, GW - 0.44) for t_ in nodes[0]) * _lh(24) * 1.05 + 0.5))
         gy = top + (body_h - gh) / 2
-        _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, gy, GW, gh, GHOST["fill"], col["line"], 0.75, "流程圖 框1（承上頁）", radius=0.10)
+        if _slate(g):
+            _ov_card(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, gy, GW, gh, "流程圖 框1（承上頁）", radius=0.10)
+            _carry_tag(g, slide, x + GW - 0.08, gy + 0.03, "流程圖 框1 承上頁")
+        else:
+            _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, gy, GW, gh, GHOST["fill"], col["line"], 0.75, "流程圖 框1（承上頁）", radius=0.10)
         tb, tf = g.textbox(slide, x + 0.22, gy, GW - 0.44, gh, anchor=MSO_ANCHOR.MIDDLE)
         for q, t_ in enumerate(nodes[0]):
-            g.para(tf, t_, 24, color=GHOST["ink"], first=(q == 0), line=1.05, space_after=0, mute=False)
+            g.para(tf, t_, 24, color=SL["ov_ink"] if _slate(g) else GHOST["ink"], first=(q == 0), line=1.05, space_after=0, mute=False)
         tb.name = "流程圖 框1 文字"
         harrow(x + GW + 0.14, x0 - 0.14, top + body_h / 2, "流程圖 箭頭1", pt=2.5, color=GHOST["bar"])
     # 單格那一邊：置中；merge 的結果格和多格那一疊等高
     sh_ = max(s_h, body_h * (0.62 if fork else 1.0))
     sy = top + (body_h - sh_) / 2
     kk = (1 if fork else len(multi) + 1) + carry
-    _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, sx, sy, sw, sh_, col["navy"] if solid else "FFFFFF", None if solid else col["line"], 1.0,
-              f"流程圖 框{kk}", radius=0.10)
+    _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, sx, sy, sw, sh_, col["navy"] if solid else "FFFFFF",
+              None if solid else (SL["card_bd"] if _slate(g) else col["line"]), 1.5 if _slate(g) else 1.0, f"流程圖 框{kk}", radius=0.10)
     tb, tf = g.textbox(slide, sx + PADX, sy, sw - 2 * PADX, sh_, anchor=MSO_ANCHOR.MIDDLE)
     _ns_text(g, tf, [(t_, base, "zh") for t_ in single], col, solid, bold_zh=fork)
     tb.name = f"流程圖 框{kk} 文字"
     cy = top + (body_h - (sum(m_h) + VG * (len(multi) - 1))) / 2
     for i, (t_, hh) in enumerate(zip(multi, m_h)):
         k = ((i + 2) if fork else (i + 1)) + carry
-        _ns_shape(g, slide, MSO_SHAPE.RECTANGLE, mx, cy, mw, hh, "FFFFFF", col["line"], 0.75, f"流程圖 框{k}")
+        _ns_shape(g, slide, MSO_SHAPE.RECTANGLE, mx, cy, mw, hh, "FFFFFF", SL["card_bd"] if _slate(g) else col["line"], 1.5 if _slate(g) else 0.75, f"流程圖 框{k}")
         _ns_shape(g, slide, MSO_SHAPE.RECTANGLE, mx, cy, BAR, hh, col["blue"] if i % 2 == 0 else col["orange"], name=f"流程圖 框{k} 色帶")
         tb, tf = g.textbox(slide, mx + BAR + PADX, cy, mw - BAR - 2 * PADX, hh, anchor=MSO_ANCHOR.MIDDLE)
         _ns_text(g, tf, [(t_, base, "zh")], col, False, bold_zh=False)
@@ -992,6 +1089,198 @@ def place_flow_merge(g, slide, s, x, y, w, h):
 
 def place_flow_fork(g, slide, s, x, y, w, h):
     return _place_flow_branch(g, slide, s, x, y, w, h, fork=True)
+
+
+def place_flow_cycle(g, slide, s, x, y, w, h):
+    """循環回饋：直式卡片往右讓出一條車道，左邊一條回頭的箭頭從最後一格接回第一格（惡性循環）。
+    規格和 stack 一樣，另寫 "loop": ["腎元又更少", "惡性循環"]（回頭箭頭上的字，一行一個字串）。Gemini 2026-11-26 的建議。"""
+    fig = s["flow"]["fig"]
+    LANE = 1.80
+    geom = []
+    bottom = place_flow_stack(g, slide, s, x + LANE, y, w - LANE, h, _geom=geom)
+    if len(geom) < 2:
+        return bottom
+    fx, y1, nw, h1 = geom[0]
+    _, yn, _, hn = geom[-1]
+    lx = x + 0.90                                   # 回頭線的 x
+    ya, yb = y1 + h1 / 2, yn + hn / 2
+    c = SL["loop"]
+    _hline(g, slide, fx - 0.04, lx, yb, "流程圖 回頭線 下段", c, 2.5)
+    _varrow(g, slide, lx, yb, ya, "流程圖 回頭線 直段", c, 2.5, head=False)
+    _hline(g, slide, lx, fx - 0.04, ya, "流程圖 回頭線 上段", c, 2.5, head=True)
+    lab = [str(t_) for t_ in (fig.get("loop") or [])]
+    if lab:
+        bw = min(1.75, max(_tw(g, t_, 24, True) for t_ in lab) + 0.30)
+        bw = max(bw, 1.2)
+        n = sum(g.n_lines(t_, 24, bw - 0.24, bold=True) for t_ in lab)
+        bh = n * _lh(24) + 0.20
+        by = (ya + yb) / 2 - bh / 2
+        _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, lx - bw / 2, by, bw, bh, SL["loop_bg"], c, 1.5, "流程圖 回頭線 說明框", radius=0.10)
+        tb, tf = g.textbox(slide, lx - bw / 2 + 0.12, by, bw - 0.24, bh, anchor=MSO_ANCHOR.MIDDLE)
+        for q, t_ in enumerate(lab):
+            g.para(tf, t_, 24, color=SL["loop_ink"], bold=True, align=PP_ALIGN.CENTER, first=(q == 0), line=1.0, space_after=0)
+        tb.name = "流程圖 回頭線 說明"
+    return bottom
+
+
+def _card_text(g, slide, lines, x, y, w, h, size, color, bold, name, center=True):
+    tb, tf = g.textbox(slide, x, y, w, h, anchor=MSO_ANCHOR.MIDDLE)
+    for q, t_ in enumerate(lines):
+        g.para(tf, t_, size, color=color, bold=bold, align=PP_ALIGN.CENTER if center else PP_ALIGN.LEFT, first=(q == 0), line=1.05,
+               space_after=0, markup=(color != "FFFFFF"))
+    tb.name = name
+
+
+def _cell_lines(t_):
+    return [p_ for p_ in str(t_).split("⏎") if p_]
+
+
+def place_flow_diamond(g, slide, s, x, y, w, h):
+    """菱形分合：上面一格 → 分成左右兩支 → 合成下面一格。Gemini 2026-11-26 的建議（一個原因經兩條路造成同一個結果）。
+    規格 items：[節點（上）, 箭頭（兩行＝左支、右支的說明）, 節點（兩行＝左格、右格，格內換行用 ⏎）, 節點（下，結果）]；"carry": 1 時上面那一格是承上頁。"""
+    G = g.G
+    fig = s["flow"]["fig"]
+    items = fig.get("items", [])
+    nodes = [it["node"] for it in items if "node" in it]
+    labs = next((_ns_label(it["arrow"]) for it in items if "arrow" in it and it.get("arrow")), [])
+    if len(nodes) != 3 or len(nodes[1]) != 2:
+        return place_flow_stack(g, slide, s, x, y, w, h)
+    opt = _ns_opt(g, fig)
+    col = _ns_colors(g)
+    avail = _ns_avail(g, y, h)
+    top_l, (lt, rt), bot_l = nodes[0], [_cell_lines(t_) for t_ in nodes[1]], nodes[2]
+    GAPX, PADX = 0.60, 0.26
+    bw_ = (w - GAPX) / 2
+    tw_top, tw_bot = w * 0.50, w * 0.60
+    best = None
+    for base in (28, 26, 24):
+        def hh(lines, ww):
+            return sum(g.n_lines(t_, base, ww - 2 * PADX, bold=True) for t_ in lines) * _lh(base) * 1.05 + 0.20
+        h_top, h_mid, h_bot = hh(top_l, tw_top), max(hh(lt, bw_), hh(rt, bw_)), hh(bot_l, tw_bot)
+        ph = max([_ns_pill_size(g, [t_], bw_ * 0.9, 24)[1] for t_ in labs] or [0.0])
+        g1 = max(0.55, ph + 0.36)
+        g2 = 0.46
+        fh = h_top + g1 + h_mid + g2 + h_bot
+        best = (base, fh, h_top, h_mid, h_bot, g1, g2, ph)
+        if fh <= avail:
+            break
+    base, fh, h_top, h_mid, h_bot, g1, g2, ph = best
+    g.note_fit(s, fh, avail, "流程圖")
+    G.layout[s["id"]][-1]["pt"] = base
+    extra = max(0.0, min(0.5, (avail - fh) / 2))
+    g1 += extra / 2
+    g2 += extra / 2
+    cy = y + max(0.0, min(0.25, (avail - fh - extra) * 0.3))
+    cx = x + w / 2
+    lcx, rcx = x + bw_ / 2, x + bw_ + GAPX + bw_ / 2
+    carry = int(opt.get("carry", 0) or 0)
+    # 上面那一格
+    tx = cx - tw_top / 2
+    if carry:
+        _ov_card(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, tx, cy, tw_top, h_top, "流程圖 框1（承上頁）", radius=0.08)
+        _carry_tag(g, slide, tx + tw_top - 0.10, cy + 0.03, "流程圖 框1 承上頁")
+    else:
+        _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, tx, cy, tw_top, h_top, "FFFFFF", SL["card_bd"], 1.5, "流程圖 框1", radius=0.08)
+    _card_text(g, slide, top_l, tx + PADX, cy, tw_top - 2 * PADX, h_top, base, SL["ov_ink"] if carry else col["ink"], False, "流程圖 框1 文字")
+    y_top_b = cy + h_top
+    y_mid = y_top_b + g1
+    y_mid_b = y_mid + h_mid
+    y_bot = y_mid_b + g2
+    # 分支：上格底 → 橫線 → 兩支往下
+    ys_ = y_top_b + 0.20
+    _varrow(g, slide, cx, y_top_b + 0.02, ys_, "流程圖 分支 幹", head=False)
+    _hline(g, slide, lcx, rcx, ys_, "流程圖 分支 橫")
+    for k, (bx_c, name) in enumerate(((lcx, "左"), (rcx, "右"))):
+        _varrow(g, slide, bx_c, ys_, y_mid - 0.03, f"流程圖 分支 {name}")
+        if k < len(labs) and labs[k]:
+            pw, _ = _ns_pill_size(g, [labs[k]], bw_ * 0.9, 24)
+            _ns_pill(g, slide, [labs[k]], bx_c - pw / 2, ys_ + (y_mid - ys_ - ph) / 2 - 0.02, bw_ * 0.9, 24, col, f"流程圖 箭頭{k + 1} 說明")
+    for k, (lines, bx) in enumerate(((lt, x), (rt, x + bw_ + GAPX))):
+        _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, bx, y_mid, bw_, h_mid, "FFFFFF", SL["card_bd"], 1.5, f"流程圖 框{k + 2}", radius=0.08)
+        _ns_shape(g, slide, MSO_SHAPE.RECTANGLE, bx, y_mid + 0.10, 0.10, h_mid - 0.20, col["blue"] if k == 0 else col["orange"], name=f"流程圖 框{k + 2} 色帶")
+        _card_text(g, slide, lines, bx + PADX, y_mid, bw_ - 2 * PADX, h_mid, base, col["ink"], False, f"流程圖 框{k + 2} 文字")
+    # 匯流：兩支底 → 橫線 → 下格
+    ym_ = y_mid_b + g2 * 0.45
+    _varrow(g, slide, lcx, y_mid_b + 0.02, ym_, "流程圖 匯流 左", head=False)
+    _varrow(g, slide, rcx, y_mid_b + 0.02, ym_, "流程圖 匯流 右", head=False)
+    _hline(g, slide, lcx, rcx, ym_, "流程圖 匯流 橫")
+    _varrow(g, slide, cx, ym_, y_bot - 0.03, "流程圖 匯流 幹")
+    bx = cx - tw_bot / 2
+    solid = opt.get("end", True)
+    _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, bx, y_bot, tw_bot, h_bot, col["navy"] if solid else "FFFFFF", None if solid else SL["card_bd"], 1.5,
+              "流程圖 框4", radius=0.08)
+    _card_text(g, slide, bot_l, bx + PADX, y_bot, tw_bot - 2 * PADX, h_bot, base, "FFFFFF" if solid else col["ink"], solid, "流程圖 框4 文字")
+    return y_bot + h_bot
+
+
+def place_flow_sieve(g, slide, s, x, y, w, h):
+    """雙關卡篩選：左邊是來源（例：微血管腔的血漿），中間兩道並列的關卡，右邊實心格是結果；關卡下面一個膠囊寫被擋住的東西，
+    一條紅色的回頭箭頭指回來源。Gemini 2026-11-26 的建議（過濾屏障依大小與電荷篩選）。
+    規格 items 和 merge 一樣：[節點（兩行＝兩道關卡，格內換行用 ⏎）, 箭頭（被擋住的東西）, 節點（結果）]；另寫 "source": ["…"]（左邊那一塊的字）。"""
+    G = g.G
+    fig = s["flow"]["fig"]
+    items = fig.get("items", [])
+    nodes = [it["node"] for it in items if "node" in it]
+    lab = next((_ns_label(it["arrow"]) for it in items if "arrow" in it and it.get("arrow")), [])
+    if len(nodes) != 2 or len(nodes[0]) != 2:
+        return place_flow_merge(g, slide, s, x, y, w, h)
+    col = _ns_colors(g)
+    avail = _ns_avail(g, y, h)
+    src = [str(t_) for t_ in (fig.get("source") or [])]
+    gates = [_cell_lines(t_) for t_ in nodes[0]]
+    res = nodes[1]
+    GAP = 0.34
+    sw_ = w * 0.19
+    rw_ = w * 0.25
+    gw_ = (w - sw_ - rw_ - 3 * GAP) / 2
+    PADX = 0.18
+    best = None
+    for base in (28, 26, 24):
+        gl = [sum(g.n_lines(t_, base, gw_ - 2 * PADX, bold=True) for t_ in ls) for ls in gates]
+        body = max(max(gl) * _lh(base) * 1.05 + 0.9, 2.6)
+        ph = (_ns_pill_size(g, lab, 2 * gw_ + GAP, 24)[1]) if lab else 0.0
+        fh = body + (ph + 0.50 if lab else 0.0)
+        best = (base, fh, body, ph)
+        if fh <= avail:
+            break
+    base, fh, body, ph = best
+    g.note_fit(s, fh, avail, "流程圖")
+    G.layout[s["id"]][-1]["pt"] = base
+    body = min(max(body, min(avail - (ph + 0.50 if lab else 0.0), 3.4)), avail)
+    top = y + max(0.0, min(0.3, (avail - body - (ph + 0.50 if lab else 0.0)) * 0.3))
+    # 來源
+    _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, top, sw_, body, SL["plasma"], SL["plasma_bd"], 1.0, "流程圖 來源", radius=0.10)
+    if src:
+        _card_text(g, slide, src, x + 0.12, top, sw_ - 0.24, body, 24, col["ink"], False, "流程圖 來源 文字")
+    gx = [x + sw_ + GAP, x + sw_ + GAP + gw_ + GAP]
+    for k, ls in enumerate(gates):
+        shp = _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, gx[k], top, gw_, body, "FFFFFF" if k == 0 else SL["gate2_bg"],
+                        SL["gate1_bd"] if k == 0 else SL["gate2_bd"], 2.0, f"流程圖 關卡{k + 1}", radius=0.08)
+        if k == 0:
+            shp.line.dash_style = MSO_LINE.DASH
+        _card_text(g, slide, ls, gx[k] + PADX, top, gw_ - 2 * PADX, body, base, col["ink"], False, f"流程圖 關卡{k + 1} 文字")
+    rx = gx[1] + gw_ + GAP
+    rh = min(body, max(2.0, body * 0.72))
+    ry = top + (body - rh) / 2
+    _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, rx, ry, rw_, rh, col["navy"], None, 1.0, "流程圖 結果", radius=0.10)
+    _card_text(g, slide, res, rx + 0.16, ry, rw_ - 0.32, rh, base, "FFFFFF", True, "流程圖 結果 文字")
+    my = top + body / 2
+    for k, (x1, x2) in enumerate(((x + sw_ + 0.03, gx[0] - 0.03), (gx[0] + gw_ + 0.03, gx[1] - 0.03), (gx[1] + gw_ + 0.03, rx - 0.03))):
+        _hline(g, slide, x1, x2, my, f"流程圖 箭頭{k + 1}", head=True)
+    bottom = top + body
+    if lab:
+        pw, _ = _ns_pill_size(g, lab, 2 * gw_ + GAP, 24)
+        py = bottom + 0.28
+        pcx = gx[0] + gw_ + GAP / 2
+        shp = _ns_shape(g, slide, MSO_SHAPE.ROUNDED_RECTANGLE, pcx - pw / 2, py, pw, ph, SL["loop_bg"], SL["loop"], 1.25, "流程圖 擋回 說明框", radius=ph / 2)
+        tb, tf = g.textbox(slide, pcx - pw / 2 + NS["pill_pad"], py, pw - 2 * NS["pill_pad"], ph, anchor=MSO_ANCHOR.MIDDLE)
+        for q, t_ in enumerate(lab):
+            g.para(tf, t_, 24, color=SL["loop_ink"], bold=True, align=PP_ALIGN.CENTER, first=(q == 0), line=1.0, space_after=0)
+        tb.name = "流程圖 擋回 說明"
+        _hline(g, slide, pcx - pw / 2 - 0.06, x + sw_ / 2, py + ph / 2, "流程圖 擋回 橫", SL["loop"], 2.25)
+        _varrow(g, slide, x + sw_ / 2, py + ph / 2, bottom + 0.04, "流程圖 擋回 箭頭", SL["loop"], 2.25)
+        bottom = py + ph
+    return bottom
 
 
 
@@ -1019,6 +1308,12 @@ def place_flow(g, slide, s, x, y, w, h):
         return place_flow_steps(g, slide, s, x, y, w, h)
     if style == "timeline":
         return place_flow_timeline(g, slide, s, x, y, w, h)
+    if style == "cycle":
+        return place_flow_cycle(g, slide, s, x, y, w, h)
+    if style == "diamond":
+        return place_flow_diamond(g, slide, s, x, y, w, h)
+    if style == "sieve":
+        return place_flow_sieve(g, slide, s, x, y, w, h)
     cred = fl.get("src") or next((i.get("src") for i in s.get("imgs", []) if i.get("src")), "")
     ctext = cred if cred.startswith(("圖", "資料來源")) else "圖：" + cred
     ch = (g.n_lines(ctext, G.S["credit"], max(w, 4.5)) * 0.25 + 0.06) if cred else 0.0

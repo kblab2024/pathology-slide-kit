@@ -52,7 +52,7 @@ slide:                    # 畫幅（英吋）：一律 16:9＝13.333×7.5（教
   width: 13.333
   height: 7.5
   margin: 0.5
-  background: F4F8FB      # 內容張底色（十六進位，不加 #）
+  background: F8FAFC      # 內容張底色（十六進位，不加 #）：2026-11-26 起是 slate 設計的微灰白（之前 F4F8FB）
 
 # 字級（pt）：新課的預設（2026-11-24 教師「之後的課都以這個版面的大一號字版本為default」，docs/教師偏好與決策.md 第 4 節）。
 # 「這個版面」是呼吸二重設計版（照 Gemini 的設計規範畫；下面 layout、design、emphasis 的值一起），字級比重設計版大一號
@@ -102,10 +102,15 @@ layout:                   # 版型微調
   lead_line: 1.25         # 圖上方說明句的行距
   table_lead_pt: 26       # 表格上方說明句的字級
   divider_sub_line: 1.25  # 分隔張副標行距
-  photo_mat: {pad: 0.08, line: CFD9E5, w: 0.75}   # 照片白邊細框（有標籤的示意圖不加）
-  table_style: medical    # 整套表格統一樣式（蓋過每張的 tbl: style=）
-  quiz_note_band: {fill: EAF1F8, bar: 2563A8}     # 國考題題下那一行放進淡底橫條
-  flow_style: stack       # 流程圖沒有在規格寫 "style" 時的排法；同一份講義要輪流用幾種（timeline｜spine｜stack｜steps｜merge｜fork；硬規則 22）
+  photo_mat: {pad: 0.08, line: CBD5E1, w: 0.75}   # 照片白邊細框（有標籤的示意圖不加）
+  # 以下四行是 slate 設計（2026-11-26 起新課的預設：教師看了 Gemini 給中乙腎臟一的視覺設計「以後把這組設計當成default」，
+  # 看了照它做的草稿「相當相當不錯 根據這個設計思維重新整理整個slidekit的設計吧」；說明在 docs/設計系統.md）。
+  # 要回到 2026-11-24 的重設計版：table_style: medical、拿掉 flow_look 與 lead_bar、quiz_note_band 與 design／emphasis 用下面註解裡的舊值。
+  table_style: slate      # 整套表格統一樣式（蓋過每張的 tbl: style=）：深色表頭白字、隔列淡底、沒有直線、首欄粗體
+  flow_look: slate        # 流程圖的樣子：白底細框卡片、灰色線箭頭、淺底膠囊、承上頁的淡藍虛線格；cycle｜diamond｜sieve 三種排法只有這個樣子才畫
+  lead_bar: true          # 標題下的說明句左邊一條直的色條，和下面的圖或表分開
+  quiz_note_band: {fill: EFF6FF, bar: 2563EB}     # 國考題題下那一行放進淡底橫條
+  flow_style: stack       # 流程圖沒有在規格寫 "style" 時的排法；照流程的形狀挑、相鄰兩張不同種（timeline｜spine｜stack｜steps｜merge｜fork｜cycle｜diamond｜sieve；硬規則 22）
 
 # rewrite:                 # 選填：請 Gemini 重寫句子的設定（每一講必做，AGENTS.md 硬規則 17；scripts/rewrite_pack.py 讀這一段）
 #   label: C免疫            # 重寫包檔名用的簡稱（預設：課程代碼＋deck 代號）
@@ -114,31 +119,32 @@ layout:                   # 版型微調
 #   notes: [_archive/written/w_a_notes.md]     # 移下投影片的細節檔（預設讀講稿檔的【講義補充】）
 #   digest_dir: _archive/written/digest         # 各段事實摘要 <段>.md（沒有就從 facts_R.json 列出）
 
-design:                   # 覆寫 scripts/common.py 的 DESIGN 色票（藍×赤陶）；cobaltd 以下是重設計版的色票（2026-11-24 起新課的預設）
-  cobaltd: "333F50"       # 說明句底色改中性藍灰，讓 [[藍:]] 與國考正解才是藍
-  title: "10243A"         # 標題字
-  title_bar: "2563A8"     # 標題左邊的直條
-  title_rule: "D6E0EB"    # 標題下的細線
+design:                   # 覆寫 scripts/common.py 的 DESIGN 色票。2026-11-26 起是 slate 設計的色票（docs/設計系統.md）；
+                          # 2026-11-24 重設計版的值寫在每一行後面的括號裡，要回去就換回來
+  cobaltd: "334155"       # 說明句的底色（中性藍灰，讓 [[藍:]] 與國考正解才是藍）（333F50）
+  title: "0F172A"         # 標題字：深板岩色（10243A）
+  title_bar: "2563EB"     # 標題左邊的直條、說明句左邊的色條（2563A8）
+  title_rule: "CBD5E1"    # 標題下的細線（D6E0EB）
   title_rule_w: 0.75      # 細線粗細（pt）
-  lead: "475569"          # 說明句
-  label: "10243A"         # 圖上方的標籤
-  ink: "1E2631"           # 內文
+  lead: "334155"          # 說明句（475569）
+  label: "0F172A"         # 圖上方的標籤（10243A）
+  ink: "0F172A"           # 內文（1E2631）
   grey: "64748B"
-  bullet: "2563A8"        # 條列符號
-  deep: "14263B"          # 封面、分隔張的底色
-  cover_block: "182D45"   # 封面、分隔張右側的色塊
-  cover_bar: "E06B1F"     # 封面、分隔張的直條（主題橘）
+  bullet: "2563EB"        # 條列符號（2563A8）
+  deep: "0F172A"          # 封面、分隔張的底色（14263B）
+  cover_block: "1E293B"   # 封面、分隔張右側的色塊；流程圖最後一格與表頭的深色也是它（182D45）
+  cover_bar: "EA580C"     # 封面、分隔張的直條（E06B1F）
   cover_sub: "CBD5E1"     # 封面、分隔張的副標
-  tbl_head: "E8EFF7"      # medical 表格的表頭底色
-  tbl_line: "D6E0EB"      # medical 表格的列間線
-  tbl_first: "9A4618"     # medical 表格的首欄字色（赤棕）
-  snow: "F4F8FB"
+  tbl_head: "E8EFF7"      # medical 表格的表頭底色（slate 表格的表頭用 cover_block）
+  tbl_line: "E2E8F0"      # 表格的列間線（D6E0EB）
+  tbl_first: "0F172A"     # 表格的首欄字色：slate 是和內文同色的粗體（medical 是赤棕 9A4618）
+  snow: "F8FAFC"
   # quiz_stem: "1E2A35"   # 選填：乙式國考題題幹色（不寫＝deep，和標題同色）；正解色是 emphasis.藍
 
 emphasis:                 # 行內標記 [[藍:文字]] 等的色票（見 scripts/README.md）
-  藍: 143F9C              # 本張最該記的東西、國考正解
+  藍: 1D4ED8              # 本張最該記的東西、國考正解（slate；2026-11-24 重設計版是 143F9C）
   紅: FF0000              # 單字級強調
-  橘: E06B1F              # 關鍵字（重設計版的主題橘；2026-11-24 以前是教師主題色 ACCENT_2 的 ED7D31）
+  橘: C2410C              # 關鍵字（slate 的深橘；重設計版是 E06B1F，2026-11-24 以前是教師主題色 ACCENT_2 的 ED7D31）
   青: 62A8BB              # 教科書章節對照
   灰: 2E414F              # 期刊引用
 

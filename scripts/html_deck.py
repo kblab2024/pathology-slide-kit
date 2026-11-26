@@ -8,12 +8,19 @@
 用法：
   cd <kit>/scripts && SLIDEKIT_MATERIALS=<materials> PYTHONIOENCODING=utf-8 python html_deck.py --course <課程> [--deck <deck>]
       [--out <檔案.html>] [--max-side 1200] [--quality 75] [--title 名稱]
+      [--flow-dir <資料夾>]   流程圖 PNG（assets/images/程式圖/ 的檔）改從這個資料夾讀同名檔（試畫、比較用；不寫進課程資料夾）
 預設輸出：<課程>/成品/<PPTX 檔名把 (PPTX) 換成 (HTML)>.html
 
 注意：
 - 這是「看內容、帶著走」的版本，版面是 16:9 的網頁排法，和 4:3 的 PPTX 不會逐點一樣；PPTX 仍是主檔。
 - 網頁上改不了也不會回素材池；要改內容一樣改素材池再重產。
 - 檔案大小主要是圖：--max-side、--quality 調小可以再縮（OneDrive 大檔傳不上時有用）。
+- 顏色與開關照這一講實際用的設定：course.yaml 的值再蓋上 decks.<deck> 的 design、emphasis、background（合併法和 gen_pptx.build_pptx 相同）。
+- slate 設計（2026-11-26；docs/設計系統.md）：這一講開了 layout.table_style: slate、flow_look: slate 或 lead_bar 時，標題用 design.title 的字色、
+  title_bar 的直條、title_rule 的細線，說明句用 design.lead 的字色（lead_bar 開了左邊再加一條藍色直條），條列符號用 design.bullet；
+  table_style: slate 的表格是深色表頭白色粗字、隔列淡底、沒有直線、首欄粗體（和 gen_pptx 同一組顏色）。沒開的講照舊，輸出逐位元不變。
+- 流程圖的 PNG 由 draw_flow.py 畫（HTML 版只放圖）：開了 flow_look: slate 的講，PNG 也要是 slate 樣子
+  （draw_flow.py 給 --course 時會照用到那張圖的講自動判斷；PNG 還是舊樣子時這支會印出來）。
 """
 import argparse
 import base64
@@ -57,7 +64,91 @@ document.addEventListener('keydown',function(e){var fs=[].slice.call(document.qu
 """
 
 
-def data_uri(path, max_side, quality):
+# ---- slate 設計（2026-11-26；docs/設計系統.md）。1pt＝2px。只在這一講開了 slate 的開關時加上去 ----
+SLATE_CSS = """
+.slide li::marker{{color:#{bullet}}}
+"""
+# 表格（layout.table_style: slate）：顏色和 gen_pptx.L_table3 的 slate 同一組。表頭下 2pt 深線、列間 1pt 淡線、表底 1.5pt 灰線、沒有直線；
+# 第一列資料白底、第二列淡底，依序隔列（和 PPTX 一樣）；首欄粗體。
+SLATE_TABLE_CSS = """
+.slide th,.slide td{{border:none;border-bottom:2px solid #{thin};padding:10px 16px}}
+.slide th{{background:#{head};color:#FFFFFF;font-weight:700;border-bottom:4px solid #{rule}}}
+.slide tr:nth-child(odd) td{{background:#{zebra}}}
+.slide tr:nth-child(even) td{{background:#FFFFFF}}
+.slide tr:last-child td{{border-bottom:3px solid #{foot}}}
+.slide td:first-child{{font-weight:700;color:#{first}}}
+"""
+
+
+def deck_course(c, deck):
+    """(這一講用的課程設定, 這一講的 layout)：course.yaml 再蓋上 decks.<deck> 的 design、emphasis、background、layout
+    （合併法和 gen_pptx.build_pptx 相同）。沒有蓋的講，值和原來的一樣，輸出逐位元不變。"""
+    dk = (c.get("decks") or {}).get(deck) or {}
+    c2 = type(c)(c)
+    if isinstance(dk.get("design"), dict):
+        c2["design"] = {**c["design"], **dk["design"]}
+    if isinstance(dk.get("emphasis"), dict):
+        c2["emphasis"] = {**c["emphasis"], **dk["emphasis"]}
+    if dk.get("background"):
+        c2["slide"] = {**c["slide"], "background": str(dk["background"])}
+    L = {**(c.get("layout") or {}), **(dk["layout"] if isinstance(dk.get("layout"), dict) else {})}
+    return c2, L
+
+
+def is_slate(L):
+    return L.get("table_style") == "slate" or L.get("flow_look") == "slate" or bool(L.get("lead_bar"))
+
+
+def slate_css(D, L):
+    css = SLATE_CSS.format(bullet=D.get("bullet", D.get("title_bar", D["cobalt"])))
+    if L.get("table_style") == "slate":
+        css += SLATE_TABLE_CSS.format(thin=D.get("tbl_line", "E2E8F0"), head=D.get("tbl_head_dark", D.get("cover_block", "1E293B")),
+                                      rule=D.get("title", D["deep"]), zebra=D.get("tbl_zebra", "F1F5F9"), foot=D.get("tbl_foot", "94A3B8"),
+                                      first=D.get("tbl_first", D["ink"]))
+    return css
+
+
+class SlateR(tcs.R):
+    """slate 設計的標題、說明句與國考題題下那一行（其他照 to_claude_slides.R）。版面照 gen_pptx 的 content_title、_lead_bar、L_quiz。"""
+
+    def __init__(self, course, assets, layout):
+        super().__init__(course, assets)
+        self.L = layout
+
+    def title(self, s):
+        D = self.D
+        h2 = (f'<h2 style="font-size:{self.pt("title")}px; font-weight:700; line-height:1.15; color:#{D.get("title", D["deep"])}; '
+              f'border-left:12px solid #{D.get("title_bar", D["cobalt"])}; padding:0px 0px 0px 28px">{tcs.rich(s["title"], self.E)}</h2>')
+        if not D.get("title_rule"):
+            return h2
+        w = max(1, round(float(D.get("title_rule_w", 0.75)) * tcs.PX))          # 標題下一條淡色細線
+        return f'<div style="border-bottom:{w}px solid #{D["title_rule"]}; padding-bottom:14px">{h2}</div>'
+
+    def lead(self, bl):
+        col = self.D.get("lead", self.D["cobaltd"])
+        ps = "".join(f'<p style="font-size:{self.pt("lead")}px; line-height:1.35; color:#{col}">'
+                     f'{tcs.rich(tcs.bullet_level(b)[1], self.E)}</p>' for b in bl)
+        lb = self.L.get("lead_bar")
+        if not ps or not lb:
+            return ps
+        bar = lb if isinstance(lb, str) else self.D.get("title_bar", self.D["cobalt"])     # layout.lead_bar: true 或色碼
+        return f'<div style="border-left:8px solid #{bar}; padding-left:24px">{ps}</div>'
+
+    def render(self, s, qs, note):
+        html = super().render(s, qs, note)
+        band = self.L.get("quiz_note_band")
+        if s["type"] == "quiz" and s.get("quiz_note") and isinstance(band, dict):
+            # 題下那一行：淡冰藍底、左邊一條藍色細直線的橫條（gen_pptx.L_quiz 的 quiz_note_band）
+            old = f'<p style="font-size:{self.pt("label")}px; color:#{self.D["cobaltd"]}">{tcs.esc(s["quiz_note"])}</p>'
+            new = (f'<p style="font-size:{self.pt("label")}px; line-height:1.3; color:#{self.D.get("lead", self.D["cobaltd"])}; '
+                   f'background:#{band.get("fill", "EAF1F8")}; border-left:9px solid #{band.get("bar", self.D["cobalt"])}; '
+                   f'padding:16px 30px">{tcs.esc(s["quiz_note"])}</p>')
+            html = html.replace(old, new)
+        return html
+
+
+def data_uri(path, max_side, quality, kind_path=None):
+    """kind_path：用哪個路徑判斷是不是程式圖（--flow-dir 換了檔案來源時，照原來的路徑判斷）。"""
     im = Image.open(path)
     im.load()
     has_alpha = im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info)
@@ -71,7 +162,8 @@ def data_uri(path, max_side, quality):
         r = max_side / max(im.size)
         im = im.resize((max(1, int(im.width * r)), max(1, int(im.height * r))), Image.LANCZOS)
     # 程式圖、標籤圖（字多、色塊平）用 PNG 比較清楚；照片用 JPEG
-    is_drawing = ("程式圖" in path) or path.endswith(("_zh.png", "_zh2.png", "_zh3.png", "_zh4.png")) or "legend" in path
+    kp = kind_path or path
+    is_drawing = ("程式圖" in kp) or kp.endswith(("_zh.png", "_zh2.png", "_zh3.png", "_zh4.png")) or "legend" in kp
     buf = io.BytesIO()
     if is_drawing:
         im.quantize(colors=128).save(buf, "PNG", optimize=True)
@@ -90,14 +182,43 @@ def main():
     ap.add_argument("--max-side", type=int, default=1200)
     ap.add_argument("--quality", type=int, default=75)
     ap.add_argument("--title", default=None)
+    ap.add_argument("--flow-dir", default=None, help="流程圖 PNG（assets/images/程式圖/ 的檔）改從這個資料夾讀同名檔（試畫、比較用）")
     a = ap.parse_args()
-    c = load_course(a.course)
-    deck = a.deck or c["deck_order"][0]
-    built = build_deck(c, deck)
+    c0 = load_course(a.course)
+    deck = a.deck or c0["deck_order"][0]
+    c, L = deck_course(c0, deck)                  # 這一講實際用的顏色與開關
+    built = build_deck(c0, deck)
     slides = built["slides"]
+
+    def src_of(p):
+        if a.flow_dir and os.path.basename(os.path.dirname(p)) == "程式圖":
+            alt = os.path.join(a.flow_dir, os.path.basename(p))
+            if os.path.isfile(alt):
+                return alt
+        return p
+
     paths = sorted({os.path.abspath(i["abspath"]) for s in slides for i in s["imgs"] if i.get("exists")})
-    assets = {os.path.normcase(p): data_uri(p, a.max_side, a.quality) for p in paths}
-    r = tcs.R(c, assets)
+    assets = {os.path.normcase(p): data_uri(src_of(p), a.max_side, a.quality, kind_path=p) for p in paths}
+    slate = is_slate(L)
+    if L.get("flow_look") == "slate":
+        # 流程圖 PNG 是 draw_flow.py 畫的；slate 的 PNG 帶著 flow_look 的標記，沒有就是還沒照這一講的設定重畫
+        old = set()
+        for s in slides:
+            if not (s.get("flow") or {}).get("fig") or s["flow"]["fig"].get("kind") == "stages":
+                continue
+            for i in s["imgs"]:
+                p = i.get("abspath") or ""
+                if i.get("exists") and os.path.basename(os.path.dirname(p)) == "程式圖":
+                    try:
+                        look = getattr(Image.open(src_of(p)), "text", {}).get("flow_look")
+                    except Exception:
+                        look = None
+                    if look != "slate":
+                        old.add(os.path.basename(p))
+        if old:
+            print(f"[注意] 這一講開了 flow_look: slate，下面 {len(old)} 張流程圖 PNG 還是舊樣子；先跑 draw_flow.py <規格.json> <程式圖資料夾> "
+                  f"--course {a.course} --deck {deck}：" + "、".join(sorted(old)), file=sys.stderr)
+    r = SlateR(c, assets, L) if slate else tcs.R(c, assets)
     title = a.title or f"{c['topic']}（{built['name']}）"
     secs, frames, cur = [], [], None
     for s in slides:
@@ -112,7 +233,7 @@ def main():
     out = a.out or os.path.join(c.path("out_dir"), deck_filename(c, deck, None).replace("(PPTX)", "(HTML)") + ".html")
     doc = (f'<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">'
            f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>{tcs.esc(title)}</title>'
-           f'<style>{CSS}</style></head><body><header><b>{tcs.esc(title)}</b><span>{len(slides)} 張（←／→ 換張）</span>'
+           f'<style>{CSS + (slate_css(c["design"], L) if slate else "")}</style></head><body><header><b>{tcs.esc(title)}</b><span>{len(slides)} 張（←／→ 換張）</span>'
            f'<span>{toc}</span></header><div class="wrap">{"".join(frames)}</div><script>{JS}</script></body></html>')
     os.makedirs(os.path.dirname(out), exist_ok=True)
     open(out, "w", encoding="utf-8", newline="\n").write(doc)

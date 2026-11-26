@@ -625,6 +625,16 @@ def L_left(slide, s):
     place_fig(slide, s, ix, y0, G.SW - G.M - ix, avail - 0.15)
 
 
+def _lead_bar(slide, y0, need):
+    """說明句左邊一條直的色條（layout.lead_bar: true 或色碼；2026-11-26 Gemini 的設計：把說明句和下面的圖或表分開）。預設不畫。"""
+    lb = G.L.get("lead_bar")
+    if not lb or need <= 0:
+        return
+    hexc = lb if isinstance(lb, str) else G.D.get("title_bar", G.D["cobalt"])
+    r = rect(slide, G.M + 0.06, y0 + 0.07, 0.055, max(0.2, need - 0.10), hexc=hexc)
+    r.name = "說明句 色條"
+
+
 def _lead(slide, s, lines_max=None):
     """標題下的說明句（pair／flash／big 共用）；回傳圖區起點 y。"""
     y0 = content_title(slide, s)
@@ -636,6 +646,7 @@ def _lead(slide, s, lines_max=None):
             t = bullet_level(b)[1]
             para(tf, t, G.S["lead"], color=G.D.get("lead", G.D["cobaltd"]), first=(i == 0), line=G.LL, space_after=4)
             need += n_lines(t, G.S["lead"], w) * line_h(G.S["lead"], G.LL) + 4 / 72.0
+        _lead_bar(slide, y0, need)
     return y0 + need + (0.12 if need else 0)
 
 
@@ -813,6 +824,7 @@ def L_table3(slide, s):
         for i, b in enumerate(s["bullets"]):
             para(tf, bullet_level(b)[1], tlp, color=G.D.get("lead", G.D["cobaltd"]), first=(i == 0), space_after=4,
                  line=G.LL)
+        _lead_bar(slide, y0, need)
         y0 += need + 0.1
     ncol = len(tbl[0])
     rows = [(r + [""] * ncol)[:ncol] for r in tbl]
@@ -834,7 +846,7 @@ def L_table3(slide, s):
     avail = G.SH - y0 - 0.45 - getattr(G, "src_h", 0.0)
     size = G.S["table"]
     pad = 0.14 if (style == "band" or opt.get("pad") == "tight") else 0.22
-    if style == "medical":
+    if style in ("medical", "slate"):
         pad = 0.13 if opt.get("pad") == "tight" else 0.18   # 儲存格上下邊界＋框線；clean／accent 多留一點呼吸，pad=tight 收回
     tl = float(opt.get("line", 1.1))      # tbl: line=（表格字的行距）
     for cand in (G.S["table"], G.S["table_min"]):
@@ -874,6 +886,25 @@ def L_table3(slide, s):
     sid = t._tbl.tblPr.find(qn("a:tableStyleId"))
     if sid is not None:
         sid.text = NO_GRID_STYLE
+    if style == "slate":
+        # Gemini 的設計（2026-11-26，教師「以後把這組設計當成default」）：表頭深色底白字、資料列隔列淡底、沒有直線；
+        # 表頭下 2pt 深線、列與列之間 1pt 淡線、表底 1.5pt 灰線；首欄粗體。
+        head_fill = G.D.get("tbl_head_dark", G.D.get("cover_block", "1E293B"))
+        zebra, thin = G.D.get("tbl_zebra", "F1F5F9"), G.D.get("tbl_line", "E2E8F0")
+        rule, foot = G.D.get("title", G.D["deep"]), G.D.get("tbl_foot", "94A3B8")
+        first_col = G.D.get("tbl_first", G.D["ink"])
+        for i, r in enumerate(rows):
+            last = i == len(rows) - 1
+            for j, c in enumerate(r):
+                cell = t.cell(i, j)
+                if i == 0:
+                    set_cell(cell, c, size, color="FFFFFF", bold=True, fill=head_fill, align=al(j), line=tl)
+                    cell_borders(cell, L=None, R=None, T=None, B=(2.0, rule))
+                    continue
+                set_cell(cell, c, size, color=(first_col if j == 0 else G.D["ink"]), bold=(j == 0),
+                         fill=("FFFFFF" if i % 2 else zebra), align=al(j), line=tl)
+                cell_borders(cell, L=None, R=None, T=None, B=((1.5, foot) if last else (1.0, thin)))
+        return
     if style == "medical":
         # Gemini 設計規範（2026-11-24 rs2 重設計）：白底；表頭淡冰藍底、深藍粗字；首欄赤棕粗字；
         # 頂、底 1.5pt 深藍橫線，列與列之間 0.6pt 淡線；沒有直線、沒有斑馬紋。
@@ -1274,6 +1305,10 @@ def build_pptx(course, deck, out_path, section=None):
         G.TLP = G.L.get("table_lead_pt")
     if isinstance(dk.get("design"), dict):
         G.D = {**G.D, **dk["design"]}
+    if isinstance(dk.get("emphasis"), dict):          # 2026-11-26：強調色與底色也可以一個 deck 自己設
+        G.EMPH = {**G.EMPH, **dk["emphasis"]}
+    if dk.get("background"):
+        G.BG = str(dk["background"])
     G.layout = {}
     pool = parse_pool(course)
     built = build_deck(course, deck, pool=pool)
